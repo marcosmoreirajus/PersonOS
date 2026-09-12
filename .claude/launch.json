@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "backend\\start.bat",
+      "runtimeArgs": [],
+      "port": 8000
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "frontend\\start.bat",
+      "runtimeArgs": [],
+      "port": 3001
+    }
+  ]
+}

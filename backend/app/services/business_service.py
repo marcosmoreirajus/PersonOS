@@ -52,8 +52,12 @@ class BusinessService:
         for key, value in data.items():
             post.metadata[key] = value
 
+        # Serializa antes de abrir o arquivo para escrita: se `dumps` falhar,
+        # o arquivo original não é truncado.
+        content = frontmatter.dumps(post)
+
         filepath.parent.mkdir(parents=True, exist_ok=True)
-        with open(filepath, "wb") as f:
-            frontmatter.dump(post, f)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
 
         return dict(post.metadata)
