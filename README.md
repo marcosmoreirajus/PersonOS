@@ -92,6 +92,47 @@ docker-compose up
 - [ ] Gestão de milhas
 - [ ] Monetização (SaaS)
 
+## Módulo Negócio
+
+Além do Módulo Finanças (mock em JSON), o PersonOS tem um **Módulo Negócio**, desacoplado do Finanças (pastas e rotas próprias), pensado para no futuro ser vendido separadamente (só Finanças, só Negócio, ou pacote completo).
+
+Diferente do Finanças, o Módulo Negócio guarda os dados em **arquivos Markdown com frontmatter YAML** em vez de JSON — a ideia é que, no futuro, agentes de IA leiam/escrevam esses arquivos diretamente.
+
+### Estrutura
+
+4 páginas, cada uma uma seção estratégica do negócio:
+
+- **Founder** — Objetivo, Estilo de vida
+- **Direção** — Mapa do Mercado, Mapa de Problemas, Perfil Ideal de Cliente, Tese de Valor, Oferta
+- **Validação** — Oferta, Primeiros Clientes
+- **Caixa** — Fluxo de Caixa, ERP
+
+```
+backend/
+├── data/business/            # Dados mock em Markdown (frontmatter YAML)
+│   ├── founder.md
+│   ├── direction.md
+│   ├── validation.md
+│   └── caixa.md
+├── app/services/
+│   └── business_service.py   # Lê/escreve os .md (via python-frontmatter)
+└── app/main.py                # GET/PUT /api/business/{section}
+
+frontend/app/business/
+├── layout.tsx                 # Sidebar com links (Founder, Direção, Validação, Caixa)
+├── founder/page.tsx
+├── direction/page.tsx
+├── validation/page.tsx
+└── caixa/page.tsx
+```
+
+### API
+
+- `GET /api/business/{section}` — retorna os campos da seção (`founder`, `direction`, `validation` ou `caixa`) como JSON.
+- `PUT /api/business/{section}` — atualiza os campos da seção (recebe JSON no body) e re-salva o arquivo Markdown correspondente.
+
+Cada página do frontend é um Client Component que busca os dados da seção ao montar e salva as alterações com um botão "Salvar".
+
 ## Documentação
 
 - [Planejamento Técnico](./docs/PLANNING.md) (em desenvolvimento)
