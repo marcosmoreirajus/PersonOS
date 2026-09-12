@@ -1,7 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.services import DataService
+from app.services import DataService, BusinessService
 
 app = FastAPI(
     title=settings.api_title,
@@ -90,6 +90,24 @@ async def create_transaction(
 async def get_dashboard(user_id: int):
     summary = DataService.get_dashboard_summary(user_id)
     return {"data": summary}
+
+
+# Rotas do Módulo Negócio (dados em Markdown, desacoplado do Módulo Finanças)
+@app.get("/api/business/{section}")
+async def get_business_section(section: str):
+    data = BusinessService.get_section(section)
+    if not data:
+        return {"error": "Section not found"}, 404
+    return {"data": data}
+
+
+@app.put("/api/business/{section}")
+async def update_business_section(section: str, request: Request):
+    body = await request.json()
+    data = BusinessService.update_section(section, body)
+    if not data:
+        return {"error": "Section not found"}, 404
+    return {"data": data}
 
 
 # TODO: Adicionar rotas de:
