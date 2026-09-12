@@ -1,7 +1,17 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from app.config import settings
 from app.services import DataService, BusinessService
+
+
+class TransactionCreate(BaseModel):
+    user_id: int
+    category_id: int
+    type: str
+    amount: float
+    description: str | None = None
+    transaction_date: str | None = None
 
 app = FastAPI(
     title=settings.api_title,
@@ -66,23 +76,10 @@ async def get_user_transactions(user_id: int):
 
 
 @app.post("/api/transactions")
-async def create_transaction(
-    user_id: int, category_id: int, type: str, amount: float, description: str = None
-):
-    """
-    Cria uma transação (mock - apenas retorna confirmação).
-    Dados reais serão salvos quando implementar DB.
-    """
-    return {
-        "message": "Transaction created (mock)",
-        "data": {
-            "user_id": user_id,
-            "category_id": category_id,
-            "type": type,
-            "amount": amount,
-            "description": description,
-        },
-    }
+async def create_transaction(payload: TransactionCreate):
+    """Cria uma transação e persiste em backend/data/transactions.json."""
+    new_transaction = DataService.create_transaction(**payload.model_dump())
+    return {"data": new_transaction}
 
 
 # Dashboard
@@ -111,7 +108,6 @@ async def update_business_section(section: str, request: Request):
 
 
 # TODO: Adicionar rotas de:
-# - POST /api/transactions (criar transação real quando tiver DB)
 # - PUT /api/transactions/{id} (editar)
 # - DELETE /api/transactions/{id} (deletar)
 # - Relatórios por período

@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any
 
 # Caminho dos dados
@@ -19,6 +19,17 @@ class DataService:
                 return json.load(f)
         except FileNotFoundError:
             return []
+
+    @staticmethod
+    def save_json(filename: str, data: List[Dict[str, Any]]) -> None:
+        """Salva dados num arquivo JSON (gera a string antes de truncar o
+        arquivo, para não perder o conteúdo original se a serialização
+        falhar — ver nota do Módulo Negócio sobre esse mesmo cuidado)."""
+        content = json.dumps(data, ensure_ascii=False, indent=2)
+        filepath = DATA_DIR / f"{filename}.json"
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
 
     @staticmethod
     def get_users() -> List[Dict[str, Any]]:
@@ -52,6 +63,35 @@ class DataService:
         """Retorna transações de um usuário específico."""
         transactions = DataService.get_transactions()
         return [t for t in transactions if t["user_id"] == user_id]
+
+    @staticmethod
+    def create_transaction(
+        user_id: int,
+        category_id: int,
+        type: str,
+        amount: float,
+        description: str | None = None,
+        transaction_date: str | None = None,
+    ) -> Dict[str, Any]:
+        """Cria uma transação nova e persiste em transactions.json."""
+        transactions = DataService.get_transactions()
+        next_id = max((t["id"] for t in transactions), default=0) + 1
+        now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        new_transaction = {
+            "id": next_id,
+            "user_id": user_id,
+            "category_id": category_id,
+            "type": type,
+            "amount": amount,
+            "description": description,
+            "transaction_date": transaction_date or now,
+            "created_at": now,
+        }
+
+        transactions.append(new_transaction)
+        DataService.save_json("transactions", transactions)
+        return new_transaction
 
     @staticmethod
     def get_dashboard_summary(user_id: int) -> Dict[str, Any]:
