@@ -1,13 +1,17 @@
 # PersonOS — Design System
 
-Sistema de design minimalista, preto & branco, usado em todas as telas do
-PersonOS. Consistente com o WikiOS (projeto irmão do mesmo usuário): mesma
-stack (shadcn/ui + Base UI + Tailwind v4), mesmo preset (`base-nova`), mesmo
-tema neutro e mesmo `--radius` alto.
+Sistema de design predominantemente preto & branco (base neutra `oklch`
+chroma 0), com um canvas "papel" quente e UM acento âmbar restrito desde
+2026-09-16 ("Papel & Âmbar") — ver seção Paleta de cores. Consistente com o
+WikiOS (projeto irmão do mesmo usuário) na stack: shadcn/ui + Base UI +
+Tailwind v4, preset `base-nova`.
 
-Escopo deste documento: apenas o sistema de design e os componentes
-reutilizáveis em `frontend/components/ui/`. Páginas de negócio (Founder,
-Direção, Validação, Caixa) e o backend não fazem parte deste trabalho.
+Escopo deste documento: o sistema de design e os componentes reutilizáveis
+em `frontend/components/ui/`, mais uma seção "Módulo Finanças" com regras
+específicas de identidade daquele módulo (é o módulo mais avançado hoje,
+onde a maioria das decisões de identidade foi validada primeiro). Páginas
+de negócio (Founder, Direção, Validação, Caixa) e o backend não fazem parte
+deste documento.
 
 ## Stack
 
@@ -21,44 +25,66 @@ Direção, Validação, Caixa) e o backend não fazem parte deste trabalho.
 
 ## Paleta de cores
 
-Zero cor saturada — toda a paleta é `oklch` com chroma `0` (cinza puro),
-exceto `--destructive` (único token semântico não-neutro, reservado para
-estados de erro/exclusão — não é uma cor de destaque de marca).
+Base neutra em `oklch` chroma `0` (cinza puro) — mas **não é mais 100%
+acromática**: a partir de 2026-09-16 (identidade "Papel & Âmbar", validada
+em preview nos dias 14-16/09 e portada pro código real) o sistema ganhou um
+canvas quente e um acento âmbar restrito, mantendo o resto neutro.
 
 Definida em `frontend/styles/design-tokens.css`, importado por
 `frontend/app/globals.css`. Segue o padrão de CSS variables do shadcn/ui:
 
 | Token | Light | Dark | Uso |
 |---|---|---|---|
-| `--background` | `oklch(1 0 0)` (branco) | `oklch(0.145 0 0)` (quase preto) | fundo da página |
+| `--background` | `oklch(1 0 0)` (branco) | `oklch(0.145 0 0)` (quase preto) | fundo neutro (superfícies que NÃO são o canvas da página) |
+| `--canvas` | `#f5f1e7` | `#201d17` | fundo da própria página (`<body>`) — canvas "papel" quente, distinto de `--background` |
 | `--foreground` | `oklch(0.145 0 0)` | `oklch(0.985 0 0)` | texto principal |
-| `--card` | `oklch(1 0 0)` | `oklch(0.205 0 0)` | fundo de cards |
+| `--card` | `oklch(1 0 0)` | `oklch(0.205 0 0)` | fundo de cards — continua branco/quase-preto mesmo com o canvas quente por baixo |
 | `--muted` / `--muted-foreground` | cinza claro / cinza médio | cinza escuro / cinza claro | texto secundário, placeholders |
-| `--accent` / `--accent-foreground` | cinza bem claro | cinza escuro | hover de itens (sidebar, menus) |
+| `--accent` / `--accent-foreground` | cinza bem claro | cinza escuro | hover de itens (sidebar, menus) — **não confundir com `--amber-accent`**, são tokens diferentes |
 | `--secondary` / `--secondary-foreground` | cinza claro | cinza escuro | badges, estado ativo |
 | `--border` / `--input` | cinza claro | branco 10% opacidade | bordas, contornos de input |
 | `--sidebar*` | variação de `--background`/`--accent` | idem | tokens dedicados da sidebar |
-| `--destructive` | `oklch(0.577 0.245 27.325)` (vermelho) | `oklch(0.704 0.191 22.216)` | única cor não-neutra, erro/exclusão |
+| `--destructive` | `oklch(0.577 0.245 27.325)` (vermelho) | `oklch(0.704 0.191 22.216)` | erro/exclusão |
+| `--positive` | `#1f7a45` | `#4cba7f` | ganho/perda financeiro (ex.: delta "↑2% vs. mês anterior") — semântico, separado do `--amber-accent` de marca |
+| `--amber-accent` | `#dd7635` | `#ec8a52` | acento de marca — **só em linha de gráfico em destaque e badge de categoria tintado, nunca em CTA/botão** (CTA continua preto sólido, sem exceção) |
+| `--radius-card-cut` | `6px` | `6px` | raio assimétrico dos cards (ver seção Radius) |
+
+**Paleta de categoria** (não são tokens CSS — são valores `color` por linha
+em `backend/data/categories.json`, consumidos pelo componente `Badge` e por
+gráficos como cor crua): âmbar `#dd7635`, sálvia `#7c8c63`, azul empoeirado
+`#5b7c99`, terracota `#a8674f`, mais 1-2 neutros pra cauda residual — nunca
+mais de 4-5 tons simultâneos (paleta "pequena e controlada", decisão de
+14/09). Usada em despesas/categorias — **nunca no Módulo Patrimônio**, que é
+propositalmente P&B (ver "Módulo Finanças" abaixo).
 
 **Dark mode**: ativa via classe `.dark` na raiz do documento (padrão
 shadcn/ui `@custom-variant dark (&:is(.dark *))`), não por
-`prefers-color-scheme`. Basta adicionar/remover `className="dark"` no
-`<html>` — nenhum componente precisa de lógica própria de tema.
+`prefers-color-scheme` diretamente. Desde 16/09 existe um controle real —
+ver componente `ThemeToggle` abaixo — que decide entre claro/escuro/sistema
+e aplica/remove `className="dark"` no `<html>`; antes disso a classe nunca
+era tocada por nenhum componente.
 
 ## Radius
 
-`--radius: 0.75rem`, com uma escala derivada em `@theme`:
+Sistema de **2 níveis com intenção** (adotado 16/09, inspirado na
+referência "Ventriloc"), não mais uma escala única:
 
-```
---radius-sm:  calc(var(--radius) * 0.6)   /* 0.45rem */
---radius-md:  calc(var(--radius) * 0.8)   /* 0.6rem  */
---radius-lg:  var(--radius)               /* 0.75rem */
---radius-xl:  calc(var(--radius) * 1.4)   /* 1.05rem */
---radius-2xl: calc(var(--radius) * 1.8)   /* 1.35rem */
-```
+1. **Cards de dado** (`Card`, e qualquer componente que envolva conteúdo
+   num "cartão"): canto cortado assimétrico, só o superior-esquerdo —
+   `border-radius: var(--radius-card-cut) 0 0 0` (6px), sem sombra
+   perceptível (profundidade só por borda 1px). Utilitário Tailwind gerado:
+   `rounded-tl-card-cut`.
+2. **CTA, toggles, tabs, pills** (botão principal, segmented controls tipo
+   Pizza/Barras/Segmentada, filtros, `ViewToggle`, `ThemeToggle`,
+   `EyeToggle`): **pill total**, `rounded-full` (999px) — decisão de 15/09,
+   mantida mesmo depois da adoção do sistema Ventriloc (que sugeriria botão
+   anguloso 0px) porque o CTA pill já estava validado antes; a exceção foi
+   avisada e decidida explicitamente, não é inconsistência.
 
-Todos os componentes usam `rounded-lg`/`rounded-xl` (nunca cantos retos) —
-inclusive itens de sidebar, cards e botões do toggle de visualização.
+`--radius: 0.75rem` e a escala derivada (`--radius-sm` … `--radius-2xl`)
+continuam existindo pra outros usos pontuais (ex.: inputs, popovers), mas
+**cards e toggles não usam mais essa escala única** — usam a regra de 2
+níveis acima.
 
 ## Fonte
 
@@ -92,6 +118,13 @@ esse arquivo agora:
    fallback (`var(--font-inter, 'Inter', ui-sans-serif, system-ui, sans-serif)`)
    — nenhum outro arquivo precisa mudar quando isso acontecer.
 
+**Peso e tracking de headings** (regra adotada 16/09, herdada da referência
+"Ventriloc" — sem trocar a fonte, só a restrição): títulos de card
+(`CardTitle`) usam **peso 400, nunca negrito** (`font-normal`, não
+`font-medium`/`font-semibold`), com tracking levemente negativo
+(`tracking-[-0.01em]`). Não se aplica a `<h1>` de página nem a valores
+numéricos em destaque (esses continuam bold onde já eram).
+
 ## Componentes (`frontend/components/ui/`)
 
 ### `cn()` — `frontend/lib/utils.ts`
@@ -108,8 +141,10 @@ cn('px-2 py-1', condition && 'bg-accent', className)
 ### `Card` — `card.tsx`
 
 `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`,
-`CardFooter`. Fundo `bg-card`, borda `border-border`, `rounded-xl`, sombra
-sutil que aumenta no hover.
+`CardFooter`. Fundo `bg-card`, borda `border-border`, canto cortado
+assimétrico `rounded-tl-card-cut` (ver seção Radius), sombra sutil que
+aumenta no hover. `CardTitle` usa peso 400 (nunca negrito) + tracking
+negativo (ver seção Fonte).
 
 ```tsx
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -164,6 +199,121 @@ import { CardGrid } from '@/components/ui/card-grid'
 </CardGrid>
 ```
 
+### `Badge` — `badge.tsx`
+
+Pill de categoria/tipo, tintado a 10% na cor recebida via
+`color-mix(in srgb, var(--badge-color) 10%, transparent)` — nunca cor
+sólida. Recebe uma cor **crua** (hex, ex. de `categories.json`), não um
+token semântico, porque a paleta de categoria vive nos dados, não no CSS.
+
+```tsx
+import { Badge } from '@/components/ui/badge'
+
+<Badge color={category.color} icon={SomeIcon}>{category.name}</Badge>
+```
+
+**Não usar `Badge` pra status** (situação de algo — pago/pendente/atrasado):
+status é um eixo semântico diferente de categoria/tipo e deve ficar num
+elemento visual separado (texto + ponto colorido), mesmo que pareça "caber"
+no mesmo formato de pill. Ver exemplo em `app/finance/agendadas/_components/UpcomingList.tsx`.
+
+### `ActionsMenu` — `actions-menu.tsx`
+
+Botão único "⋯" que abre um menu com **ícone fixo por ação** (Ver detalhes
+→ `Eye`, Pagar → `CheckCircle2`, Pular → `SkipForward`, Editar → `Pencil`),
+em vez de links de texto soltos (que variam de largura e quebram
+alinhamento entre linhas de uma lista). Construído sobre
+`@base-ui/react/menu` (dá click-outside/Escape/foco de graça). O chamador
+decide quais ações mandar por item — nem todo item precisa das mesmas.
+
+```tsx
+import { ActionsMenu, type ActionsMenuAction } from '@/components/ui/actions-menu'
+
+const actions: ActionsMenuAction[] = [
+  { key: 'details', label: 'Ver detalhes', icon: Eye, onSelect: () => {} },
+]
+<ActionsMenu actions={actions} />
+```
+
+### `ThemeToggle` — `theme-toggle.tsx`
+
+Controle claro/escuro/sistema (3 botões ícone, `Sun`/`Moon`/`Monitor`),
+persiste em `localStorage` e alterna a classe `.dark` na raiz — é o único
+lugar do app que efetivamente toca essa classe. Vive no rodapé da sidebar
+de cada módulo (`app/finance/layout.tsx`); ainda não existe uma sidebar
+global de módulos, então cada módulo tem sua própria instância por ora.
+
+### `EyeToggle` + `MoneyValue`/`ValuesVisibilityProvider` — `eye-toggle.tsx`, `money-value.tsx`
+
+Sistema de privacidade: `ValuesVisibilityProvider` (Context) guarda o
+estado "valores ocultos" (oculto por padrão, persiste em `localStorage`) e
+deve envolver toda a árvore que precisa mascarar dinheiro — hoje montado
+uma vez em `app/finance/layout.tsx`, cobrindo todas as telas do módulo.
+`EyeToggle` é o botão que alterna o estado (persistente no shell, ao lado
+do CTA principal). `MoneyValue` é o componente que formata um número em R$
+e o mascara (`R$ ••••,••`) quando o estado está oculto — lê o contexto
+sozinho, não precisa receber `hidden` por prop.
+
+```tsx
+// app/<modulo>/layout.tsx
+import { ValuesVisibilityProvider } from '@/components/ui/money-value'
+<ValuesVisibilityProvider>{children}</ValuesVisibilityProvider>
+
+// em qualquer página dentro do provider
+import { MoneyValue } from '@/components/ui/money-value'
+<MoneyValue value={1234.5} />
+```
+
+Regra: mascarar todo valor monetário **diretamente visível** (inclusive
+dentro de popovers/menus abertos), mas não o conteúdo de tooltips
+(`title=`/`<title>` de SVG) — mesmo padrão já usado no preview original.
+Percentuais nunca são mascarados (são relativos, não saldo).
+
+### `MonthPicker` — `month-picker.tsx`
+
+Dropdown de mês/ano (navegação de ano + grid de 12 meses), construído sobre
+`@base-ui/react/popover`. **Hoje é só visual** em todo lugar onde é usado —
+não filtra dado nenhum, só guarda o mês escolhido em estado local (decisão
+de 16/09, pra não precisar construir agregação por mês nem inventar dado
+histórico extra). Se algum dia precisar filtrar de verdade, isso muda o
+contrato do componente, não é assumido hoje.
+
+### `Sparkline` — `sparkline.tsx`
+
+Linha de tendência simples (SVG à mão, não `recharts` — ver nota abaixo)
+a partir de um array de números. Sem comparação com período anterior por
+padrão — só desenha o que existe. Usado dentro de `StatCard` na Visão
+Geral do Finanças.
+
+> **Por que SVG à mão em vez de `recharts`:** o gráfico de pizza original
+> do Dashboard (`recharts`) tinha um bug de renderização não diagnosticado
+> (grupo do gráfico renderizava sem nenhum `<path>` dentro). Pra não
+> arriscar o mesmo problema nos gráficos novos (sparklines, "Resultado do
+> mês", donuts de categoria/patrimônio), todos foram refeitos como SVG
+> gerado a partir do dado real, sem depender de `recharts`. Ver componentes
+> `ResultChart`/`CategoryBreakdown`/`EvolutionChart` em `app/finance/`.
+
+## Módulo Finanças — regras específicas
+
+Fora do escopo original deste documento (que cobria só `components/ui/`),
+mas registrado aqui porque afeta como os componentes acima são usados:
+
+- **Despesas = colorido, Patrimônio = P&B.** Categorias de despesa usam a
+  paleta de categoria (ver seção Paleta de cores); classes de investimento
+  em Patrimônio **nunca** recebem cor própria — usam peso por opacidade
+  (`[1, 0.6, 0.35, 0.18]`, maior classe = opacidade cheia) sobre
+  `var(--foreground)`. Decisão de 14/09, reforça a distinção semântica
+  "atenção" (despesa) vs. "sóbrio/estável" (patrimônio).
+- **Acento âmbar só na Visão Geral hoje.** O gráfico "Resultado do mês" usa
+  `var(--amber-accent)` na linha/preenchimento — é o único lugar do app que
+  usa esse token pra uma linha de gráfico até agora. Gráficos de Patrimônio
+  (Evolução Patrimonial) usam `var(--foreground)`, consistente com a regra
+  P&B acima.
+- **`CategoryBreakdown`** (`app/finance/_components/CategoryBreakdown.tsx`)
+  é o componente compartilhado do card "Onde o dinheiro saiu" (toggle
+  Pizza/Barras/Segmentada) — usado tanto na Visão Geral quanto em
+  Relatórios, mesmo dado, apresentações diferentes.
+
 ## Página de demonstração
 
 `frontend/app/design-preview/page.tsx` — abra `/design-preview` no navegador
@@ -189,3 +339,27 @@ fake. Essa rota é isolada e não conflita com as páginas de negócio
   registrada para este projeto (Next 16 exige React 19; shadcn/ui atual usa
   Base UI, não Radix). `tailwind.config.js` (estilo v3) foi removido — Tailwind
   v4 não usa mais esse arquivo, o tema vive em `styles/design-tokens.css`.
+- **Canvas quente + acento âmbar (2026-09-14, portado pro real em 16/09):**
+  o P&B 100% acromático original foi abandonado depois de 4 referências
+  visuais independentes (Ventriloc, Rox, Steep, imagem de trading app)
+  convergirem pra um canvas "papel" quente + UM único acento de marca. Cor
+  no CTA (padrão de uma das referências) foi descartada — o CTA preto
+  sólido já cumpria o papel de contraste, trocar reverteria identidade P&B
+  sem ganho real. 100% acromático sem nenhum acento também foi descartado —
+  não resolvia a baixa escaneabilidade das categorias nem dava destaque a
+  ponto de dado em gráfico.
+- **Sistema de raio de 2 níveis em vez de escala única (2026-09-16):**
+  ver seção Radius. A alternativa (adotar também "botão anguloso 0px" da
+  referência Ventriloc) foi descartada especificamente pro CTA/toggles,
+  que já tinham raio pill validado antes — resolveu-se aplicando o sistema
+  novo só onde não conflitava com decisão anterior, em vez de reverter uma
+  coisa ou outra.
+- **Badges tintadas a 10% via `color-mix()`** em vez de pill sólida
+  colorida (outra referência analisada) — mais consistente com a
+  austeridade do resto do sistema; funciona automaticamente com o toggle
+  de tema porque a variável de origem já muda sozinha entre claro/escuro.
+- **Privacidade (`MoneyValue`) como Context único no shell**, não estado
+  local por página — decisão corrigida em 16/09 depois de perceber que a
+  primeira versão só mascarava valores na Visão Geral; a "decisão de
+  15/09" original já previa cobertura de "praticamente todo valor
+  monetário visível" no módulo inteiro, não só uma tela.
