@@ -29,7 +29,7 @@ function ViewToggle({ value, onChange, className }: ViewToggleProps) {
       role="group"
       aria-label="Modo de visualização"
       className={cn(
-        'inline-flex items-center gap-1 rounded-lg border border-border bg-muted p-1',
+        'inline-flex items-center gap-1 rounded-full border border-border bg-muted p-1',
         className
       )}
     >
@@ -43,7 +43,7 @@ function ViewToggle({ value, onChange, className }: ViewToggleProps) {
             aria-pressed={isActive}
             onClick={() => onChange(mode)}
             className={cn(
-              'flex size-7 items-center justify-center rounded-md transition-colors',
+              'flex size-7 items-center justify-center rounded-full transition-colors',
               isActive
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'

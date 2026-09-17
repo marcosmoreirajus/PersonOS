@@ -3,31 +3,31 @@
     "id": 1,
     "name": "Alimentação",
     "icon": "🍔",
-    "color": "#FF6B6B"
+    "color": "#dd7635"
   },
   {
     "id": 2,
     "name": "Transporte",
     "icon": "🚗",
-    "color": "#4ECDC4"
+    "color": "#5b7c99"
   },
   {
     "id": 3,
     "name": "Saúde",
     "icon": "🏥",
-    "color": "#45B7D1"
+    "color": "#a8674f"
   },
   {
     "id": 4,
     "name": "Lazer",
     "icon": "🎬",
-    "color": "#FFA07A"
+    "color": "#7c8c63"
   },
   {
     "id": 5,
     "name": "Moradia",
     "icon": "🏠",
-    "color": "#98D8C8"
+    "color": "#a8a29e"
   },
   {
     "id": 6,
