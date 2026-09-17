@@ -1,13 +1,16 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ArrowLeftRight } from 'lucide-react'
+import { LayoutDashboard, ArrowLeftRight, CalendarClock, PieChart, PiggyBank } from 'lucide-react'
 
 import { SidebarItem } from '@/components/ui/sidebar-item'
 
 const NAV_ITEMS = [
-  { href: '/finance', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/finance', label: 'Visão geral', icon: LayoutDashboard },
   { href: '/finance/transactions', label: 'Transações', icon: ArrowLeftRight },
+  { href: '/finance/agendadas', label: 'Agendadas', icon: CalendarClock },
+  { href: '/finance/relatorios', label: 'Relatórios', icon: PieChart },
+  { href: '/finance/patrimonio', label: 'Patrimônio', icon: PiggyBank },
 ]
 
 export default function FinanceNav() {

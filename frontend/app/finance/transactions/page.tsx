@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { CardGrid } from '@/components/ui/card-grid'
 import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle'
+import { MoneyValue } from '@/components/ui/money-value'
 import TransactionForm, { type Category } from './_components/TransactionForm'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -17,10 +18,6 @@ type Transaction = {
   description: string | null
   transaction_date: string
   category_id: number
-}
-
-function formatCurrency(value: number) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function formatDate(iso: string) {
@@ -99,7 +96,7 @@ export default function TransactionsPage() {
                       }
                     >
                       {t.type === 'income' ? '+' : '-'}
-                      {formatCurrency(t.amount)}
+                      <MoneyValue value={t.amount} />
                     </span>
                   </CardContent>
                 </Card>
