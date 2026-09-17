@@ -1,0 +1,28 @@
+[
+  {
+    "user_id": 1,
+    "holdings": [
+      { "id": 1, "class": "Renda Fixa", "current_value": 45000, "target_allocation": 0.40 },
+      { "id": 2, "class": "Ações e ETFs", "current_value": 18000, "target_allocation": 0.25 },
+      { "id": 3, "class": "Imóveis e FIIs", "current_value": 15000, "target_allocation": 0.20 },
+      { "id": 4, "class": "Outros", "current_value": 12000, "target_allocation": 0.15 }
+    ],
+    "renda_passiva_mensal": 375.0,
+    "receita_mes_atual": 410.0,
+    "coast_fi_config": {
+      "idade_atual": 32,
+      "idade_aposentadoria": 65,
+      "gasto_anual_desejado": 60000,
+      "retorno_real_esperado": 0.04,
+      "taxa_retirada_segura": 0.04
+    },
+    "history": [
+      { "month": "2026-04", "total": 78000 },
+      { "month": "2026-05", "total": 81200 },
+      { "month": "2026-06", "total": 83900 },
+      { "month": "2026-07", "total": 86100 },
+      { "month": "2026-08", "total": 88200 },
+      { "month": "2026-09", "total": 90000 }
+    ]
+  }
+]

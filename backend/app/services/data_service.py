@@ -94,6 +94,18 @@ class DataService:
         return new_transaction
 
     @staticmethod
+    def get_investments(user_id: int) -> Dict[str, Any]:
+        """Retorna a carteira de investimentos (holdings + config de Coast FI) de um usuário."""
+        all_data = DataService.load_json("investments")
+        return next((i for i in all_data if i["user_id"] == user_id), {})
+
+    @staticmethod
+    def get_scheduled(user_id: int) -> List[Dict[str, Any]]:
+        """Retorna as obrigações agendadas (conta fixa/imposto/assinatura) de um usuário."""
+        scheduled = DataService.load_json("scheduled")
+        return [s for s in scheduled if s["user_id"] == user_id]
+
+    @staticmethod
     def get_dashboard_summary(user_id: int) -> Dict[str, Any]:
         """Retorna resumo para dashboard."""
         transactions = DataService.get_transactions_by_user(user_id)

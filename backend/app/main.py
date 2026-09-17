@@ -89,6 +89,18 @@ async def get_dashboard(user_id: int):
     return {"data": summary}
 
 
+# Rotas de Patrimônio (investimentos)
+@app.get("/api/investments/{user_id}")
+async def get_investments(user_id: int):
+    return {"data": DataService.get_investments(user_id)}
+
+
+# Rotas de Agendadas (contas fixas/impostos/assinaturas — sem cartão por ora)
+@app.get("/api/scheduled/user/{user_id}")
+async def get_scheduled(user_id: int):
+    return {"data": DataService.get_scheduled(user_id)}
+
+
 # Rotas do Módulo Negócio (dados em Markdown, desacoplado do Módulo Finanças)
 @app.get("/api/business/{section}")
 async def get_business_section(section: str):
