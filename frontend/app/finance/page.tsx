@@ -31,7 +31,7 @@ type Category = {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('pt-BR')
+  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 }
 
 function dayKey(iso: string) {
