@@ -8,7 +8,7 @@ import { MonthPicker } from '@/components/ui/month-picker'
 import { MoneyValue } from '@/components/ui/money-value'
 import { StatCard } from './_components/StatCard'
 import { CategoryBreakdown, type CategoryDatum } from './_components/CategoryBreakdown'
-import { ResultChart } from './_components/ResultChart'
+import { DailyHeatmap, type HeatmapTransaction } from './_components/DailyHeatmap'
 import { categoryColorByRank } from '@/lib/category-colors'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -108,6 +108,20 @@ export default function FinanceDashboardPage() {
       return { date, cumulative: running }
     })
 
+    const transactionsByDay = new Map<string, HeatmapTransaction[]>()
+    for (const t of transactions) {
+      const key = dayKey(t.transaction_date)
+      const cat = categories.find((c) => c.id === t.category_id)
+      const entry: HeatmapTransaction = {
+        id: t.id,
+        type: t.type,
+        amount: t.amount,
+        description: t.description,
+        categoryName: cat?.name,
+      }
+      transactionsByDay.set(key, [...(transactionsByDay.get(key) ?? []), entry])
+    }
+
     const categoryTotals = new Map<number, number>()
     for (const t of expenseTx) {
       categoryTotals.set(t.category_id, (categoryTotals.get(t.category_id) ?? 0) + t.amount)
@@ -135,6 +149,7 @@ export default function FinanceDashboardPage() {
       entradasSparkline: cumulative(incomeTx, 1),
       saidasSparkline: cumulative(expenseTx, 1),
       resultPoints,
+      transactionsByDay,
       categoryData,
       topCategory,
       biggestExpense,
@@ -247,11 +262,11 @@ export default function FinanceDashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Resultado do mês</CardTitle>
-            <CardDescription>Saldo acumulado ao longo das transações registradas.</CardDescription>
+            <CardTitle>Saídas por dia</CardTitle>
+            <CardDescription>Quanto saiu em cada dia do mês.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResultChart points={computed.resultPoints} />
+            <DailyHeatmap transactionsByDay={computed.transactionsByDay} month={month} />
           </CardContent>
         </Card>
 
