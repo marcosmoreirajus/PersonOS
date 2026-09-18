@@ -9,6 +9,7 @@ import { MoneyValue } from '@/components/ui/money-value'
 import { StatCard } from './_components/StatCard'
 import { CategoryBreakdown, type CategoryDatum } from './_components/CategoryBreakdown'
 import { ResultChart } from './_components/ResultChart'
+import { categoryColorByRank } from '@/lib/category-colors'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -114,9 +115,10 @@ export default function FinanceDashboardPage() {
     const categoryData: CategoryDatum[] = [...categoryTotals.entries()]
       .map(([catId, value]) => {
         const cat = categories.find((c) => c.id === catId)
-        return { name: cat?.name ?? 'Outros', value, color: cat?.color ?? 'var(--muted-foreground)' }
+        return { name: cat?.name ?? 'Outros', value }
       })
       .sort((a, b) => b.value - a.value)
+      .map((d, rank) => ({ ...d, color: categoryColorByRank(rank) }))
 
     const topCategory = categoryData[0]
     const biggestExpense = expenseTx.reduce((max, t) => (t.amount > (max?.amount ?? 0) ? t : max), null as Transaction | null)

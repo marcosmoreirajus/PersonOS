@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { MoneyValue } from '@/components/ui/money-value'
 import { CategoryBreakdown, type CategoryDatum } from '../_components/CategoryBreakdown'
+import { categoryColorByRank } from '@/lib/category-colors'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -16,16 +17,8 @@ type DashboardSummary = {
   expenses_by_category: Record<string, number>
 }
 
-type Category = {
-  id: number
-  name: string
-  icon: string
-  color: string
-}
-
 export default function RelatoriosPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
-  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,15 +29,10 @@ export default function RelatoriosPage() {
       setLoading(true)
       setError(null)
       try {
-        const [dashRes, catRes] = await Promise.all([
-          fetch(`${API_URL}/api/dashboard/${CURRENT_USER_ID}`),
-          fetch(`${API_URL}/api/categories`),
-        ])
+        const dashRes = await fetch(`${API_URL}/api/dashboard/${CURRENT_USER_ID}`)
         const dashJson = await dashRes.json()
-        const catJson = await catRes.json()
         if (!cancelled) {
           setSummary(dashJson.data)
-          setCategories(catJson.data || [])
         }
       } catch {
         if (!cancelled) setError('Não foi possível carregar os relatórios.')
@@ -72,12 +60,9 @@ export default function RelatoriosPage() {
   }
 
   const categoryData: CategoryDatum[] = Object.entries(summary.expenses_by_category)
-    .map(([name, value]) => ({
-      name,
-      value,
-      color: categories.find((c) => c.name === name)?.color ?? 'var(--muted-foreground)',
-    }))
+    .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value)
+    .map((d, rank) => ({ ...d, color: categoryColorByRank(rank) }))
 
   return (
     <div className="flex flex-col gap-6">

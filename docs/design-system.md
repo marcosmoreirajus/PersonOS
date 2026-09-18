@@ -46,16 +46,27 @@ Definida em `frontend/styles/design-tokens.css`, importado por
 | `--sidebar*` | variação de `--background`/`--accent` | idem | tokens dedicados da sidebar |
 | `--destructive` | `oklch(0.577 0.245 27.325)` (vermelho) | `oklch(0.704 0.191 22.216)` | erro/exclusão |
 | `--positive` | `#1f7a45` | `#4cba7f` | ganho/perda financeiro (ex.: delta "↑2% vs. mês anterior") — semântico, separado do `--amber-accent` de marca |
-| `--amber-accent` | `#dd7635` | `#ec8a52` | acento de marca — **só em linha de gráfico em destaque e badge de categoria tintado, nunca em CTA/botão** (CTA continua preto sólido, sem exceção) |
+| `--amber-accent` | `#dd7635` | `#ec8a52` | acento de marca — **só em linha de gráfico em destaque e badge da categoria de MAIOR gasto do período** (rank 1 da paleta abaixo), nunca em CTA/botão (CTA continua preto sólido, sem exceção) |
+| `--sage` | `#7c8c63` | `#96a67d` | paleta de categoria, rank 2 |
+| `--dusty-blue` | `#5b7c99` | `#7fa0c0` | paleta de categoria, rank 3 |
+| `--terracotta` | `#a8674f` | `#c07f65` | paleta de categoria, rank 4 |
 | `--radius-card-cut` | `6px` | `6px` | raio assimétrico dos cards (ver seção Radius) |
 
-**Paleta de categoria** (não são tokens CSS — são valores `color` por linha
-em `backend/data/categories.json`, consumidos pelo componente `Badge` e por
-gráficos como cor crua): âmbar `#dd7635`, sálvia `#7c8c63`, azul empoeirado
-`#5b7c99`, terracota `#a8674f`, mais 1-2 neutros pra cauda residual — nunca
-mais de 4-5 tons simultâneos (paleta "pequena e controlada", decisão de
-14/09). Usada em despesas/categorias — **nunca no Módulo Patrimônio**, que é
-propositalmente P&B (ver "Módulo Finanças" abaixo).
+**Paleta de categoria — cor por RANKING de gasto, não fixa por categoria**
+(decisão de 2026-09-17, revisando a decisão de 14/09): a cor não vem mais de
+`backend/data/categories.json` (o campo `color` de lá ficou sem uso, não foi
+removido). Em vez disso, cada tela que monta o breakdown de despesas ordena
+as categorias por valor decrescente e usa `categoryColorByRank(rank)`
+(`frontend/lib/category-colors.ts`) pra atribuir: rank 0 → `--amber-accent`,
+rank 1 → `--sage`, rank 2 → `--dusty-blue`, rank 3 → `--terracotta`, rank 4+
+→ `--muted-foreground` (neutro, cauda residual). Isso cumpre a intenção
+original de 14/09 ("âmbar marca a categoria de destaque") de fato — antes o
+âmbar era travado numa categoria específica (Alimentação), não na maior do
+período. Consumido por `finance/page.tsx` e `finance/relatorios/page.tsx` (os
+dois pontos que montam `CategoryDatum[]` pro `CategoryBreakdown`). Nunca mais
+de 4 tons simultâneos + neutro (paleta "pequena e controlada" mantida). Usada
+em despesas/categorias — **nunca no Módulo Patrimônio**, que é propositalmente
+P&B (ver "Módulo Finanças" abaixo).
 
 **Dark mode**: ativa via classe `.dark` na raiz do documento (padrão
 shadcn/ui `@custom-variant dark (&:is(.dark *))`), não por
@@ -203,13 +214,16 @@ import { CardGrid } from '@/components/ui/card-grid'
 
 Pill de categoria/tipo, tintado a 10% na cor recebida via
 `color-mix(in srgb, var(--badge-color) 10%, transparent)` — nunca cor
-sólida. Recebe uma cor **crua** (hex, ex. de `categories.json`), não um
-token semântico, porque a paleta de categoria vive nos dados, não no CSS.
+sólida. Recebe uma cor **crua** (hex ou `var(--token)`) via prop `color` —
+o componente em si é agnóstico de onde a cor vem. Desde 2026-09-17, na
+paleta de despesas essa cor vem de `categoryColorByRank(rank)` (ver seção
+Paleta de cores), não mais de um campo fixo em `categories.json`.
 
 ```tsx
 import { Badge } from '@/components/ui/badge'
+import { categoryColorByRank } from '@/lib/category-colors'
 
-<Badge color={category.color} icon={SomeIcon}>{category.name}</Badge>
+<Badge color={categoryColorByRank(rank)} icon={SomeIcon}>{category.name}</Badge>
 ```
 
 **Não usar `Badge` pra status** (situação de algo — pago/pendente/atrasado):
