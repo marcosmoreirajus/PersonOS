@@ -8,7 +8,8 @@ import { MonthPicker } from '@/components/ui/month-picker'
 import { MoneyValue } from '@/components/ui/money-value'
 import { StatCard } from './_components/StatCard'
 import { CategoryBreakdown, type CategoryDatum } from './_components/CategoryBreakdown'
-import { DailyHeatmap, type HeatmapTransaction } from './_components/DailyHeatmap'
+import { DailyHeatmap, type HeatmapTransaction, type PlannedOutflow } from './_components/DailyHeatmap'
+import { effectiveStatus, type ScheduledItem } from './agendadas/_components/types'
 import { categoryColorByRank } from '@/lib/category-colors'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -41,6 +42,7 @@ function dayKey(iso: string) {
 export default function FinanceDashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [scheduled, setScheduled] = useState<ScheduledItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [month, setMonth] = useState(() => new Date())
@@ -53,12 +55,14 @@ export default function FinanceDashboardPage() {
       setLoading(true)
       setError(null)
       try {
-        const [txRes, catRes] = await Promise.all([
+        const [txRes, catRes, schRes] = await Promise.all([
           fetch(`${API_URL}/api/transactions/user/${CURRENT_USER_ID}`),
           fetch(`${API_URL}/api/categories`),
+          fetch(`${API_URL}/api/scheduled/user/${CURRENT_USER_ID}`),
         ])
         const txJson = await txRes.json()
         const catJson = await catRes.json()
+        const schJson = await schRes.json()
         if (!cancelled) {
           setTransactions(
             [...(txJson.data || [])].sort(
@@ -66,6 +70,7 @@ export default function FinanceDashboardPage() {
             )
           )
           setCategories(catJson.data || [])
+          setScheduled(schJson.data || [])
         }
       } catch {
         if (!cancelled) setError('Não foi possível carregar o dashboard.')
@@ -156,6 +161,24 @@ export default function FinanceDashboardPage() {
       biggestIncome,
     }
   }, [transactions, categories])
+
+  // Saídas agendadas ainda não pagas → "previstas" no calendário de saídas.
+  const plannedByDay = useMemo(() => {
+    const today = new Date()
+    const map = new Map<string, PlannedOutflow[]>()
+    for (const item of scheduled) {
+      if (item.type !== 'expense' || item.status === 'paid') continue
+      const entry: PlannedOutflow = {
+        id: item.id,
+        name: item.name,
+        amount: item.value,
+        isInvoice: Boolean(item.card_invoice),
+        overdue: effectiveStatus(item, today) === 'overdue',
+      }
+      map.set(item.due_date, [...(map.get(item.due_date) ?? []), entry])
+    }
+    return map
+  }, [scheduled])
 
   if (loading) {
     return <p className="text-muted-foreground">Carregando...</p>
@@ -266,7 +289,7 @@ export default function FinanceDashboardPage() {
             <CardDescription>Quanto saiu em cada dia do mês.</CardDescription>
           </CardHeader>
           <CardContent>
-            <DailyHeatmap transactionsByDay={computed.transactionsByDay} month={month} />
+            <DailyHeatmap transactionsByDay={computed.transactionsByDay} plannedByDay={plannedByDay} month={month} />
           </CardContent>
         </Card>
 
