@@ -14,82 +14,81 @@ export interface MonthPickerProps {
   className?: string
 }
 
+const arrowClass =
+  'flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground'
+
 /**
- * Seletor de mês/ano — por decisão do Marco (2026-09-16), é só visual por
- * enquanto: não filtra dado nenhum, só guarda o mês escolhido em estado.
+ * Seletor de mês/ano. Só guarda o mês escolhido — quem usa decide o que
+ * filtrar com ele. Setas ‹ › fora do popover pulam 1 mês; dentro, as setas
+ * de ano trocam o ano na hora (mantendo o mês) e a grade escolhe o mês —
+ * pedido do Marco, 18/09. Pra ver algo por mês sem abrir nada, usar MonthStrip.
  */
 function MonthPicker({ value, onChange, className }: MonthPickerProps) {
   const [open, setOpen] = useState(false)
-  const [viewYear, setViewYear] = useState(value.getFullYear())
   const label = value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 
+  const year = value.getFullYear()
+  const monthIndex = value.getMonth()
+
   return (
-    <Popover.Root
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next)
-        if (next) setViewYear(value.getFullYear())
-      }}
-    >
-      <Popover.Trigger
-        className={cn(
-          'inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-sm transition-shadow hover:shadow-md',
-          className
-        )}
-      >
-        <Calendar className="size-4 text-muted-foreground" aria-hidden="true" />
-        <span className="capitalize">{label}</span>
-        <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner sideOffset={8} align="start">
-          <Popover.Popup className="w-56 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-md outline-none">
-            <div className="mb-2 flex items-center justify-between text-sm font-medium">
-              <button
-                type="button"
-                aria-label="Ano anterior"
-                onClick={() => setViewYear((y) => y - 1)}
-                className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              >
-                <ChevronLeft className="size-3.5" />
-              </button>
-              <span>{viewYear}</span>
-              <button
-                type="button"
-                aria-label="Próximo ano"
-                onClick={() => setViewYear((y) => y + 1)}
-                className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              >
-                <ChevronRight className="size-3.5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-1">
-              {MONTHS.map((m, i) => {
-                const selected = viewYear === value.getFullYear() && i === value.getMonth()
-                return (
+    <div className={cn('inline-flex items-center gap-0.5', className)}>
+      <button type="button" aria-label="Mês anterior" onClick={() => onChange(new Date(year, monthIndex - 1, 1))} className={arrowClass}>
+        <ChevronLeft className="size-4" />
+      </button>
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <Popover.Trigger className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-sm transition-shadow hover:shadow-md">
+          <Calendar className="size-4 text-muted-foreground" aria-hidden="true" />
+          <span className="capitalize">{label}</span>
+          <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner sideOffset={8} align="start">
+            <Popover.Popup className="w-64 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-md outline-none">
+              <div className="mb-2 flex items-center justify-between text-sm font-medium">
+                <button
+                  type="button"
+                  aria-label="Ano anterior"
+                  onClick={() => onChange(new Date(year - 1, monthIndex, 1))}
+                  className={arrowClass}
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <span>{year}</span>
+                <button
+                  type="button"
+                  aria-label="Próximo ano"
+                  onClick={() => onChange(new Date(year + 1, monthIndex, 1))}
+                  className={arrowClass}
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {MONTHS.map((m, i) => (
                   <button
                     key={m}
                     type="button"
                     onClick={() => {
-                      onChange(new Date(viewYear, i, 1))
+                      onChange(new Date(year, i, 1))
                       setOpen(false)
                     }}
                     className={cn(
                       'rounded-md py-1.5 text-xs font-medium transition-colors',
-                      selected
-                        ? 'bg-foreground text-background'
-                        : 'text-secondary-foreground hover:bg-accent'
+                      i === monthIndex ? 'bg-foreground text-background' : 'text-secondary-foreground hover:bg-accent'
                     )}
                   >
                     {m}
                   </button>
-                )
-              })}
-            </div>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
+                ))}
+              </div>
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
+      <button type="button" aria-label="Próximo mês" onClick={() => onChange(new Date(year, monthIndex + 1, 1))} className={arrowClass}>
+        <ChevronRight className="size-4" />
+      </button>
+    </div>
   )
 }
 
