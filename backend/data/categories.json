@@ -94,5 +94,11 @@
     "name": "Renda PJ",
     "icon": "🧑‍💻",
     "color": "#a8a29e"
+  },
+  {
+    "id": 17,
+    "name": "Fatura do cartão",
+    "icon": "💳",
+    "color": "#a8a29e"
   }
 ]

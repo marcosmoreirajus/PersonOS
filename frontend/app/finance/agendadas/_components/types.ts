@@ -1,4 +1,4 @@
-import { Banknote, Layers, RefreshCw, type LucideIcon } from 'lucide-react'
+import { Banknote, CreditCard, Layers, RefreshCw, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
 
 import { categoryColorByRank } from '@/lib/category-colors'
 
@@ -12,6 +12,11 @@ export type ScheduledItem = {
   name: string
   /** Conta a pagar (`expense`) ou receita a receber (`income`) — mesmo eixo de `transactions.json`. */
   type: 'income' | 'expense'
+  /**
+   * Fatura de cartão de crédito (sempre `expense`). Por ora só marca o item
+   * pra legenda do calendário — o módulo de cartões/faturas segue adiado.
+   */
+  card_invoice?: boolean
   category_id: number
   nature: ScheduledNature
   /** Só quando `nature === 'recorrente'`. */
@@ -21,6 +26,44 @@ export type ScheduledItem = {
   value: number
   due_date: string
   status: 'pending' | 'paid'
+}
+
+/** Como o item aparece no calendário/legenda. */
+export type ScheduledKind = 'receita' | 'despesa' | 'fatura'
+
+export function scheduledKind(item: ScheduledItem): ScheduledKind {
+  if (item.type === 'income') return 'receita'
+  return item.card_invoice ? 'fatura' : 'despesa'
+}
+
+export const KIND_META: Record<ScheduledKind, { label: string; icon: LucideIcon; className: string }> = {
+  receita: { label: 'Receita', icon: TrendingUp, className: 'text-sage' },
+  despesa: { label: 'Despesa', icon: TrendingDown, className: 'text-terracotta' },
+  fatura: { label: 'Fatura do cartão', icon: CreditCard, className: 'text-dusty-blue' },
+}
+
+/** Valor com sinal: receita soma, despesa/fatura subtrai. */
+export function signedValue(item: ScheduledItem): number {
+  return item.type === 'income' ? item.value : -item.value
+}
+
+export type MonthForecast = {
+  income: { total: number; done: number }
+  expense: { total: number; done: number; invoices: number }
+  balance: number
+}
+
+/** Previsibilidade do mês: tudo que entra e sai, quanto já foi quitado e o saldo previsto. */
+export function monthForecast(items: ScheduledItem[]): MonthForecast {
+  const f: MonthForecast = { income: { total: 0, done: 0 }, expense: { total: 0, done: 0, invoices: 0 }, balance: 0 }
+  for (const item of items) {
+    const bucket = item.type === 'income' ? f.income : f.expense
+    bucket.total += item.value
+    if (item.status === 'paid') bucket.done += item.value
+    if (item.card_invoice) f.expense.invoices += item.value
+  }
+  f.balance = f.income.total - f.expense.total
+  return f
 }
 
 export type Category = {
@@ -113,5 +156,7 @@ export function natureMeta(item: ScheduledItem): { label: string; icon: LucideIc
 export function effectiveStatus(item: ScheduledItem, today: Date): ScheduledStatus {
   if (item.status === 'paid') return 'paid'
   const due = new Date(`${item.due_date}T00:00:00`)
-  return due < today ? 'overdue' : 'pending'
+  // Compara com o início do dia: o que vence HOJE ainda está "a vencer", não em atraso.
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  return due < todayStart ? 'overdue' : 'pending'
 }

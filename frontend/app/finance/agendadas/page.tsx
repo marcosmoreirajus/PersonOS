@@ -5,10 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { MonthStrip } from '@/components/ui/month-strip'
 import { MonthCalendar } from './_components/MonthCalendar'
+import { MonthForecast } from './_components/MonthForecast'
 import { EMPTY_FILTERS, ScheduledFilters, type ScheduledFiltersValue } from './_components/ScheduledFilters'
 import { PendingAlert } from './_components/PendingAlert'
 import { UpcomingList } from './_components/UpcomingList'
-import { buildCategoryMeta, isInMonth, pendingSummary, type Category, type ScheduledItem } from './_components/types'
+import { buildCategoryMeta, isInMonth, monthForecast, pendingSummary, type Category, type ScheduledItem } from './_components/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -57,6 +58,7 @@ export default function AgendadasPage() {
   const monthItems = useMemo(() => items.filter((item) => isInMonth(item, month)), [items, month])
 
   const categoryMeta = useMemo(() => buildCategoryMeta(monthItems, categories), [monthItems, categories])
+  const forecast = useMemo(() => monthForecast(monthItems), [monthItems])
   // Pendências do mês inteiro, ignorando os filtros — o alerta é sobre o mês, não sobre a seleção.
   const getMonthAlert = useCallback(
     (m: Date) => {
@@ -114,10 +116,11 @@ export default function AgendadasPage() {
         <Card>
           <CardHeader>
             <CardTitle>Calendário do mês</CardTitle>
-            <CardDescription>Vencimentos e agendamentos por dia</CardDescription>
+            <CardDescription>O que entra e o que sai em cada dia</CardDescription>
           </CardHeader>
-          <CardContent>
-            <MonthCalendar items={filteredItems} month={month} categoryMeta={categoryMeta} />
+          <CardContent className="flex flex-col gap-5">
+            <MonthForecast forecast={forecast} />
+            <MonthCalendar items={filteredItems} month={month} />
           </CardContent>
         </Card>
 
