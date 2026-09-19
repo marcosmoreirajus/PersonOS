@@ -1,92 +1,135 @@
 'use client'
 
-import { cn } from '@/lib/utils'
-import { TYPE_META, type ScheduledType } from './types'
+import type { ReactNode } from 'react'
+import { Popover } from '@base-ui/react/popover'
+import { ListFilter, X } from 'lucide-react'
 
-export type PeriodFilter = 'month' | 'last30' | 'custom'
+import { cn } from '@/lib/utils'
+import { NATURE_LABEL, type CategoryMeta, type ScheduledNature } from './types'
 
 export interface ScheduledFiltersValue {
-  type: ScheduledType | 'all'
-  period: PeriodFilter
-  customStart: string
-  customEnd: string
+  categoryId: number | 'all'
+  nature: ScheduledNature | 'all'
 }
+
+export const EMPTY_FILTERS: ScheduledFiltersValue = { categoryId: 'all', nature: 'all' }
 
 export interface ScheduledFiltersProps {
   value: ScheduledFiltersValue
   onChange: (value: ScheduledFiltersValue) => void
+  /** Só as categorias que têm item no mês, já na ordem do ranking. */
+  categoryMeta: Map<number, CategoryMeta>
 }
 
-const TYPE_OPTIONS: { value: ScheduledType | 'all'; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  ...(Object.entries(TYPE_META) as [ScheduledType, (typeof TYPE_META)[ScheduledType]][]).map(([value, meta]) => ({
-    value,
-    label: meta.label,
-  })),
-]
-
-const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
-  { value: 'month', label: 'Este mês' },
-  { value: 'last30', label: 'Últimos 30 dias' },
-  { value: 'custom', label: 'Personalizado' },
-]
-
-function segmented<T extends string>(
-  options: { value: T; label: string }[],
-  current: T,
-  onSelect: (value: T) => void
-) {
+function OptionPill({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <div className="inline-flex flex-wrap items-center gap-1 rounded-full border border-border bg-muted p-1">
-      {options.map((opt) => (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cn(
+        'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+        selected
+          ? 'border-foreground bg-foreground text-background'
+          : 'border-border text-secondary-foreground hover:bg-accent'
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+/**
+ * Categoria e Natureza num único botão "Filtrar" (popover), em vez de uma
+ * fileira de segmented control por eixo — decisão de 2026-09-18: a lista de
+ * categorias cresce e não cabe numa fileira, e o período já é o MonthPicker
+ * do topo. Filtros ativos aparecem como chips removíveis + "Limpar" à ESQUERDA
+ * do botão — o botão fica sempre no mesmo lugar (pedido do Marco, 18/09).
+ */
+function ScheduledFilters({ value, onChange, categoryMeta }: ScheduledFiltersProps) {
+  const activeCount = (value.categoryId !== 'all' ? 1 : 0) + (value.nature !== 'all' ? 1 : 0)
+  const activeCategory = value.categoryId !== 'all' ? categoryMeta.get(value.categoryId) : undefined
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {activeCategory && (
+        <ActiveChip label={activeCategory.name} onRemove={() => onChange({ ...value, categoryId: 'all' })} />
+      )}
+      {value.nature !== 'all' && (
+        <ActiveChip label={NATURE_LABEL[value.nature]} onRemove={() => onChange({ ...value, nature: 'all' })} />
+      )}
+      {activeCount > 0 && (
         <button
-          key={opt.value}
           type="button"
-          aria-pressed={current === opt.value}
-          onClick={() => onSelect(opt.value)}
-          className={cn(
-            'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-            current === opt.value
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
+          onClick={() => onChange(EMPTY_FILTERS)}
+          className="px-1 text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
         >
-          {opt.label}
+          Limpar
         </button>
-      ))}
+      )}
+
+      <Popover.Root>
+        <Popover.Trigger className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-sm transition-shadow hover:shadow-md">
+          <ListFilter className="size-4 text-muted-foreground" aria-hidden="true" />
+          Filtrar
+          {activeCount > 0 && (
+            <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-[11px] text-background">
+              {activeCount}
+            </span>
+          )}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner sideOffset={8} align="end">
+            <Popover.Popup className="flex w-72 flex-col gap-4 rounded-lg border border-border bg-popover p-4 text-popover-foreground shadow-md outline-none">
+              <section className="flex flex-col gap-2">
+                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Categoria</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  <OptionPill selected={value.categoryId === 'all'} onClick={() => onChange({ ...value, categoryId: 'all' })}>
+                    Todas
+                  </OptionPill>
+                  {[...categoryMeta.entries()].map(([id, meta]) => (
+                    <OptionPill key={id} selected={value.categoryId === id} onClick={() => onChange({ ...value, categoryId: id })}>
+                      {meta.name}
+                    </OptionPill>
+                  ))}
+                </div>
+              </section>
+
+              <section className="flex flex-col gap-2">
+                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Natureza</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  <OptionPill selected={value.nature === 'all'} onClick={() => onChange({ ...value, nature: 'all' })}>
+                    Todas
+                  </OptionPill>
+                  {(Object.entries(NATURE_LABEL) as [ScheduledNature, string][]).map(([nature, label]) => (
+                    <OptionPill key={nature} selected={value.nature === nature} onClick={() => onChange({ ...value, nature })}>
+                      {label}
+                    </OptionPill>
+                  ))}
+                </div>
+              </section>
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
+
     </div>
   )
 }
 
-// "Natureza" foi pedido como 3ª dimensão de filtro (2026-09-16), mas nunca
-// foi definido o que ela representa de fato nem existe campo pra isso em
-// scheduled.json — fica decorativa (só "Todas") até Marco especificar.
-const NATURE_OPTIONS: { value: 'all'; label: string }[] = [{ value: 'all', label: 'Todas' }]
-
-function ScheduledFilters({ value, onChange }: ScheduledFiltersProps) {
+function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      {segmented(TYPE_OPTIONS, value.type, (type) => onChange({ ...value, type }))}
-      {segmented(NATURE_OPTIONS, 'all', () => {})}
-      {segmented(PERIOD_OPTIONS, value.period, (period) => onChange({ ...value, period }))}
-      {value.period === 'custom' && (
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={value.customStart}
-            onChange={(e) => onChange({ ...value, customStart: e.target.value })}
-            className="rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
-          />
-          <span className="text-xs text-muted-foreground">até</span>
-          <input
-            type="date"
-            value={value.customEnd}
-            onChange={(e) => onChange({ ...value, customEnd: e.target.value })}
-            className="rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
-          />
-        </div>
-      )}
-    </div>
+    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card py-1 pr-1 pl-2.5 text-xs font-medium text-foreground">
+      {label}
+      <button
+        type="button"
+        aria-label={`Remover filtro ${label}`}
+        onClick={onRemove}
+        className="flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <X className="size-3" />
+      </button>
+    </span>
   )
 }
 

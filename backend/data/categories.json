@@ -34,5 +34,65 @@
     "name": "Outros",
     "icon": "📌",
     "color": "#95A5A6"
+  },
+  {
+    "id": 7,
+    "name": "Impostos e taxas",
+    "icon": "🧾",
+    "color": "#a8a29e"
+  },
+  {
+    "id": 8,
+    "name": "Contas da casa",
+    "icon": "💡",
+    "color": "#a8a29e"
+  },
+  {
+    "id": 9,
+    "name": "Assinaturas",
+    "icon": "📺",
+    "color": "#a8a29e"
+  },
+  {
+    "id": 10,
+    "name": "Educação",
+    "icon": "📚",
+    "color": "#a8a29e"
+  },
+  {
+    "id": 11,
+    "name": "Compras",
+    "icon": "🛍️",
+    "color": "#a8a29e"
+  },
+  {
+    "id": 12,
+    "name": "Cuidados pessoais",
+    "icon": "💇",
+    "color": "#a8a29e"
+  },
+  {
+    "id": 13,
+    "name": "Pets",
+    "icon": "🐾",
+    "color": "#a8a29e"
+  },
+  {
+    "id": 14,
+    "name": "Viagens",
+    "icon": "✈️",
+    "color": "#a8a29e"
+  },
+  {
+    "id": 15,
+    "name": "Salário",
+    "icon": "💼",
+    "color": "#a8a29e"
+  },
+  {
+    "id": 16,
+    "name": "Renda PJ",
+    "icon": "🧑‍💻",
+    "color": "#a8a29e"
   }
 ]

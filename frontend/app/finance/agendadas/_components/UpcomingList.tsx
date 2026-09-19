@@ -1,12 +1,12 @@
 'use client'
 
-import { Eye, CheckCircle2, SkipForward, Pencil } from 'lucide-react'
+import { Eye, CheckCircle2, SkipForward, Pencil, HandCoins } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { MoneyValue } from '@/components/ui/money-value'
 import { ActionsMenu, type ActionsMenuAction } from '@/components/ui/actions-menu'
 import { cn } from '@/lib/utils'
-import { TYPE_META, effectiveStatus, type ScheduledItem } from './types'
+import { effectiveStatus, natureMeta, type CategoryMeta, type ScheduledItem } from './types'
 
 function formatDate(iso: string) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
@@ -14,9 +14,10 @@ function formatDate(iso: string) {
 
 export interface UpcomingListProps {
   items: ScheduledItem[]
+  categoryMeta: Map<number, CategoryMeta>
 }
 
-function UpcomingList({ items }: UpcomingListProps) {
+function UpcomingList({ items, categoryMeta }: UpcomingListProps) {
   const today = new Date()
   const sorted = [...items].sort((a, b) => a.due_date.localeCompare(b.due_date))
 
@@ -28,14 +29,21 @@ function UpcomingList({ items }: UpcomingListProps) {
     <ul className="flex flex-col">
       {sorted.map((item) => {
         const status = effectiveStatus(item, today)
-        const meta = TYPE_META[item.type]
+        const category = categoryMeta.get(item.category_id)
+        const nature = natureMeta(item)
+        const isIncome = item.type === 'income'
 
         const actions: ActionsMenuAction[] = [
           { key: 'details', label: 'Ver detalhes', icon: Eye, onSelect: () => {} },
           ...(status !== 'paid'
-            ? [{ key: 'pay', label: 'Pagar', icon: CheckCircle2, onSelect: () => {} }]
+            ? [
+                isIncome
+                  ? { key: 'receive', label: 'Receber', icon: HandCoins, onSelect: () => {} }
+                  : { key: 'pay', label: 'Pagar', icon: CheckCircle2, onSelect: () => {} },
+              ]
             : []),
-          ...(item.type !== 'conta_fixa' && status !== 'paid'
+          // Pular = adiar esta ocorrência; só faz sentido quando há uma próxima.
+          ...(item.nature !== 'a_vista' && status !== 'paid'
             ? [{ key: 'skip', label: 'Pular', icon: SkipForward, onSelect: () => {} }]
             : []),
           ...(status !== 'paid'
@@ -49,15 +57,20 @@ function UpcomingList({ items }: UpcomingListProps) {
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-foreground">{item.name}</span>
                 <span className="text-xs text-muted-foreground">
-                  {status === 'paid' ? 'Pago em' : 'Vence'} {formatDate(item.due_date)}
+                  {status === 'paid' ? (isIncome ? 'Recebido em' : 'Pago em') : isIncome ? 'Previsto para' : 'Vence'}{' '}
+                  {formatDate(item.due_date)}
                 </span>
               </div>
-              <span className="shrink-0 text-sm font-medium text-foreground"><MoneyValue value={item.value} /></span>
+              <span className="shrink-0 text-sm font-medium text-foreground">
+                {isIncome && '+'}
+                <MoneyValue value={item.value} />
+              </span>
             </div>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Badge color={meta.color} icon={meta.icon}>
-                  {meta.label}
+                <Badge color={category?.color}>{category?.name ?? 'Outros'}</Badge>
+                <Badge color="var(--muted-foreground)" icon={nature.icon}>
+                  {nature.label}
                 </Badge>
                 <span
                   className={cn(
@@ -66,7 +79,15 @@ function UpcomingList({ items }: UpcomingListProps) {
                   )}
                 >
                   <span className="size-1.5 rounded-full bg-current" />
-                  {status === 'overdue' ? 'Em atraso' : status === 'paid' ? 'Pago' : 'A vencer'}
+                  {status === 'overdue'
+                    ? 'Em atraso'
+                    : status === 'paid'
+                      ? isIncome
+                        ? 'Recebido'
+                        : 'Pago'
+                      : isIncome
+                        ? 'A receber'
+                        : 'A vencer'}
                 </span>
               </div>
               <ActionsMenu actions={actions} />

@@ -231,6 +231,12 @@ status é um eixo semântico diferente de categoria/tipo e deve ficar num
 elemento visual separado (texto + ponto colorido), mesmo que pareça "caber"
 no mesmo formato de pill. Ver exemplo em `app/finance/agendadas/_components/UpcomingList.tsx`.
 
+**Badge neutro (informativo):** quando o eixo não é categoria/tipo e não
+precisa competir por atenção, usar `color="var(--muted-foreground)"`. Caso
+de uso: Natureza em Agendadas (forma de recorrência — "Mensal", "À vista",
+"Parcela 3/5"), ao lado do badge colorido de Tipo. Decidido em 2026-09-17
+como badge no item e não como uma 3ª fileira de filtro, pra não poluir a tela.
+
 ### `ActionsMenu` — `actions-menu.tsx`
 
 Botão único "⋯" que abre um menu com **ícone fixo por ação** (Ver detalhes
@@ -286,11 +292,27 @@ Percentuais nunca são mascarados (são relativos, não saldo).
 ### `MonthPicker` — `month-picker.tsx`
 
 Dropdown de mês/ano (navegação de ano + grid de 12 meses), construído sobre
-`@base-ui/react/popover`. **Hoje é só visual** em todo lugar onde é usado —
-não filtra dado nenhum, só guarda o mês escolhido em estado local (decisão
-de 16/09, pra não precisar construir agregação por mês nem inventar dado
-histórico extra). Se algum dia precisar filtrar de verdade, isso muda o
-contrato do componente, não é assumido hoje.
+`@base-ui/react/popover`. Desde 18/09 tem **setas ‹ › fora do popover** pra
+pular 1 mês; dentro do popover, as setas de ano **trocam o ano na hora**
+(mantendo o mês; antes só mudavam a visualização e parecia que o ano não
+mudava) e a grade escolhe o mês. O componente só guarda o mês — quem usa
+decide o que filtrar com ele. Usado em Visão Geral e Patrimônio.
+
+### `MonthStrip` — `month-strip.tsx`
+
+Faixa com os **12 meses do ano sempre visíveis** (pills num trilho `bg-muted`,
+mesmo visual do segmented control) + setas de ano. Usar no lugar do
+`MonthPicker` quando a tela precisa mostrar algo **por mês sem abrir nada**.
+Criada em 18/09 porque, com o dropdown, o Marco precisava selecionar um mês
+pra descobrir se ele tinha pendência.
+
+Prop opcional `getMonthAlert(month) => ReactNode | null`: se retornar algo, o
+mês ganha um **ponto vermelho** (`--destructive`) e o conteúdo aparece num
+tooltip ao passar o mouse. Uso atual: Agendadas passa um **alerta único de
+pendências** (`PendingAlert`: contas a pagar + receitas a receber + quantas
+em atraso). Conciliação entra como mais uma linha do mesmo alerta quando
+existir. O mês atual (hoje) fica sublinhado quando não está selecionado. Em
+tela estreita, só a faixa rola na horizontal, não a página.
 
 ### `Sparkline` — `sparkline.tsx`
 
