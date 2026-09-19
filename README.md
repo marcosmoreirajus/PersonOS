@@ -6,16 +6,16 @@ Sistema integrado de gestão pessoal para indivíduos e casais com renda diversi
 
 ## Stack
 
-- **Backend:** Python 3.11+ + FastAPI + PostgreSQL
+- **Backend:** Python 3.11+ + FastAPI (dados mock em JSON/Markdown; PostgreSQL planejado)
 - **Frontend:** Next.js 16 + React 19 + Tailwind v4 + shadcn/ui
 - **Infra:** Docker Compose (dev), Railway/Render (prod)
 
 ## MVP 1.0 — Escopo
 
-- ✅ Gestão de finanças pessoal/casal (entrada + dashboard + relatório)
-- ✅ Autenticação JWT
+- ✅ Gestão de finanças pessoal (entrada + dashboard + relatórios) — dados mock em JSON
 - ✅ Swagger (doc API)
-- ✅ Testes básicos
+- ⏳ Autenticação JWT — ainda não implementada (frontend usa usuário fixo `id=1`)
+- ⏳ Testes básicos — ainda não escritos
 
 **Timeline:** 3-4 semanas
 
@@ -25,15 +25,12 @@ Sistema integrado de gestão pessoal para indivíduos e casais com renda diversi
 PersonOS/
 ├── backend/           # FastAPI
 │   ├── app/
-│   │   ├── models/    # SQLAlchemy models
 │   │   ├── schemas/   # Pydantic schemas
-│   │   ├── api/       # Routes
-│   │   ├── services/  # Business logic
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   └── database.py
+│   │   ├── services/  # Leitura/escrita dos dados mock
+│   │   ├── main.py    # Rotas da API
+│   │   └── config.py
+│   ├── data/          # Dados mock (JSON + Markdown)
 │   ├── requirements.txt
-│   ├── .env.example
 │   └── Dockerfile
 ├── frontend/          # Next.js
 │   ├── app/
@@ -75,10 +72,16 @@ docker-compose up
 ## Roadmap
 
 ### Phase 1 (MVP): Finanças Core
-- [ ] Setup infra (repo, Docker, models)
-- [ ] CRUD de transações
-- [ ] Dashboard
-- [ ] Relatórios simples
+- [x] Setup infra (repo, Docker Compose, dados mock em JSON)
+- [x] Design system (tokens + kit de componentes) — ver [docs/design-system.md](./docs/design-system.md)
+- [x] Transações: listar e criar
+- [ ] Transações: editar e excluir
+- [x] Dashboard (Visão Geral, com calendário "Saídas por dia")
+- [x] Relatórios, Patrimônio e Agendadas
+- [ ] Relatório por período customizado
+- [ ] Autenticação JWT
+- [ ] Testes básicos
+- [ ] Banco de dados real (PostgreSQL)
 
 ### Phase 2: Expansão
 - [ ] Múltiplas contas
@@ -135,8 +138,8 @@ Cada página do frontend é um Client Component que busca os dados da seção ao
 
 ## Documentação
 
-- [Planejamento Técnico](./docs/PLANNING.md) (em desenvolvimento)
-- [PRD](./docs/PRD.md) (em desenvolvimento)
+- [Design System](./docs/design-system.md)
+- [Módulo Negócio — PRD](./docs/business/PRD.md) · [Spec](./docs/business/spec.md) · [Briefing](./docs/business/briefing.md)
 - [API Swagger](http://localhost:8000/docs) (quando rodando)
 
 ## Contribuição
