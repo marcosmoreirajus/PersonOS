@@ -1,13 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Plus, X } from 'lucide-react'
 
-import { Card, CardContent } from '@/components/ui/card'
-import { CardGrid } from '@/components/ui/card-grid'
-import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { MoneyValue } from '@/components/ui/money-value'
-import TransactionForm, { type Category } from './_components/TransactionForm'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, type TableColumn } from '@/components/motion/table'
+import { MorphingSearch, type MorphingSearchItem } from '@/components/motion/morphing-search'
 import { categoryIcon } from '@/lib/category-icons'
+import { cn } from '@/lib/utils'
+import TransactionDialog, { type Category } from './_components/TransactionDialog'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -17,21 +21,43 @@ type Transaction = {
   type: 'income' | 'expense'
   amount: number
   description: string | null
-  due_date: string
-  /** Nulo enquanto o dinheiro nao se moveu. */
-  settled_at: string | null
   category_id: number | null
+  due_date: string
+  settled_at: string | null
+  is_internal_transfer: boolean
+  series_id: number | null
+  series_index: number | null
+}
+
+/** previsto / atrasado / realizado — leitura, nunca campo gravado. */
+type Situacao = 'realizado' | 'atrasado' | 'previsto'
+
+function situacao(t: Transaction, hoje: string): Situacao {
+  if (t.settled_at) return 'realizado'
+  return t.due_date < hoje ? 'atrasado' : 'previsto'
+}
+
+const SITUACAO_META: Record<Situacao, { label: string; className: string }> = {
+  realizado: { label: 'Realizado', className: 'text-muted-foreground' },
+  previsto: { label: 'A vencer', className: 'text-muted-foreground' },
+  atrasado: { label: 'Em atraso', className: 'text-destructive' },
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 }
+
+type TipoFiltro = 'all' | 'income' | 'expense'
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<ViewMode>('list')
+  const [query, setQuery] = useState('')
+  const [tipo, setTipo] = useState<TipoFiltro>('all')
+  const [categoria, setCategoria] = useState<string>('all')
+  const [selecionadas, setSelecionadas] = useState<string[]>([])
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -42,11 +68,7 @@ export default function TransactionsPage() {
       ])
       const txJson = await txRes.json()
       const catJson = await catRes.json()
-      setTransactions(
-        [...(txJson.data || [])].sort(
-          (a, b) => new Date(b.settled_at ?? b.due_date).getTime() - new Date(a.settled_at ?? a.due_date).getTime()
-        )
-      )
+      setTransactions(txJson.data || [])
       setCategories(catJson.data || [])
     } finally {
       setLoading(false)
@@ -57,74 +79,239 @@ export default function TransactionsPage() {
     fetchData()
   }, [fetchData])
 
-  /** `null` é o balde virtual "Sem categoria" — ausência, não uma categoria. */
-  function categoryFor(id: number | null) {
-    if (id == null) return undefined
-    return categories.find((c) => c.id === id)
-  }
+  const categoriaPorId = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
+  const hoje = useMemo(() => new Date().toISOString().slice(0, 10), [])
+
+  const filtradas = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return transactions.filter((t) => {
+      if (tipo !== 'all' && t.type !== tipo) return false
+      if (categoria !== 'all' && String(t.category_id) !== categoria) return false
+      if (q && !(t.description ?? '').toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [transactions, query, tipo, categoria])
+
+  /** Totais do rodapé: só o que foi efetivado — previsto não soma em resultado. */
+  const totais = useMemo(() => {
+    let entradas = 0
+    let saidas = 0
+    for (const t of filtradas) {
+      if (!t.settled_at || t.is_internal_transfer) continue
+      if (t.type === 'income') entradas += t.amount
+      else saidas += t.amount
+    }
+    return { entradas, saidas, resultado: entradas - saidas }
+  }, [filtradas])
+
+  const searchItems: MorphingSearchItem[] = useMemo(
+    () =>
+      filtradas.slice(0, 8).map((t) => ({
+        id: String(t.id),
+        title: t.description ?? 'Sem descrição',
+        description: `${formatDate(t.settled_at ?? t.due_date)} · ${categoriaPorId.get(t.category_id ?? -1)?.name ?? 'Sem categoria'}`,
+        icon: categoryIcon(categoriaPorId.get(t.category_id ?? -1)?.icon),
+      })),
+    [filtradas, categoriaPorId]
+  )
+
+  const columns: TableColumn<Transaction>[] = useMemo(
+    () => [
+      {
+        key: 'due_date',
+        header: 'Data',
+        sortable: true,
+        width: '120px',
+        sortValue: (t) => t.settled_at ?? t.due_date,
+        cell: (t) => <span className="tabular-nums">{formatDate(t.settled_at ?? t.due_date)}</span>,
+      },
+      {
+        key: 'description',
+        header: 'Descrição',
+        sortable: true,
+        cell: (t) => (
+          <span className="flex items-center gap-2">
+            <span className="truncate font-medium text-foreground">{t.description ?? 'Sem descrição'}</span>
+            {t.is_internal_transfer && <Badge color="var(--muted-foreground)">Interna</Badge>}
+            {t.series_index != null && (
+              <span className="shrink-0 text-xs text-muted-foreground">parcela {t.series_index}</span>
+            )}
+          </span>
+        ),
+      },
+      {
+        key: 'category_id',
+        header: 'Categoria',
+        sortable: true,
+        width: '190px',
+        sortValue: (t) => categoriaPorId.get(t.category_id ?? -1)?.name ?? 'zzz',
+        cell: (t) => {
+          const cat = categoriaPorId.get(t.category_id ?? -1)
+          const Icon = categoryIcon(cat?.icon)
+          return (
+            <span className={cn('flex items-center gap-2', !cat && 'text-muted-foreground')}>
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted">
+                <Icon className="size-3.5 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
+              </span>
+              {/* Ausência de categoria é mostrada, não escondida: é fila de revisão. */}
+              {cat?.name ?? 'Sem categoria'}
+            </span>
+          )
+        },
+      },
+      {
+        key: 'settled_at',
+        header: 'Situação',
+        sortable: true,
+        width: '130px',
+        sortValue: (t) => situacao(t, hoje),
+        cell: (t) => {
+          const s = situacao(t, hoje)
+          return <span className={cn('text-xs', SITUACAO_META[s].className)}>{SITUACAO_META[s].label}</span>
+        },
+      },
+      {
+        key: 'amount',
+        header: 'Valor',
+        sortable: true,
+        align: 'right',
+        width: '150px',
+        cell: (t) => (
+          <span
+            className={cn(
+              'font-medium tabular-nums',
+              t.is_internal_transfer ? 'text-muted-foreground' : t.type === 'income' ? 'text-positive' : 'text-foreground'
+            )}
+          >
+            {t.type === 'income' ? '+' : '−'}
+            <MoneyValue value={t.amount} />
+          </span>
+        ),
+      },
+    ],
+    [categoriaPorId, hoje]
+  )
+
+  const chips = [
+    tipo !== 'all' && {
+      label: `Tipo: ${tipo === 'income' ? 'Entradas' : 'Saídas'}`,
+      clear: () => setTipo('all'),
+    },
+    categoria !== 'all' && {
+      label: `Categoria: ${categoriaPorId.get(Number(categoria))?.name ?? ''}`,
+      clear: () => setCategoria('all'),
+    },
+    query.trim() && { label: `Busca: "${query.trim()}"`, clear: () => setQuery('') },
+  ].filter(Boolean) as { label: string; clear: () => void }[]
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
-      <div className="flex-1">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-foreground">Transações</h1>
-          <ViewToggle value={view} onChange={setView} />
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold text-foreground">Transações</h1>
+        <Button onClick={() => setDialogOpen(true)}>
+          <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
+          Lançamento manual
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <MorphingSearch
+          items={searchItems}
+          placeholder="Buscar por descrição..."
+          onQueryChange={setQuery}
+          emptyMessage="Nenhuma transação encontrada."
+        />
+
+        <Select value={tipo} onValueChange={(v) => setTipo(v as TipoFiltro)}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os tipos</SelectItem>
+            <SelectItem value="income">Entradas</SelectItem>
+            <SelectItem value="expense">Saídas</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={categoria} onValueChange={(v) => setCategoria(v ?? 'all')}>
+          <SelectTrigger className="w-[190px]">
+            <SelectValue placeholder="Categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as categorias</SelectItem>
+            {categories.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <span className="text-sm text-muted-foreground">
+          {filtradas.length} {filtradas.length === 1 ? 'transação' : 'transações'}
+          {selecionadas.length > 0 && ` · ${selecionadas.length} selecionada(s)`}
+        </span>
+      </div>
+
+      {chips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {chips.map((c) => (
+            <button
+              key={c.label}
+              onClick={c.clear}
+              className="flex items-center gap-1 rounded-full border border-border bg-muted px-3 py-1 text-xs text-secondary-foreground transition-colors hover:bg-accent"
+            >
+              {c.label}
+              <X className="size-3" strokeWidth={2} aria-hidden="true" />
+            </button>
+          ))}
+          <button
+            onClick={() => {
+              setTipo('all')
+              setCategoria('all')
+              setQuery('')
+            }}
+            className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Limpar tudo
+          </button>
         </div>
+      )}
 
-        {loading ? (
-          <p className="text-muted-foreground">Carregando...</p>
-        ) : transactions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhuma transação registrada ainda.</p>
-        ) : (
-          <CardGrid view={view}>
-            {transactions.map((t) => {
-              const category = categoryFor(t.category_id)
-              return (
-                <Card key={t.id}>
-                  <CardContent className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      {(() => {
-                        // Icone monocromatico dentro de um circulo neutro: a cor
-                        // da categoria, quando existir, entra por fora.
-                        const Icon = categoryIcon(category?.icon)
-                        return (
-                          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                            <Icon className="size-4" strokeWidth={1.5} aria-hidden="true" />
-                          </span>
-                        )
-                      })()}
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-foreground">
-                          {t.description || category?.name || 'Sem descrição'}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {category?.name ?? 'Sem categoria'} · {formatDate(t.settled_at ?? t.due_date)}
-                        </span>
-                      </div>
-                    </div>
-                    <span
-                      className={
-                        t.type === 'income'
-                          ? 'shrink-0 font-medium text-foreground'
-                          : 'shrink-0 font-medium text-muted-foreground'
-                      }
-                    >
-                      {t.type === 'income' ? '+' : '-'}
-                      <MoneyValue value={t.amount} />
-                    </span>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </CardGrid>
-        )}
+      <Table
+        data={filtradas}
+        columns={columns}
+        getRowId={(t) => String(t.id)}
+        selectable
+        selectedRowIds={selecionadas}
+        onSelectionChange={setSelecionadas}
+        resizable
+        defaultSort={{ key: 'due_date', direction: 'desc' }}
+        rowHeight={52}
+        height={520}
+        loading={loading}
+        emptyState={<p className="text-sm text-muted-foreground">Nenhuma transação encontrada.</p>}
+      />
+
+      <div className="flex flex-wrap items-center justify-end gap-6 rounded-xl border border-border bg-muted px-4 py-3 text-sm">
+        <span className="text-muted-foreground">
+          Entradas <MoneyValue value={totais.entradas} className="font-medium text-positive" />
+        </span>
+        <span className="text-muted-foreground">
+          Saídas <MoneyValue value={totais.saidas} className="font-medium text-foreground" />
+        </span>
+        <span className="font-medium text-foreground">
+          Resultado <MoneyValue value={totais.resultado} />
+        </span>
       </div>
 
-      <div className="w-full lg:w-80 lg:shrink-0">
-        {categories.length > 0 && (
-          <TransactionForm categories={categories} onCreated={fetchData} />
-        )}
-      </div>
+      <TransactionDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        categories={categories}
+        userId={CURRENT_USER_ID}
+        onCreated={fetchData}
+      />
     </div>
   )
 }
