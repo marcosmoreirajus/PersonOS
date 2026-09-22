@@ -99,11 +99,18 @@ export function BulkActionsBar({
         </span>
 
         {/* Categorizar em lote é o caso de uso principal: sai da importação
-            com um monte de "Sem categoria" e resolve tudo de uma vez. */}
+            com um monte de "Sem categoria" e resolve tudo de uma vez.
+
+            O seletor **não guarda** o valor escolhido: ele volta ao
+            placeholder e quem declara a mudança é o chip em "Vai mudar".
+            Guardar o valor aqui sugeriria que aquela é a categoria atual do
+            conjunto — e as transações selecionadas podem ter categorias
+            diferentes entre si. Este campo é o instrumento de escolher, não
+            o estado da seleção. */}
         <CategoryPicker
           categories={categories}
-          value={pendente.category_id != null ? String(pendente.category_id) : ''}
-          onChange={(v) => setPendente((a) => ({ ...a, category_id: v ? Number(v) : undefined }))}
+          value=""
+          onChange={(v) => v && setPendente((a) => ({ ...a, category_id: Number(v) }))}
           placeholder="Definir categoria..."
           className="w-56 shrink-0"
         />
