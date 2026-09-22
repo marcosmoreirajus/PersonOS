@@ -2,6 +2,12 @@ import { Banknote, CreditCard, Layers, RefreshCw, TrendingDown, TrendingUp, type
 
 import { categoryColorByRank } from '@/lib/category-colors'
 
+/**
+ * `ScheduledItem` deixou de ser uma entidade própria: desde a Fatia 1 do modelo
+ * de entrada de dados, o registro mora em `transactions.json` e Agendadas é uma
+ * VISÃO dele. O tipo continua existindo como view model da tela (é o que o
+ * calendário, a lista e os filtros consomem), montado por `toScheduledItems`.
+ */
 export type ScheduledStatus = 'pending' | 'paid' | 'overdue'
 /** Forma de recorrência do lançamento — eixo distinto da categoria do gasto. */
 export type ScheduledNature = 'recorrente' | 'a_vista' | 'parcelado'
@@ -26,6 +32,71 @@ export type ScheduledItem = {
   value: number
   due_date: string
   status: 'pending' | 'paid'
+}
+
+/** Transação como vem de `/api/transactions` depois da Fatia 1. */
+export type Transaction = {
+  id: number
+  type: 'income' | 'expense'
+  amount: number
+  description: string | null
+  category_id: number | null
+  due_date: string
+  /** Nulo enquanto o dinheiro não se moveu. Só daqui sai "realizado". */
+  settled_at: string | null
+  series_id: number | null
+  series_index: number | null
+  card_invoice?: boolean
+}
+
+/** Série como vem de `/api/series`. */
+export type Series = {
+  id: number
+  kind: 'installment' | 'recurring'
+  frequency: 'monthly' | 'biweekly' | 'weekly'
+  total_count: number | null
+}
+
+const FREQUENCY_FROM_API: Record<Series['frequency'], ScheduledFrequency> = {
+  monthly: 'mensal',
+  biweekly: 'quinzenal',
+  weekly: 'semanal',
+}
+
+/**
+ * Monta a visão de Agendadas a partir de transações + séries.
+ *
+ * A natureza (à vista / recorrente / parcelado) não é mais um campo do
+ * lançamento: ela é uma leitura do vínculo com a série. E `status` deriva de
+ * `settled_at`, nunca de um campo gravado — conta vencida e não paga não é
+ * "realizada", é atrasada, e isso quem decide é `effectiveStatus`.
+ */
+export function toScheduledItems(transactions: Transaction[], series: Series[]): ScheduledItem[] {
+  const byId = new Map(series.map((s) => [s.id, s]))
+
+  return transactions.map((t) => {
+    const s = t.series_id != null ? byId.get(t.series_id) : undefined
+    const nature: ScheduledNature = !s ? 'a_vista' : s.kind === 'installment' ? 'parcelado' : 'recorrente'
+
+    return {
+      id: t.id,
+      name: t.description ?? 'Sem descrição',
+      type: t.type,
+      card_invoice: t.card_invoice,
+      // Categoria nula é o balde virtual "Sem categoria"; aqui ele cai no
+      // neutro do `buildCategoryMeta`, sem virar uma categoria de verdade.
+      category_id: t.category_id ?? -1,
+      nature,
+      frequency: s && s.kind === 'recurring' ? FREQUENCY_FROM_API[s.frequency] : undefined,
+      installment:
+        s && s.kind === 'installment' && t.series_index != null && s.total_count != null
+          ? { current: t.series_index, total: s.total_count }
+          : undefined,
+      value: t.amount,
+      due_date: t.due_date,
+      status: t.settled_at ? 'paid' : 'pending',
+    }
+  })
 }
 
 /** Como o item aparece no calendário/legenda. */

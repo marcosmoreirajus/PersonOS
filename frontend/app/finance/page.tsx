@@ -9,7 +9,12 @@ import { MoneyValue } from '@/components/ui/money-value'
 import { StatCard } from './_components/StatCard'
 import { CategoryBreakdown, type BreakdownKind, type CategoryDatum } from './_components/CategoryBreakdown'
 import { DailyHeatmap, type HeatmapTransaction, type PlannedOutflow } from './_components/DailyHeatmap'
-import { effectiveStatus, type ScheduledItem } from './agendadas/_components/types'
+import {
+  effectiveStatus,
+  toScheduledItems,
+  type ScheduledItem,
+  type Series,
+} from './agendadas/_components/types'
 import { categoryColorByRank, incomeColorByRank } from '@/lib/category-colors'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -20,7 +25,13 @@ type Transaction = {
   type: 'income' | 'expense'
   amount: number
   description: string | null
-  transaction_date: string
+  /** Quando vence / quando era esperado. */
+  due_date: string
+  /** Nulo até o dinheiro se mover — é o que separa realizado de previsto. */
+  settled_at: string | null
+  series_id: number | null
+  series_index: number | null
+  card_invoice?: boolean
   category_id: number
 }
 
@@ -56,22 +67,25 @@ export default function FinanceDashboardPage() {
       setLoading(true)
       setError(null)
       try {
-        const [txRes, catRes, schRes] = await Promise.all([
+        const [txRes, catRes, seriesRes] = await Promise.all([
           fetch(`${API_URL}/api/transactions/user/${CURRENT_USER_ID}`),
           fetch(`${API_URL}/api/categories`),
-          fetch(`${API_URL}/api/scheduled/user/${CURRENT_USER_ID}`),
+          fetch(`${API_URL}/api/series/user/${CURRENT_USER_ID}`),
         ])
         const txJson = await txRes.json()
         const catJson = await catRes.json()
-        const schJson = await schRes.json()
+        const seriesJson = await seriesRes.json()
         if (!cancelled) {
+          const all: Transaction[] = [...(txJson.data || [])]
+          // Saldo, cards e relatórios só olham o efetivado; o previsto existe
+          // na mesma base desde a fonte única, mas não soma.
           setTransactions(
-            [...(txJson.data || [])].sort(
-              (a, b) => new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime()
-            )
+            all
+              .filter((t) => t.settled_at)
+              .sort((a, b) => new Date(a.settled_at!).getTime() - new Date(b.settled_at!).getTime())
           )
           setCategories(catJson.data || [])
-          setScheduled(schJson.data || [])
+          setScheduled(toScheduledItems(all, (seriesJson.data || []) as Series[]))
         }
       } catch {
         if (!cancelled) setError('Não foi possível carregar o dashboard.')
@@ -103,7 +117,7 @@ export default function FinanceDashboardPage() {
 
     const netByDay = new Map<string, number>()
     for (const t of transactions) {
-      const key = dayKey(t.transaction_date)
+      const key = dayKey(t.settled_at!)
       const delta = t.type === 'income' ? t.amount : -t.amount
       netByDay.set(key, (netByDay.get(key) ?? 0) + delta)
     }
@@ -116,7 +130,7 @@ export default function FinanceDashboardPage() {
 
     const transactionsByDay = new Map<string, HeatmapTransaction[]>()
     for (const t of transactions) {
-      const key = dayKey(t.transaction_date)
+      const key = dayKey(t.settled_at!)
       const cat = categories.find((c) => c.id === t.category_id)
       const entry: HeatmapTransaction = {
         id: t.id,
@@ -329,13 +343,13 @@ export default function FinanceDashboardPage() {
           ) : (
             <ul className="flex flex-col gap-3">
               {[...transactions]
-                .sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime())
+                .sort((a, b) => new Date(b.settled_at!).getTime() - new Date(a.settled_at!).getTime())
                 .slice(0, 5)
                 .map((t) => (
                   <li key={t.id} className="flex items-center justify-between text-sm">
                     <div className="flex flex-col">
                       <span className="text-foreground">{t.description || 'Sem descrição'}</span>
-                      <span className="text-xs text-muted-foreground">{formatDate(t.transaction_date)}</span>
+                      <span className="text-xs text-muted-foreground">{formatDate(t.settled_at!)}</span>
                     </div>
                     <span className={t.type === 'income' ? 'font-medium text-foreground' : 'font-medium text-muted-foreground'}>
                       {t.type === 'income' ? '+' : '-'}

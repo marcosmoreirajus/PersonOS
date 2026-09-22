@@ -1,0 +1,57 @@
+from enum import Enum
+
+
+class TransactionType(str, Enum):
+    INCOME = "income"
+    EXPENSE = "expense"
+
+
+class TransactionSource(str, Enum):
+    """De onde o lançamento veio. Nasce com o registro e nunca muda."""
+
+    MANUAL = "manual"
+    AI = "ai"
+    IMPORT = "import"
+    OPEN_FINANCE = "open_finance"
+
+
+class IngestState(str, Enum):
+    """
+    Estado de ingestão — eixo separado do ciclo de vida do lançamento.
+
+    Ciclo de vida ("vai acontecer × aconteceu") é derivado de `settled_at` +
+    `due_date` e não é gravado. Este campo responde outra pergunta ("é confiável
+    × está em análise"), e por isso não pode dividir campo com aquele: uma
+    parcela futura suspeita de duplicidade é as duas coisas ao mesmo tempo.
+
+    Regra inegociável: nenhuma leitura agregada — saldo, dashboard, relatórios,
+    listagem padrão — enxerga o que não está `CONFIRMED`.
+    """
+
+    CONFIRMED = "confirmed"
+    AWAITING_RECONCILIATION = "awaiting_reconciliation"
+
+
+class SeriesKind(str, Enum):
+    """
+    Parcelado tem um todo, fim conhecido e soma que faz sentido; recorrente não
+    tem nenhum dos três. O que decide materializar todas as ocorrências, porém,
+    é ter fim conhecido (`total_count` ou `end_date`), não este campo.
+    """
+
+    INSTALLMENT = "installment"
+    RECURRING = "recurring"
+
+
+class SeriesFrequency(str, Enum):
+    MONTHLY = "monthly"
+    BIWEEKLY = "biweekly"
+    WEEKLY = "weekly"
+
+
+class Scope(str, Enum):
+    """Alcance de editar, excluir e pular — a mesma pergunta nas três."""
+
+    ONLY_THIS = "only_this"
+    THIS_AND_FUTURE = "this_and_future"
+    ALL = "all"

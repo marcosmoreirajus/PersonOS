@@ -1,17 +1,8 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from app.config import settings
+from app.schemas import TransactionCreate
 from app.services import DataService, BusinessService
-
-
-class TransactionCreate(BaseModel):
-    user_id: int
-    category_id: int
-    type: str
-    amount: float
-    description: str | None = None
-    transaction_date: str | None = None
 
 app = FastAPI(
     title=settings.api_title,
@@ -78,7 +69,9 @@ async def get_user_transactions(user_id: int):
 @app.post("/api/transactions")
 async def create_transaction(payload: TransactionCreate):
     """Cria uma transação e persiste em backend/data/transactions.json."""
-    new_transaction = DataService.create_transaction(**payload.model_dump())
+    # mode="json" converte date/Enum em string: o JSON de dados guarda
+    # datas de calendário como "YYYY-MM-DD", sem hora e sem fuso.
+    new_transaction = DataService.create_transaction(**payload.model_dump(mode="json"))
     return {"data": new_transaction}
 
 
@@ -95,10 +88,14 @@ async def get_investments(user_id: int):
     return {"data": DataService.get_investments(user_id)}
 
 
-# Rotas de Agendadas (contas fixas/impostos/assinaturas — sem cartão por ora)
-@app.get("/api/scheduled/user/{user_id}")
-async def get_scheduled(user_id: int):
-    return {"data": DataService.get_scheduled(user_id)}
+# Rotas de Séries (recorrência e parcelamento)
+#
+# `/api/scheduled` foi removida na Fatia 1: desde a decisão de fonte única, o
+# registro nasce em transações e Agendadas é só uma visão dele. A tela monta a
+# lista com /api/transactions + /api/series.
+@app.get("/api/series/user/{user_id}")
+async def get_series(user_id: int):
+    return {"data": DataService.get_series(user_id)}
 
 
 # Rotas do Módulo Negócio (dados em Markdown, desacoplado do Módulo Finanças)
@@ -119,8 +116,9 @@ async def update_business_section(section: str, request: Request):
     return {"data": data}
 
 
-# TODO: Adicionar rotas de:
-# - PUT /api/transactions/{id} (editar)
-# - DELETE /api/transactions/{id} (deletar)
-# - Relatórios por período
+# Próximas fatias (ver docs/finance/PRD.md):
+# - Fatia 2: PATCH/DELETE /api/transactions/{id} com `scope`, POST /settle,
+#   POST /postpone, POST /api/series/extend
+# - Fatia 3: POST /api/import/preview e /commit, POST /api/reconcile/{id}
+# - Fatia 4: GET /api/review/user/{user_id}
 # - Autenticação JWT

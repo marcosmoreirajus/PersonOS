@@ -16,8 +16,10 @@ type Transaction = {
   type: 'income' | 'expense'
   amount: number
   description: string | null
-  transaction_date: string
-  category_id: number
+  due_date: string
+  /** Nulo enquanto o dinheiro nao se moveu. */
+  settled_at: string | null
+  category_id: number | null
 }
 
 function formatDate(iso: string) {
@@ -41,7 +43,7 @@ export default function TransactionsPage() {
       const catJson = await catRes.json()
       setTransactions(
         [...(txJson.data || [])].sort(
-          (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
+          (a, b) => new Date(b.settled_at ?? b.due_date).getTime() - new Date(a.settled_at ?? a.due_date).getTime()
         )
       )
       setCategories(catJson.data || [])
@@ -54,7 +56,9 @@ export default function TransactionsPage() {
     fetchData()
   }, [fetchData])
 
-  function categoryFor(id: number) {
+  /** `null` é o balde virtual "Sem categoria" — ausência, não uma categoria. */
+  function categoryFor(id: number | null) {
+    if (id == null) return undefined
     return categories.find((c) => c.id === id)
   }
 
@@ -84,7 +88,7 @@ export default function TransactionsPage() {
                           {t.description || category?.name || 'Sem descrição'}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {category?.name} · {formatDate(t.transaction_date)}
+                          {category?.name ?? 'Sem categoria'} · {formatDate(t.settled_at ?? t.due_date)}
                         </span>
                       </div>
                     </div>

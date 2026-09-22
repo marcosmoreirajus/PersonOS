@@ -2,61 +2,410 @@
   {
     "id": 1,
     "user_id": 1,
-    "category_id": 1,
     "type": "expense",
     "amount": 45.5,
     "description": "Supermercado - compras da semana",
-    "transaction_date": "2026-09-10T14:30:00Z",
+    "category_id": 1,
+    "due_date": "2026-09-10",
+    "settled_at": "2026-09-10",
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": null,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-10T14:30:00Z",
+        "event": "created",
+        "source": "manual"
+      },
+      {
+        "at": "2026-09-10T00:00:00Z",
+        "event": "settled",
+        "on": "2026-09-10"
+      }
+    ],
     "created_at": "2026-09-10T14:30:00Z"
   },
   {
     "id": 2,
     "user_id": 2,
-    "category_id": 2,
     "type": "expense",
     "amount": 120.0,
     "description": "Uber para trabalho",
-    "transaction_date": "2026-09-09T08:15:00Z",
+    "category_id": 2,
+    "due_date": "2026-09-09",
+    "settled_at": "2026-09-09",
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": null,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-09T08:15:00Z",
+        "event": "created",
+        "source": "manual"
+      },
+      {
+        "at": "2026-09-09T00:00:00Z",
+        "event": "settled",
+        "on": "2026-09-09"
+      }
+    ],
     "created_at": "2026-09-09T08:15:00Z"
-  },
-  {
-    "id": 3,
-    "user_id": 1,
-    "category_id": 5,
-    "type": "expense",
-    "amount": 1500.0,
-    "description": "Aluguel setembro",
-    "transaction_date": "2026-09-01T00:00:00Z",
-    "created_at": "2026-09-01T00:00:00Z"
   },
   {
     "id": 4,
     "user_id": 1,
-    "category_id": 15,
     "type": "income",
     "amount": 3500.0,
     "description": "Salário mês de setembro",
-    "transaction_date": "2026-09-05T10:00:00Z",
+    "category_id": 15,
+    "due_date": "2026-09-05",
+    "settled_at": "2026-09-05",
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": null,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-05T10:00:00Z",
+        "event": "created",
+        "source": "manual"
+      },
+      {
+        "at": "2026-09-05T00:00:00Z",
+        "event": "settled",
+        "on": "2026-09-05"
+      }
+    ],
     "created_at": "2026-09-05T10:00:00Z"
   },
   {
     "id": 5,
     "user_id": 2,
-    "category_id": 4,
     "type": "expense",
     "amount": 85.0,
     "description": "Cinema + pipoca",
-    "transaction_date": "2026-09-08T19:30:00Z",
+    "category_id": 4,
+    "due_date": "2026-09-08",
+    "settled_at": "2026-09-08",
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": null,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-08T19:30:00Z",
+        "event": "created",
+        "source": "manual"
+      },
+      {
+        "at": "2026-09-08T00:00:00Z",
+        "event": "settled",
+        "on": "2026-09-08"
+      }
+    ],
     "created_at": "2026-09-08T19:30:00Z"
   },
   {
     "id": 6,
     "user_id": 1,
-    "category_id": 16,
     "type": "income",
     "amount": 2800.0,
     "description": "Nota fiscal — projeto de consultoria",
-    "transaction_date": "2026-09-12T00:00:00Z",
+    "category_id": 16,
+    "due_date": "2026-09-12",
+    "settled_at": "2026-09-12",
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": null,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-12T00:00:00Z",
+        "event": "created",
+        "source": "manual"
+      },
+      {
+        "at": "2026-09-12T00:00:00Z",
+        "event": "settled",
+        "on": "2026-09-12"
+      }
+    ],
     "created_at": "2026-09-12T00:00:00Z"
+  },
+  {
+    "id": 7,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2026-09-10",
+    "settled_at": "2026-09-10",
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-10T00:00:00Z",
+        "event": "created",
+        "source": "manual"
+      },
+      {
+        "at": "2026-09-10T00:00:00Z",
+        "event": "settled",
+        "on": "2026-09-10"
+      }
+    ],
+    "created_at": "2026-09-22T21:47:07.808307Z"
+  },
+  {
+    "id": 8,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2026-09-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-20T00:00:00Z",
+        "event": "created",
+        "source": "manual"
+      }
+    ],
+    "created_at": "2026-09-22T21:47:07.808307Z"
+  },
+  {
+    "id": 9,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 187.0,
+    "description": "IPVA",
+    "category_id": 7,
+    "due_date": "2026-09-25",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 3,
+    "series_index": 3,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-25T00:00:00Z",
+        "event": "created",
+        "source": "manual"
+      }
+    ],
+    "created_at": "2026-09-22T21:47:07.808307Z"
+  },
+  {
+    "id": 10,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2026-09-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-27T00:00:00Z",
+        "event": "created",
+        "source": "manual"
+      }
+    ],
+    "created_at": "2026-09-22T21:47:07.808307Z"
+  },
+  {
+    "id": 11,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1240.0,
+    "description": "IPTU cota única",
+    "category_id": 7,
+    "due_date": "2026-09-30",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": null,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-30T00:00:00Z",
+        "event": "created",
+        "source": "manual"
+      }
+    ],
+    "created_at": "2026-09-22T21:47:07.808307Z"
+  },
+  {
+    "id": 12,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2026-09-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-15T00:00:00Z",
+        "event": "created",
+        "source": "manual"
+      }
+    ],
+    "created_at": "2026-09-22T21:47:07.808307Z"
+  },
+  {
+    "id": 13,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2026-08-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-08-20T00:00:00Z",
+        "event": "created",
+        "source": "manual"
+      }
+    ],
+    "created_at": "2026-09-22T21:47:07.808307Z"
+  },
+  {
+    "id": 14,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 187.0,
+    "description": "IPVA",
+    "category_id": 7,
+    "due_date": "2026-10-25",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 3,
+    "series_index": 4,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-10-25T00:00:00Z",
+        "event": "created",
+        "source": "manual"
+      }
+    ],
+    "created_at": "2026-09-22T21:47:07.808307Z"
+  },
+  {
+    "id": 15,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2026-09-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-22T00:00:00Z",
+        "event": "created",
+        "source": "manual"
+      }
+    ],
+    "created_at": "2026-09-22T21:47:07.808307Z",
+    "card_invoice": true
   }
 ]

@@ -42,7 +42,12 @@ export default function TransactionForm({ categories, onCreated }: TransactionFo
           type,
           amount: parseFloat(amount),
           description: description || null,
-          transaction_date: new Date().toISOString(),
+          // TODO(Fatia 2): a data tem que ser escolhida pelo usuario
+          // (user story 1 do PRD) — hoje o lancamento manual assume o dia
+          // de hoje, e e por isso que registrar dias depois mente no historico.
+          due_date: new Date().toISOString().slice(0, 10),
+          // Lancamento manual e fato consumado: ja nasce efetivado.
+          settled_at: new Date().toISOString().slice(0, 10),
         }),
       })
       if (!res.ok) throw new Error('Falha ao criar transação')

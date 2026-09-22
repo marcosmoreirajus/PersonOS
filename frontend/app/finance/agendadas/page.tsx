@@ -9,7 +9,15 @@ import { MonthForecast } from './_components/MonthForecast'
 import { EMPTY_FILTERS, ScheduledFilters, type ScheduledFiltersValue } from './_components/ScheduledFilters'
 import { PendingAlert } from './_components/PendingAlert'
 import { UpcomingList } from './_components/UpcomingList'
-import { buildCategoryMeta, isInMonth, monthForecast, pendingSummary, type Category, type ScheduledItem } from './_components/types'
+import {
+  buildCategoryMeta,
+  isInMonth,
+  monthForecast,
+  pendingSummary,
+  toScheduledItems,
+  type Category,
+  type ScheduledItem,
+} from './_components/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -33,13 +41,20 @@ export default function AgendadasPage() {
       setLoading(true)
       setError(null)
       try {
-        const [scheduledRes, categoriesRes] = await Promise.all([
-          fetch(`${API_URL}/api/scheduled/user/${CURRENT_USER_ID}`),
+        // Fonte única: Agendadas é uma visão de transações + séries.
+        // `/api/scheduled` não existe mais.
+        const [transactionsRes, seriesRes, categoriesRes] = await Promise.all([
+          fetch(`${API_URL}/api/transactions/user/${CURRENT_USER_ID}`),
+          fetch(`${API_URL}/api/series/user/${CURRENT_USER_ID}`),
           fetch(`${API_URL}/api/categories`),
         ])
-        const [scheduledJson, categoriesJson] = await Promise.all([scheduledRes.json(), categoriesRes.json()])
+        const [transactionsJson, seriesJson, categoriesJson] = await Promise.all([
+          transactionsRes.json(),
+          seriesRes.json(),
+          categoriesRes.json(),
+        ])
         if (!cancelled) {
-          setItems(scheduledJson.data || [])
+          setItems(toScheduledItems(transactionsJson.data || [], seriesJson.data || []))
           setCategories(categoriesJson.data || [])
         }
       } catch {
