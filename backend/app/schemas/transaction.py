@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -60,6 +61,26 @@ class TransactionUpdate(BaseModel):
     due_date: date | None = None
     settled_at: date | None = None
     is_internal_transfer: bool | None = None
+
+
+class BulkChanges(BaseModel):
+    """Campos que a edição em lote aceita — de propósito, poucos."""
+
+    category_id: int | None = None
+    is_internal_transfer: bool | None = None
+
+
+class BulkAction(BaseModel):
+    """
+    Ação sobre uma seleção da tela.
+
+    `update` altera os campos informados; `delete` remove. Não há `scope`
+    aqui: uma seleção é um conjunto escolhido a dedo, não uma série.
+    """
+
+    ids: list[int]
+    action: Literal["update", "delete"] = "update"
+    changes: BulkChanges | None = None
 
 
 class HistoryEvent(BaseModel):

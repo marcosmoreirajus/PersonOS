@@ -17,7 +17,6 @@ import {
   MultiSelectItem,
   MultiSelectList,
   MultiSelectTrigger,
-  MultiSelectValue,
 } from '@/components/motion/multi-select'
 import { categoryIcon } from '@/lib/category-icons'
 import { cn } from '@/lib/utils'
@@ -89,11 +88,15 @@ export function CategoryPicker({
 /**
  * Seletor de categorias para filtro — várias ao mesmo tempo.
  *
- * O trigger acumula os tokens das escolhidas e mantém o campo de busca ao
- * lado, então filtrar e escolher acontecem no mesmo lugar. A largura é
- * limitada: como filtro ele divide a barra com busca e tipo, e esticar até o
- * fim da linha (estado anterior) fazia ele parecer o conteúdo principal da
- * tela em vez de um controle.
+ * O trigger mostra um **resumo** ("3 categorias"), não um token por escolha:
+ * com tokens, o campo cresce a cada seleção e nunca volta ao tamanho
+ * original, empurrando a tabela para baixo. A remoção individual continua
+ * possível pelos chips de filtro abaixo da barra, que é onde o usuário já
+ * olha para saber o que está filtrando.
+ *
+ * A largura é limitada: como filtro ele divide a barra com busca e tipo, e
+ * esticar até o fim da linha fazia ele parecer o conteúdo principal da tela
+ * em vez de um controle.
  */
 export function CategoryMultiPicker({
   categories,
@@ -110,11 +113,19 @@ export function CategoryMultiPicker({
 }) {
   return (
     <MultiSelect value={value} onValueChange={onChange}>
-      <MultiSelectTrigger
-        className={cn('w-full min-w-0 sm:w-[clamp(15rem,28vw,22rem)]', className)}
-      >
-        <MultiSelectValue placeholder={placeholder} />
-        <MultiSelectInput placeholder={value.length ? '' : 'Buscar...'} aria-label="Buscar categoria" />
+      <MultiSelectTrigger className={cn('h-10 min-h-10 w-full min-w-0 sm:w-56', className)}>
+        {/* Campo único: digitar filtra, e o próprio placeholder resume o que
+            está selecionado — o trigger não muda de altura. */}
+        <MultiSelectInput
+          placeholder={
+            value.length === 0
+              ? placeholder
+              : value.length === 1
+                ? (categories.find((c) => String(c.id) === value[0])?.name ?? '1 categoria')
+                : `${value.length} categorias`
+          }
+          aria-label="Buscar categoria"
+        />
       </MultiSelectTrigger>
       <MultiSelectContent>
         <MultiSelectList ariaLabel="Categorias">

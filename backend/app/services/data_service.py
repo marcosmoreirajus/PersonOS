@@ -253,6 +253,49 @@ class DataService:
 
         return len(ids)
 
+    @staticmethod
+    def bulk_update(ids: List[int], changes: Dict[str, Any]) -> int:
+        """
+        Aplica a mesma mudança a vários lançamentos.
+
+        Cada item é tratado como `only_this`: uma seleção na tela é um
+        conjunto escolhido a dedo, não uma série — estender a mudança para as
+        ocorrências futuras de cada um seria fazer mais do que foi pedido.
+        """
+        transactions = DataService.load_json("transactions")
+        agora = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        campos = {k: v for k, v in changes.items() if v is not None}
+        alvos = [t for t in transactions if t["id"] in set(ids)]
+
+        for registro in alvos:
+            for campo, valor in campos.items():
+                anterior = registro.get(campo)
+                if anterior == valor:
+                    continue
+                registro[campo] = valor
+                evento = {
+                    "amount": "amount_changed",
+                    "due_date": "due_date_moved",
+                    "category_id": "category_set",
+                }.get(campo)
+                if evento:
+                    registro.setdefault("history", []).append(
+                        {"at": agora, "event": evento, "from": anterior, "to": valor, "bulk": True}
+                    )
+
+        DataService.save_json("transactions", transactions)
+        return len(alvos)
+
+    @staticmethod
+    def bulk_delete(ids: List[int]) -> int:
+        """Exclui vários lançamentos. Não encerra série: seleção não é série."""
+        transactions = DataService.load_json("transactions")
+        alvo = set(ids)
+        restantes = [t for t in transactions if t["id"] not in alvo]
+        removidas = len(transactions) - len(restantes)
+        DataService.save_json("transactions", restantes)
+        return removidas
+
     # ------------------------------------------------------------------ #
     # Séries (recorrência e parcelamento)
     # ------------------------------------------------------------------ #

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.schemas import TransactionCreate, TransactionUpdate
+from app.schemas import BulkAction, TransactionCreate, TransactionUpdate
 from app.services import DataService, BusinessService
 
 app = FastAPI(
@@ -74,6 +74,22 @@ async def create_transaction(payload: TransactionCreate):
     new_transaction = DataService.create_transaction(**payload.model_dump(mode="json"))
     return {"data": new_transaction}
 
+
+@app.post("/api/transactions/bulk")
+async def bulk_transactions(payload: BulkAction):
+    """
+    Operações em lote sobre uma seleção da tela.
+
+    Seleção não é série: cada item é tratado isoladamente, e nenhum molde de
+    série é alterado aqui.
+    """
+    if payload.action == "delete":
+        return {"data": {"deleted": DataService.bulk_delete(payload.ids)}}
+
+    mudancas = payload.changes.model_dump(mode="json", exclude_none=True) if payload.changes else {}
+    if not mudancas:
+        return {"error": "Nada para alterar"}, 400
+    return {"data": {"updated": DataService.bulk_update(payload.ids, mudancas)}}
 
 @app.patch("/api/transactions/{transaction_id}")
 async def update_transaction(transaction_id: int, payload: TransactionUpdate):

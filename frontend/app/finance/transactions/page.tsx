@@ -14,6 +14,7 @@ import { categoryIcon } from '@/lib/category-icons'
 import { cn } from '@/lib/utils'
 import TransactionDialog, { type Category, type DialogSeed } from './_components/TransactionDialog'
 import DeleteDialog from './_components/DeleteDialog'
+import BulkActionsBar from './_components/BulkActionsBar'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -247,6 +248,16 @@ export default function TransactionsPage() {
     [categoriaPorId, hoje]
   )
 
+  // A tabela acompanha o volume: com 3 linhas não sobra faixa vazia, e a
+  // partir de ~10 ela para de crescer e passa a rolar (a virtualização
+  // aguenta o resto).
+  const alturaTabela = useMemo(() => {
+    const CABECALHO = 44
+    const LINHA = 52
+    const linhas = Math.max(filtradas.length, 1)
+    return Math.min(CABECALHO + linhas * LINHA, 560)
+  }, [filtradas.length])
+
   const chips = [
     tipo !== 'all' && {
       label: `Tipo: ${tipo === 'income' ? 'Entradas' : 'Saídas'}`,
@@ -269,7 +280,7 @@ export default function TransactionsPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-3">
         <MorphingSearch
           items={searchItems}
           placeholder="Buscar por descrição..."
@@ -301,7 +312,7 @@ export default function TransactionsPage() {
 
         <CategoryMultiPicker categories={categories} value={categorias} onChange={setCategorias} />
 
-        <span className="text-sm text-muted-foreground">
+        <span className="shrink-0 whitespace-nowrap text-sm text-muted-foreground sm:ml-auto">
           {filtradas.length} {filtradas.length === 1 ? 'transação' : 'transações'}
           {selecionadas.length > 0 && ` · ${selecionadas.length} selecionada(s)`}
         </span>
@@ -342,7 +353,7 @@ export default function TransactionsPage() {
         resizable
         defaultSort={{ key: 'due_date', direction: 'desc' }}
         rowHeight={52}
-        height={520}
+        height={alturaTabela}
         loading={loading}
         emptyState={<p className="text-sm text-muted-foreground">Nenhuma transação encontrada.</p>}
       />
@@ -358,6 +369,13 @@ export default function TransactionsPage() {
           Resultado <MoneyValue value={totais.resultado} />
         </span>
       </div>
+
+      <BulkActionsBar
+        ids={selecionadas}
+        categories={categories}
+        onClear={() => setSelecionadas([])}
+        onDone={fetchData}
+      />
 
       <TransactionDialog
         open={dialogOpen}
