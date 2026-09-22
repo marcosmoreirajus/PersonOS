@@ -78,7 +78,9 @@ A ordem não é preferência: cada fatia só usa o que a anterior criou, e a pri
 
 Transação ganha data de efetivação, estado de ingestão, vínculo de série e histórico de eventos. `scheduled.json` é migrado para transações e deletado. Agendadas passa a ler transações.
 
-**Aceite:** as 5 telas continuam funcionando com os mesmos números de antes; `scheduled.json` não existe mais; nenhum valor do dashboard muda por causa da migração.
+**Aceite:** as 5 telas continuam funcionando; `scheduled.json` não existe mais; as obrigações reconstruídas batem **item a item** com as antigas (nome, valor, vencimento, natureza, frequência, parcela, situação).
+
+> ~~nenhum valor do dashboard muda por causa da migração~~ → **o saldo muda pelo somatório das obrigações já efetivadas, e essa variação precisa bater item a item**. Corrigido em 22/09, ao implementar: o critério original era impossível. Fonte única significa que o agendado já pago passa a contar no saldo — exigir que nada mude seria exigir que a migração não fizesse o que foi decidido. O que precisa ser verdade é que a variação seja **explicada**, não que seja zero.
 
 ### Fatia 2 — Séries
 
