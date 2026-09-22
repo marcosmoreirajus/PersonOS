@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.schemas import TransactionCreate
+from app.schemas import TransactionCreate, TransactionUpdate
 from app.services import DataService, BusinessService
 
 app = FastAPI(
@@ -75,6 +75,26 @@ async def create_transaction(payload: TransactionCreate):
     return {"data": new_transaction}
 
 
+@app.patch("/api/transactions/{transaction_id}")
+async def update_transaction(transaction_id: int, payload: TransactionUpdate):
+    """Edita uma transação. `scope` decide se a série toda acompanha."""
+    dados = payload.model_dump(mode="json", exclude_none=True)
+    scope = dados.pop("scope", "only_this")
+    atualizada = DataService.update_transaction(transaction_id, dados, scope)
+    if atualizada is None:
+        return {"error": "Transaction not found"}, 404
+    return {"data": atualizada}
+
+
+@app.delete("/api/transactions/{transaction_id}")
+async def delete_transaction(transaction_id: int, scope: str = "only_this"):
+    """Exclui. Em escopo de série, encerra o molde pra não ressuscitar."""
+    removidas = DataService.delete_transaction(transaction_id, scope)
+    if removidas == 0:
+        return {"error": "Transaction not found"}, 404
+    return {"data": {"deleted": removidas}}
+
+
 # Dashboard
 @app.get("/api/dashboard/{user_id}")
 async def get_dashboard(user_id: int):
@@ -117,8 +137,9 @@ async def update_business_section(section: str, request: Request):
 
 
 # Próximas fatias (ver docs/finance/PRD.md):
-# - Fatia 2: PATCH/DELETE /api/transactions/{id} com `scope`, POST /settle,
-#   POST /postpone, POST /api/series/extend
+# - Fatia 2: POST /settle, POST /postpone, POST /api/series/extend
+#   (PATCH/DELETE com `scope` já existem, adiantados junto das ações da
+#   tela de Transações)
 # - Fatia 3: POST /api/import/preview e /commit, POST /api/reconcile/{id}
 # - Fatia 4: GET /api/review/user/{user_id}
 # - Autenticação JWT

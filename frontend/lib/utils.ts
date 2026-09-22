@@ -10,8 +10,8 @@
  * custou caro no backend deste projeto.
  *
  * ATENCAO: todo bloco do registry `@beui` declara `lib/utils.ts` entre os
- * arquivos dele e **sobrescreve este arquivo** na instalacao (aconteceu 3x em
- * 22/09: morphing-search, signup-form e table). Depois de qualquer
- * `shadcn add @beui/...`, conferir se este arquivo voltou ao reexport.
+ * arquivos dele e **sobrescreve este arquivo** na instalacao. Ja aconteceu 5x
+ * em 22/09 (morphing-search, signup-form, table, combobox, multi-select).
+ * Depois de qualquer `shadcn add @beui/...`, conferir se voltou ao reexport.
  */
 export { cn } from 'cn'

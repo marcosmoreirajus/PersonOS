@@ -158,6 +158,101 @@ class DataService:
         DataService.save_json("transactions", transactions)
         return new_transaction
 
+
+    @staticmethod
+    def _alvos_do_escopo(
+        transactions: List[Dict[str, Any]], alvo: Dict[str, Any], scope: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Quais registros uma operação em lote atinge.
+
+        `only_this` sempre vale, inclusive para lançamento avulso. Os outros
+        dois só fazem sentido dentro de uma série, e nunca alcançam o que já
+        foi efetivado: o que aconteceu não se reescreve — apagar uma parcela
+        paga não cancela o gasto, só faz o app discordar do extrato.
+        """
+        if scope == "only_this" or not alvo.get("series_id"):
+            return [alvo]
+
+        da_serie = [t for t in transactions if t.get("series_id") == alvo["series_id"]]
+        if scope == "this_and_future":
+            da_serie = [t for t in da_serie if t["due_date"] >= alvo["due_date"]]
+        return [t for t in da_serie if not t.get("settled_at") or t["id"] == alvo["id"]]
+
+    @staticmethod
+    def update_transaction(
+        transaction_id: int, changes: Dict[str, Any], scope: str = "only_this"
+    ) -> Dict[str, Any] | None:
+        """
+        Edita uma transação e, em escopo de série, também o molde.
+
+        Editar "esta e as futuras" precisa atualizar a série: sem isso, a
+        próxima extensão da janela geraria a ocorrência nova com o valor
+        antigo, desfazendo em silêncio o que o usuário acabou de decidir.
+        """
+        transactions = DataService.load_json("transactions")
+        alvo = next((t for t in transactions if t["id"] == transaction_id), None)
+        if alvo is None:
+            return None
+
+        agora = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        campos = {k: v for k, v in changes.items() if v is not None}
+
+        for registro in DataService._alvos_do_escopo(transactions, alvo, scope):
+            for campo, valor in campos.items():
+                anterior = registro.get(campo)
+                if anterior == valor:
+                    continue
+                registro[campo] = valor
+                evento = {
+                    "amount": "amount_changed",
+                    "due_date": "due_date_moved",
+                    "category_id": "category_set",
+                }.get(campo)
+                if evento:
+                    registro.setdefault("history", []).append(
+                        {"at": agora, "event": evento, "from": anterior, "to": valor}
+                    )
+
+        if scope in ("this_and_future", "all") and alvo.get("series_id"):
+            series = DataService.load_json("series")
+            molde = next((s for s in series if s["id"] == alvo["series_id"]), None)
+            if molde:
+                for campo in ("amount", "category_id", "description"):
+                    if campo in campos:
+                        molde[campo] = campos[campo]
+                DataService.save_json("series", series)
+
+        DataService.save_json("transactions", transactions)
+        return alvo
+
+    @staticmethod
+    def delete_transaction(transaction_id: int, scope: str = "only_this") -> int:
+        """
+        Exclui e, em escopo de série, encerra a série.
+
+        Sem gravar o fim no molde, a próxima extensão da janela ressuscitaria
+        a assinatura que o usuário acabou de cancelar.
+        """
+        transactions = DataService.load_json("transactions")
+        alvo = next((t for t in transactions if t["id"] == transaction_id), None)
+        if alvo is None:
+            return 0
+
+        alvos = DataService._alvos_do_escopo(transactions, alvo, scope)
+        ids = {t["id"] for t in alvos}
+        restantes = [t for t in transactions if t["id"] not in ids]
+        DataService.save_json("transactions", restantes)
+
+        if scope in ("this_and_future", "all") and alvo.get("series_id"):
+            series = DataService.load_json("series")
+            molde = next((s for s in series if s["id"] == alvo["series_id"]), None)
+            if molde:
+                molde["ended_at"] = alvo["due_date"]
+                DataService.save_json("series", series)
+
+        return len(ids)
+
     # ------------------------------------------------------------------ #
     # Séries (recorrência e parcelamento)
     # ------------------------------------------------------------------ #

@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.models.transaction import (
     IngestState,
+    Scope,
     SeriesFrequency,
     SeriesKind,
     TransactionSource,
@@ -42,6 +43,23 @@ class TransactionCreate(BaseModel):
     is_internal_transfer: bool = False
     source: TransactionSource = TransactionSource.MANUAL
     series: SeriesCreate | None = None
+
+
+class TransactionUpdate(BaseModel):
+    """
+    Edição de lançamento. Só o que vier preenchido é alterado.
+
+    `scope` responde a mesma pergunta que editar, excluir e pular fazem:
+    a mudança é pontual, vale daqui pra frente, ou vale pra série inteira.
+    """
+
+    scope: Scope = Scope.ONLY_THIS
+    amount: float | None = None
+    description: str | None = None
+    category_id: int | None = None
+    due_date: date | None = None
+    settled_at: date | None = None
+    is_internal_transfer: bool | None = None
 
 
 class HistoryEvent(BaseModel):

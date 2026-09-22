@@ -1,15 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { categoryIcon } from '@/lib/category-icons'
+import { CategoryPicker } from '../../_components/CategoryPicker'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -19,12 +18,25 @@ export type Category = {
   icon: string
 }
 
+/** O que o diálogo precisa saber de um lançamento pra editar ou duplicar. */
+export type DialogSeed = {
+  /** Presente = edição; ausente = criação (inclusive ao duplicar). */
+  id?: number
+  type: 'income' | 'expense'
+  amount: number
+  description: string | null
+  category_id: number | null
+  due_date: string
+}
+
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   categories: Category[]
   userId: number
-  onCreated: () => void
+  onSaved: () => void
+  /** Preenche o formulário: edição (com `id`) ou duplicação (sem `id`). */
+  seed?: DialogSeed | null
 }
 
 function hoje() {
@@ -32,31 +44,42 @@ function hoje() {
 }
 
 /**
- * Lançamento manual.
+ * Lançamento manual — criação, edição e duplicação.
  *
  * Duas decisões da sabatina moldam este formulário:
  * - a **data é escolhida** (antes o backend gravava sempre `new Date()`, o que
  *   fazia o histórico mentir quando o registro era feito dias depois);
  * - a **categoria é obrigatória**. É o que garante que `category_id = null`
  *   signifique sempre "o classificador não soube", nunca "o usuário pulou" —
- *   e é por isso que não existe opção "Sem categoria" neste seletor.
+ *   e é por isso que o seletor não tem opção "Sem categoria".
  */
-export function TransactionDialog({ open, onOpenChange, categories, userId, onCreated }: Props) {
+export function TransactionDialog({ open, onOpenChange, categories, userId, onSaved, seed }: Props) {
+  const editando = Boolean(seed?.id)
+
   const [type, setType] = useState<'expense' | 'income'>('expense')
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(hoje)
   const [description, setDescription] = useState('')
-  const [categoryId, setCategoryId] = useState<string>('')
+  const [categoryId, setCategoryId] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function reset(keepOpen: boolean) {
-    setAmount('')
-    setDescription('')
-    // Tipo, data e categoria ficam: quem lança em sequência costuma repetir os três.
+  // Reidrata ao abrir: em edição e em duplicação o formulário parte do
+  // lançamento de origem; em criação, de um estado limpo.
+  useEffect(() => {
+    if (!open) return
     setError(null)
-    if (!keepOpen) onOpenChange(false)
-  }
+    if (seed) {
+      setType(seed.type)
+      setAmount(String(seed.amount).replace('.', ','))
+      setDescription(seed.description ?? '')
+      setCategoryId(seed.category_id != null ? String(seed.category_id) : '')
+      setDate(seed.due_date)
+    } else {
+      setAmount('')
+      setDescription('')
+    }
+  }, [open, seed])
 
   async function submit(addAnother: boolean) {
     const valor = Number(amount.replace(/\./g, '').replace(',', '.'))
@@ -67,26 +90,45 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onCr
     setSaving(true)
     setError(null)
     try {
-      const res = await fetch(`${API_URL}/api/transactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          category_id: Number(categoryId),
-          type,
-          amount: valor,
-          description: description.trim(),
-          due_date: date,
-          // Lançamento manual é fato consumado: nasce efetivado na data escolhida.
-          settled_at: date,
-          source: 'manual',
-        }),
-      })
+      const corpo = {
+        category_id: Number(categoryId),
+        type,
+        amount: valor,
+        description: description.trim(),
+        due_date: date,
+      }
+
+      const res = editando
+        ? await fetch(`${API_URL}/api/transactions/${seed!.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            // Escopo amplo em edição depende de um passo a mais na interface;
+            // por ora a edição é sempre pontual.
+            body: JSON.stringify({ ...corpo, scope: 'only_this' }),
+          })
+        : await fetch(`${API_URL}/api/transactions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...corpo,
+              user_id: userId,
+              // Lançamento manual é fato consumado: nasce efetivado na data escolhida.
+              settled_at: date,
+              source: 'manual',
+            }),
+          })
+
       if (!res.ok) throw new Error()
-      onCreated()
-      reset(addAnother)
+      onSaved()
+      if (addAnother) {
+        // Tipo, data e categoria ficam: quem lança em sequência repete os três.
+        setAmount('')
+        setDescription('')
+      } else {
+        onOpenChange(false)
+      }
     } catch {
-      setError('Não foi possível registrar a transação.')
+      setError('Não foi possível salvar a transação.')
     } finally {
       setSaving(false)
     }
@@ -96,12 +138,11 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onCr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Lançamento manual</DialogTitle>
+          <DialogTitle>{editando ? 'Editar lançamento' : 'Lançamento manual'}</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          {/* Entrada x Saída — dois botões de largura igual, o ativo tintado
-              pela cor semântica do próprio eixo (ganho/perda). */}
+          {/* Entrada x Saída — o ativo tintado pela cor semântica do eixo. */}
           <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
             {(['income', 'expense'] as const).map((t) => (
               <button
@@ -151,24 +192,10 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onCr
 
           <Field>
             <FieldLabel htmlFor="category">Categoria</FieldLabel>
-            <Select value={categoryId} onValueChange={(v) => setCategoryId(v ?? '')}>
-              <SelectTrigger id="category">
-                <SelectValue placeholder="Escolha uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((c) => {
-                  const Icon = categoryIcon(c.icon)
-                  return (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      <span className="flex items-center gap-2">
-                        <Icon className="size-4 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
-                        {c.name}
-                      </span>
-                    </SelectItem>
-                  )
-                })}
-              </SelectContent>
-            </Select>
+            {/* Combobox com busca: com 17 categorias (e mais quando virarem
+                customizáveis), percorrer a lista inteira num select nativo é
+                atrito em cima do caminho mais usado do app. */}
+            <CategoryPicker id="category" categories={categories} value={categoryId} onChange={setCategoryId} />
           </Field>
 
           {error && <FieldError>{error}</FieldError>}
@@ -179,12 +206,14 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onCr
             Cancelar
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => submit(true)} disabled={saving}>
-              <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
-              Salvar e adicionar outra
-            </Button>
+            {!editando && (
+              <Button variant="outline" onClick={() => submit(true)} disabled={saving}>
+                <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                Salvar e adicionar outra
+              </Button>
+            )}
             <Button onClick={() => submit(false)} disabled={saving}>
-              {saving ? 'Salvando...' : 'Adicionar transação'}
+              {saving ? 'Salvando...' : editando ? 'Salvar alterações' : 'Adicionar transação'}
             </Button>
           </div>
         </DialogFooter>

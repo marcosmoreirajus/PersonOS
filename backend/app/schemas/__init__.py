@@ -5,6 +5,7 @@ from app.schemas.transaction import (
     SeriesResponse,
     TransactionCreate,
     TransactionResponse,
+    TransactionUpdate,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "SeriesResponse",
     "TransactionCreate",
     "TransactionResponse",
+    "TransactionUpdate",
 ]

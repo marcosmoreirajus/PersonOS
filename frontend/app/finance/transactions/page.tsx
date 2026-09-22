@@ -1,17 +1,20 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import { Copy, Pencil, Plus, Trash2, X } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MoneyValue } from '@/components/ui/money-value'
+import { ActionsMenu } from '@/components/ui/actions-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CategoryMultiPicker } from '../_components/CategoryPicker'
 import { Table, type TableColumn } from '@/components/motion/table'
 import { MorphingSearch, type MorphingSearchItem } from '@/components/motion/morphing-search'
 import { categoryIcon } from '@/lib/category-icons'
 import { cn } from '@/lib/utils'
-import TransactionDialog, { type Category } from './_components/TransactionDialog'
+import TransactionDialog, { type Category, type DialogSeed } from './_components/TransactionDialog'
+import DeleteDialog from './_components/DeleteDialog'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -55,9 +58,29 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [tipo, setTipo] = useState<TipoFiltro>('all')
-  const [categoria, setCategoria] = useState<string>('all')
+  // Várias categorias ao mesmo tempo: lista vazia = todas.
+  const [categorias, setCategorias] = useState<string[]>([])
   const [selecionadas, setSelecionadas] = useState<string[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
+  // `seed` preenche o formulario: com id = edicao, sem id = duplicacao.
+  const [seed, setSeed] = useState<DialogSeed | null>(null)
+  const [excluindo, setExcluindo] = useState<Transaction | null>(null)
+
+  function abrirNovo() {
+    setSeed(null)
+    setDialogOpen(true)
+  }
+
+  function abrirEdicao(t: Transaction) {
+    setSeed({ id: t.id, type: t.type, amount: t.amount, description: t.description, category_id: t.category_id, due_date: t.settled_at ?? t.due_date })
+    setDialogOpen(true)
+  }
+
+  function abrirDuplicacao(t: Transaction) {
+    // Sem `id`: duplicar cria um lancamento novo a partir deste.
+    setSeed({ type: t.type, amount: t.amount, description: t.description, category_id: t.category_id, due_date: t.settled_at ?? t.due_date })
+    setDialogOpen(true)
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -86,11 +109,11 @@ export default function TransactionsPage() {
     const q = query.trim().toLowerCase()
     return transactions.filter((t) => {
       if (tipo !== 'all' && t.type !== tipo) return false
-      if (categoria !== 'all' && String(t.category_id) !== categoria) return false
+      if (categorias.length > 0 && !categorias.includes(String(t.category_id))) return false
       if (q && !(t.description ?? '').toLowerCase().includes(q)) return false
       return true
     })
-  }, [transactions, query, tipo, categoria])
+  }, [transactions, query, tipo, categorias])
 
   /** Totais do rodapé: só o que foi efetivado — previsto não soma em resultado. */
   const totais = useMemo(() => {
@@ -188,6 +211,33 @@ export default function TransactionsPage() {
           </span>
         ),
       },
+      {
+        key: 'actions',
+        header: '',
+        align: 'right',
+        width: '64px',
+        cell: (t) => (
+          <span className="flex justify-end">
+            {/* As ações variam por item: um lançamento de série oferece as três
+                opções de escopo (decisão da sabatina); um avulso, não. Editar e
+                excluir de verdade chegam na Fatia 2, junto do `scope` na API. */}
+            <ActionsMenu
+              label={`Ações de ${t.description ?? 'transação'}`}
+              actions={[
+                { key: 'edit', label: 'Editar', icon: Pencil, onSelect: () => abrirEdicao(t) },
+                { key: 'duplicate', label: 'Duplicar', icon: Copy, onSelect: () => abrirDuplicacao(t) },
+                {
+                  key: 'delete',
+                  label: t.series_id ? 'Excluir...' : 'Excluir',
+                  icon: Trash2,
+                  destructive: true,
+                  onSelect: () => setExcluindo(t),
+                },
+              ]}
+            />
+          </span>
+        ),
+      },
     ],
     [categoriaPorId, hoje]
   )
@@ -197,10 +247,10 @@ export default function TransactionsPage() {
       label: `Tipo: ${tipo === 'income' ? 'Entradas' : 'Saídas'}`,
       clear: () => setTipo('all'),
     },
-    categoria !== 'all' && {
-      label: `Categoria: ${categoriaPorId.get(Number(categoria))?.name ?? ''}`,
-      clear: () => setCategoria('all'),
-    },
+    ...categorias.map((id) => ({
+      label: `Categoria: ${categoriaPorId.get(Number(id))?.name ?? ''}`,
+      clear: () => setCategorias((atual) => atual.filter((c) => c !== id)),
+    })),
     query.trim() && { label: `Busca: "${query.trim()}"`, clear: () => setQuery('') },
   ].filter(Boolean) as { label: string; clear: () => void }[]
 
@@ -208,7 +258,7 @@ export default function TransactionsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-foreground">Transações</h1>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={abrirNovo}>
           <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
           Lançamento manual
         </Button>
@@ -233,19 +283,7 @@ export default function TransactionsPage() {
           </SelectContent>
         </Select>
 
-        <Select value={categoria} onValueChange={(v) => setCategoria(v ?? 'all')}>
-          <SelectTrigger className="w-[190px]">
-            <SelectValue placeholder="Categoria" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as categorias</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <CategoryMultiPicker categories={categories} value={categorias} onChange={setCategorias} />
 
         <span className="text-sm text-muted-foreground">
           {filtradas.length} {filtradas.length === 1 ? 'transação' : 'transações'}
@@ -268,7 +306,7 @@ export default function TransactionsPage() {
           <button
             onClick={() => {
               setTipo('all')
-              setCategoria('all')
+              setCategorias([])
               setQuery('')
             }}
             className="text-xs text-muted-foreground underline-offset-4 hover:underline"
@@ -310,7 +348,14 @@ export default function TransactionsPage() {
         onOpenChange={setDialogOpen}
         categories={categories}
         userId={CURRENT_USER_ID}
-        onCreated={fetchData}
+        onSaved={fetchData}
+        seed={seed}
+      />
+
+      <DeleteDialog
+        transaction={excluindo}
+        onOpenChange={(open) => !open && setExcluindo(null)}
+        onDeleted={fetchData}
       />
     </div>
   )
