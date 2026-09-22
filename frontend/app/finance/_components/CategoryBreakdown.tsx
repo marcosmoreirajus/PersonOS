@@ -12,11 +12,56 @@ export interface CategoryDatum {
   color: string
 }
 
+export type BreakdownKind = 'expense' | 'income'
+
 export interface CategoryBreakdownProps {
   data: CategoryDatum[]
+  /**
+   * Opcional: passando `kind` + `onKindChange`, aparece o toggle
+   * Despesas/Receitas (Visão Geral). Sem eles, o componente fica só de
+   * despesas, como em Relatórios.
+   */
+  kind?: BreakdownKind
+  onKindChange?: (kind: BreakdownKind) => void
 }
 
 type ViewMode = 'donut' | 'bars' | 'segmented'
+
+const KIND_LABEL: Record<BreakdownKind, { toggle: string; plural: string }> = {
+  expense: { toggle: 'Despesas', plural: 'despesas' },
+  income: { toggle: 'Receitas', plural: 'receitas' },
+}
+
+function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+}: {
+  options: readonly (readonly [T, string])[]
+  value: T
+  onChange: (value: T) => void
+  label: string
+}) {
+  return (
+    <div role="group" aria-label={label} className="inline-flex w-fit items-center gap-1 rounded-full border border-border bg-muted p-1">
+      {options.map(([mode, text]) => (
+        <button
+          key={mode}
+          type="button"
+          aria-pressed={value === mode}
+          onClick={() => onChange(mode)}
+          className={cn(
+            'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+            value === mode ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 const RADIUS = 46
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
@@ -24,15 +69,50 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 /**
  * "Onde o dinheiro saiu" — componente compartilhado entre Visão Geral e
  * Relatórios (mesma informação, apresentada nos dois lugares — decisão do
- * Marco em 2026-09-16 de manter esse card em ambas as telas).
+ * Marco em 2026-09-16 de manter esse card em ambas as telas). Na Visão Geral
+ * tem também o toggle Despesas/Receitas (18/09).
  */
-function CategoryBreakdown({ data }: CategoryBreakdownProps) {
+function CategoryBreakdown({ data, kind = 'expense', onKindChange }: CategoryBreakdownProps) {
   const [view, setView] = useState<ViewMode>('donut')
   const total = data.reduce((sum, d) => sum + d.value, 0)
   const maxValue = Math.max(...data.map((d) => d.value), 0)
+  const { plural } = KIND_LABEL[kind]
+
+  // Formato do gráfico à esquerda, logo acima do gráfico; Despesas/Receitas
+  // à direita — decisão do Marco (18/09).
+  const toolbar = (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <Segmented
+        label="Formato do gráfico"
+        options={[
+          ['donut', 'Pizza'],
+          ['bars', 'Barras'],
+          ['segmented', 'Segmentada'],
+        ] as const}
+        value={view}
+        onChange={setView}
+      />
+      {onKindChange && (
+        <Segmented
+          label="Tipo de lançamento"
+          options={[
+            ['expense', KIND_LABEL.expense.toggle],
+            ['income', KIND_LABEL.income.toggle],
+          ] as const}
+          value={kind}
+          onChange={onKindChange}
+        />
+      )}
+    </div>
+  )
 
   if (data.length === 0 || total === 0) {
-    return <p className="text-sm text-muted-foreground">Sem despesas registradas.</p>
+    return (
+      <div className="flex flex-col gap-4">
+        {onKindChange && toolbar}
+        <p className="text-sm text-muted-foreground">Sem {plural} registradas.</p>
+      </div>
+    )
   }
 
   let cumulative = 0
@@ -46,32 +126,11 @@ function CategoryBreakdown({ data }: CategoryBreakdownProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="inline-flex w-fit items-center gap-1 rounded-full border border-border bg-muted p-1">
-        {(
-          [
-            ['donut', 'Pizza'],
-            ['bars', 'Barras'],
-            ['segmented', 'Segmentada'],
-          ] as const
-        ).map(([mode, label]) => (
-          <button
-            key={mode}
-            type="button"
-            aria-pressed={view === mode}
-            onClick={() => setView(mode)}
-            className={cn(
-              'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-              view === mode ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {toolbar}
 
       {view === 'donut' && (
         <div className="flex items-center gap-5">
-          <svg viewBox="0 0 120 120" width="110" height="110" role="img" aria-label="Donut de despesas por categoria">
+          <svg viewBox="0 0 120 120" width="110" height="110" role="img" aria-label={`Donut de ${plural} por categoria`}>
             <circle cx="60" cy="60" r={RADIUS} fill="none" stroke="var(--border)" strokeWidth="14" />
             {slices.map((s) => (
               <circle

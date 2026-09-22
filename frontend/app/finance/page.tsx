@@ -7,10 +7,10 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { MonthPicker } from '@/components/ui/month-picker'
 import { MoneyValue } from '@/components/ui/money-value'
 import { StatCard } from './_components/StatCard'
-import { CategoryBreakdown, type CategoryDatum } from './_components/CategoryBreakdown'
+import { CategoryBreakdown, type BreakdownKind, type CategoryDatum } from './_components/CategoryBreakdown'
 import { DailyHeatmap, type HeatmapTransaction, type PlannedOutflow } from './_components/DailyHeatmap'
 import { effectiveStatus, type ScheduledItem } from './agendadas/_components/types'
-import { categoryColorByRank } from '@/lib/category-colors'
+import { categoryColorByRank, incomeColorByRank } from '@/lib/category-colors'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -47,6 +47,7 @@ export default function FinanceDashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [month, setMonth] = useState(() => new Date())
   const [expanded, setExpanded] = useState(false)
+  const [breakdownKind, setBreakdownKind] = useState<BreakdownKind>('expense')
 
   useEffect(() => {
     let cancelled = false
@@ -127,17 +128,19 @@ export default function FinanceDashboardPage() {
       transactionsByDay.set(key, [...(transactionsByDay.get(key) ?? []), entry])
     }
 
-    const categoryTotals = new Map<number, number>()
-    for (const t of expenseTx) {
-      categoryTotals.set(t.category_id, (categoryTotals.get(t.category_id) ?? 0) + t.amount)
+    function byCategory(list: Transaction[], colorByRank: (rank: number) => string): CategoryDatum[] {
+      const totals = new Map<number, number>()
+      for (const t of list) totals.set(t.category_id, (totals.get(t.category_id) ?? 0) + t.amount)
+      return [...totals.entries()]
+        .map(([catId, value]) => {
+          const cat = categories.find((c) => c.id === catId)
+          return { name: cat?.name ?? 'Outros', value }
+        })
+        .sort((a, b) => b.value - a.value)
+        .map((d, rank) => ({ ...d, color: colorByRank(rank) }))
     }
-    const categoryData: CategoryDatum[] = [...categoryTotals.entries()]
-      .map(([catId, value]) => {
-        const cat = categories.find((c) => c.id === catId)
-        return { name: cat?.name ?? 'Outros', value }
-      })
-      .sort((a, b) => b.value - a.value)
-      .map((d, rank) => ({ ...d, color: categoryColorByRank(rank) }))
+    const categoryData = byCategory(expenseTx, categoryColorByRank)
+    const incomeCategoryData = byCategory(incomeTx, incomeColorByRank)
 
     const topCategory = categoryData[0]
     const biggestExpense = expenseTx.reduce((max, t) => (t.amount > (max?.amount ?? 0) ? t : max), null as Transaction | null)
@@ -156,6 +159,7 @@ export default function FinanceDashboardPage() {
       resultPoints,
       transactionsByDay,
       categoryData,
+      incomeCategoryData,
       topCategory,
       biggestExpense,
       biggestIncome,
@@ -297,16 +301,20 @@ export default function FinanceDashboardPage() {
           <CardHeader>
             <div className="flex items-start justify-between gap-2">
               <div>
-                <CardTitle>Onde o dinheiro saiu</CardTitle>
-                <CardDescription>Despesas por categoria</CardDescription>
+                <CardTitle>{breakdownKind === 'expense' ? 'Onde o dinheiro saiu' : 'De onde o dinheiro veio'}</CardTitle>
+                <CardDescription>{breakdownKind === 'expense' ? 'Despesas' : 'Receitas'} por categoria</CardDescription>
               </div>
-              <Link href="/finance/relatorios" className="shrink-0 text-xs font-medium text-muted-foreground hover:text-foreground">
-                Ver despesas ›
+              <Link href="/finance/transactions" className="shrink-0 text-xs font-medium text-muted-foreground hover:text-foreground">
+                Ver transações ›
               </Link>
             </div>
           </CardHeader>
           <CardContent>
-            <CategoryBreakdown data={computed.categoryData} />
+            <CategoryBreakdown
+              data={breakdownKind === 'expense' ? computed.categoryData : computed.incomeCategoryData}
+              kind={breakdownKind}
+              onKindChange={setBreakdownKind}
+            />
           </CardContent>
         </Card>
       </div>

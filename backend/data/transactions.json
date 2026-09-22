@@ -4,7 +4,7 @@
     "user_id": 1,
     "category_id": 1,
     "type": "expense",
-    "amount": 45.50,
+    "amount": 45.5,
     "description": "Supermercado - compras da semana",
     "transaction_date": "2026-09-10T14:30:00Z",
     "created_at": "2026-09-10T14:30:00Z"
@@ -14,7 +14,7 @@
     "user_id": 2,
     "category_id": 2,
     "type": "expense",
-    "amount": 120.00,
+    "amount": 120.0,
     "description": "Uber para trabalho",
     "transaction_date": "2026-09-09T08:15:00Z",
     "created_at": "2026-09-09T08:15:00Z"
@@ -24,7 +24,7 @@
     "user_id": 1,
     "category_id": 5,
     "type": "expense",
-    "amount": 1500.00,
+    "amount": 1500.0,
     "description": "Aluguel setembro",
     "transaction_date": "2026-09-01T00:00:00Z",
     "created_at": "2026-09-01T00:00:00Z"
@@ -32,9 +32,9 @@
   {
     "id": 4,
     "user_id": 1,
-    "category_id": 6,
+    "category_id": 15,
     "type": "income",
-    "amount": 3500.00,
+    "amount": 3500.0,
     "description": "Salário mês de setembro",
     "transaction_date": "2026-09-05T10:00:00Z",
     "created_at": "2026-09-05T10:00:00Z"
@@ -44,9 +44,19 @@
     "user_id": 2,
     "category_id": 4,
     "type": "expense",
-    "amount": 85.00,
+    "amount": 85.0,
     "description": "Cinema + pipoca",
     "transaction_date": "2026-09-08T19:30:00Z",
     "created_at": "2026-09-08T19:30:00Z"
+  },
+  {
+    "id": 6,
+    "user_id": 1,
+    "category_id": 16,
+    "type": "income",
+    "amount": 2800.0,
+    "description": "Nota fiscal — projeto de consultoria",
+    "transaction_date": "2026-09-12T00:00:00Z",
+    "created_at": "2026-09-12T00:00:00Z"
   }
 ]
