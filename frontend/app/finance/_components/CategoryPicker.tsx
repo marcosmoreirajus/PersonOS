@@ -1,7 +1,5 @@
 'use client'
 
-import { Check } from 'lucide-react'
-
 import {
   Combobox,
   ComboboxContent,
@@ -10,7 +8,6 @@ import {
   ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
-  ComboboxValue,
 } from '@/components/motion/combobox'
 import {
   MultiSelect,
@@ -23,6 +20,7 @@ import {
   MultiSelectValue,
 } from '@/components/motion/multi-select'
 import { categoryIcon } from '@/lib/category-icons'
+import { cn } from '@/lib/utils'
 
 export type PickerCategory = {
   id: number
@@ -34,11 +32,11 @@ export type PickerCategory = {
 function CategoryLabel({ category }: { category: PickerCategory }) {
   const Icon = categoryIcon(category.icon)
   return (
-    <span className="flex items-center gap-2">
+    <span className="flex min-w-0 items-center gap-2">
       <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted">
         <Icon className="size-3 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
       </span>
-      {category.name}
+      <span className="truncate">{category.name}</span>
     </span>
   )
 }
@@ -46,35 +44,35 @@ function CategoryLabel({ category }: { category: PickerCategory }) {
 /**
  * Seletor de categoria com busca, para formulário — uma categoria só.
  *
- * Com 17 categorias (e mais quando forem customizáveis), o `<select>` nativo
- * obriga a percorrer a lista inteira; aqui se digita "ali" e chega em
- * Alimentação. Não existe opção "Sem categoria": o nulo só nasce de
- * importação, nunca de escolha do usuário.
+ * O campo **é** a busca: `ComboboxInput` vive dentro do trigger, mostrando o
+ * rótulo selecionado quando fechado e o que se digita quando aberto. Foi
+ * assim que o componente foi desenhado; montá-lo com um campo de busca
+ * separado dentro do painel duplica a área de digitação e faz o trigger
+ * parecer um `select` comum (era o estado anterior desta tela).
+ *
+ * Não existe opção "Sem categoria": o nulo só nasce de importação.
  */
 export function CategoryPicker({
   categories,
   value,
   onChange,
-  placeholder = 'Escolha uma categoria',
+  placeholder = 'Buscar ou escolher categoria...',
   id,
+  className,
 }: {
   categories: PickerCategory[]
   value: string
   onChange: (value: string) => void
   placeholder?: string
   id?: string
+  className?: string
 }) {
-  const selected = categories.find((c) => String(c.id) === value)
-
   return (
     <Combobox value={value} onValueChange={onChange}>
-      <ComboboxTrigger className="w-full" >
-        <ComboboxValue placeholder={placeholder}>
-          {selected ? <CategoryLabel category={selected} /> : null}
-        </ComboboxValue>
+      <ComboboxTrigger className={cn('min-w-0', className)}>
+        <ComboboxInput id={id} placeholder={placeholder} aria-label="Categoria" />
       </ComboboxTrigger>
       <ComboboxContent>
-        <ComboboxInput placeholder="Buscar categoria..." ref={undefined} id={id} />
         <ComboboxList ariaLabel="Categorias">
           {categories.map((c) => (
             <ComboboxItem key={c.id} value={String(c.id)} textValue={c.name} keywords={[c.name]}>
@@ -89,36 +87,40 @@ export function CategoryPicker({
 }
 
 /**
- * Seletor de categorias para filtro — várias ao mesmo tempo, com token
- * removível por categoria escolhida.
+ * Seletor de categorias para filtro — várias ao mesmo tempo.
+ *
+ * O trigger acumula os tokens das escolhidas e mantém o campo de busca ao
+ * lado, então filtrar e escolher acontecem no mesmo lugar. A largura é
+ * limitada: como filtro ele divide a barra com busca e tipo, e esticar até o
+ * fim da linha (estado anterior) fazia ele parecer o conteúdo principal da
+ * tela em vez de um controle.
  */
 export function CategoryMultiPicker({
   categories,
   value,
   onChange,
   placeholder = 'Todas as categorias',
+  className,
 }: {
   categories: PickerCategory[]
   value: string[]
   onChange: (value: string[]) => void
   placeholder?: string
+  className?: string
 }) {
   return (
     <MultiSelect value={value} onValueChange={onChange}>
-      <MultiSelectTrigger className="min-w-[220px]">
+      <MultiSelectTrigger
+        className={cn('w-full min-w-0 sm:w-[clamp(15rem,28vw,22rem)]', className)}
+      >
         <MultiSelectValue placeholder={placeholder} />
+        <MultiSelectInput placeholder={value.length ? '' : 'Buscar...'} aria-label="Buscar categoria" />
       </MultiSelectTrigger>
       <MultiSelectContent>
-        <MultiSelectInput placeholder="Buscar categoria..." />
         <MultiSelectList ariaLabel="Categorias">
           {categories.map((c) => (
             <MultiSelectItem key={c.id} value={String(c.id)} textValue={c.name} keywords={[c.name]}>
-              <span className="flex w-full items-center justify-between gap-2">
-                <CategoryLabel category={c} />
-                {value.includes(String(c.id)) && (
-                  <Check className="size-3.5 text-muted-foreground" strokeWidth={2} aria-hidden="true" />
-                )}
-              </span>
+              <CategoryLabel category={c} />
             </MultiSelectItem>
           ))}
           <MultiSelectEmpty>Nenhuma categoria encontrada.</MultiSelectEmpty>

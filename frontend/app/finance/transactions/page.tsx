@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MoneyValue } from '@/components/ui/money-value'
 import { ActionsMenu } from '@/components/ui/actions-menu'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CategoryMultiPicker } from '../_components/CategoryPicker'
 import { Table, type TableColumn } from '@/components/motion/table'
 import { MorphingSearch, type MorphingSearchItem } from '@/components/motion/morphing-search'
@@ -51,6 +50,12 @@ function formatDate(iso: string) {
 }
 
 type TipoFiltro = 'all' | 'income' | 'expense'
+
+const TIPOS: { value: TipoFiltro; label: string }[] = [
+  { value: 'all', label: 'Todos' },
+  { value: 'income', label: 'Entradas' },
+  { value: 'expense', label: 'Saídas' },
+]
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -264,7 +269,7 @@ export default function TransactionsPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <MorphingSearch
           items={searchItems}
           placeholder="Buscar por descrição..."
@@ -272,16 +277,27 @@ export default function TransactionsPage() {
           emptyMessage="Nenhuma transação encontrada."
         />
 
-        <Select value={tipo} onValueChange={(v) => setTipo(v as TipoFiltro)}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Tipo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os tipos</SelectItem>
-            <SelectItem value="income">Entradas</SelectItem>
-            <SelectItem value="expense">Saídas</SelectItem>
-          </SelectContent>
-        </Select>
+        <div
+          role="group"
+          aria-label="Tipo de lançamento"
+          className="flex shrink-0 rounded-xl bg-muted p-1"
+        >
+          {TIPOS.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => setTipo(t.value)}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-sm transition-colors',
+                tipo === t.value
+                  ? 'bg-background font-medium text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
         <CategoryMultiPicker categories={categories} value={categorias} onChange={setCategorias} />
 
