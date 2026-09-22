@@ -2,103 +2,103 @@
   {
     "id": 1,
     "name": "Alimentação",
-    "icon": "🍔",
+    "icon": "utensils",
     "color": "#dd7635"
   },
   {
     "id": 2,
     "name": "Transporte",
-    "icon": "🚗",
+    "icon": "car",
     "color": "#5b7c99"
   },
   {
     "id": 3,
     "name": "Saúde",
-    "icon": "🏥",
+    "icon": "heart-pulse",
     "color": "#a8674f"
   },
   {
     "id": 4,
     "name": "Lazer",
-    "icon": "🎬",
+    "icon": "clapperboard",
     "color": "#7c8c63"
   },
   {
     "id": 5,
     "name": "Moradia",
-    "icon": "🏠",
+    "icon": "house",
     "color": "#a8a29e"
   },
   {
     "id": 6,
     "name": "Outros",
-    "icon": "📌",
+    "icon": "shapes",
     "color": "#95A5A6"
   },
   {
     "id": 7,
     "name": "Impostos e taxas",
-    "icon": "🧾",
+    "icon": "landmark",
     "color": "#a8a29e"
   },
   {
     "id": 8,
     "name": "Contas da casa",
-    "icon": "💡",
+    "icon": "plug",
     "color": "#a8a29e"
   },
   {
     "id": 9,
     "name": "Assinaturas",
-    "icon": "📺",
+    "icon": "repeat",
     "color": "#a8a29e"
   },
   {
     "id": 10,
     "name": "Educação",
-    "icon": "📚",
+    "icon": "graduation-cap",
     "color": "#a8a29e"
   },
   {
     "id": 11,
     "name": "Compras",
-    "icon": "🛍️",
+    "icon": "shopping-bag",
     "color": "#a8a29e"
   },
   {
     "id": 12,
     "name": "Cuidados pessoais",
-    "icon": "💇",
+    "icon": "scissors",
     "color": "#a8a29e"
   },
   {
     "id": 13,
     "name": "Pets",
-    "icon": "🐾",
+    "icon": "paw-print",
     "color": "#a8a29e"
   },
   {
     "id": 14,
     "name": "Viagens",
-    "icon": "✈️",
+    "icon": "plane",
     "color": "#a8a29e"
   },
   {
     "id": 15,
     "name": "Salário",
-    "icon": "💼",
+    "icon": "wallet",
     "color": "#a8a29e"
   },
   {
     "id": 16,
     "name": "Renda PJ",
-    "icon": "🧑‍💻",
+    "icon": "briefcase",
     "color": "#a8a29e"
   },
   {
     "id": 17,
     "name": "Fatura do cartão",
-    "icon": "💳",
+    "icon": "credit-card",
     "color": "#a8a29e"
   }
 ]

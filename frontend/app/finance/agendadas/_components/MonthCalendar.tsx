@@ -80,7 +80,7 @@ function MonthCalendar({ items, month }: MonthCalendarProps) {
           const cell = (
             <div
               className={cn(
-                'flex h-[72px] w-full flex-col justify-between rounded-tl-card-cut border border-border bg-canvas p-1.5 text-left transition-shadow',
+                'flex h-[72px] w-full flex-col justify-between rounded-xl border border-border bg-canvas p-1.5 text-left transition-shadow',
                 isToday && 'border-foreground',
                 !hasItems && 'opacity-50',
                 hasItems && 'hover:shadow-md',

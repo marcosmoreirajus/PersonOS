@@ -1,11 +1,17 @@
-import { type ClassValue, clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-
 /**
- * Merge condicional de classes Tailwind (padrão shadcn/ui).
- * clsx resolve as condicionais, tailwind-merge remove conflitos
- * (ex.: cn('px-2', 'px-4') -> 'px-4').
+ * Merge condicional de classes Tailwind.
+ *
+ * Reexporta o pacote `cn` (substituto direto de clsx + tailwind-merge, sem
+ * dependencias) em vez de ter implementacao propria: os componentes gerados
+ * pelo shadcn importam `cn` direto desse pacote. Com uma implementacao
+ * propria aqui, o projeto teria **duas** funcoes de merge — a dos componentes
+ * gerados e a dos feitos a mao, que importam de `@/lib/utils`. Duas
+ * implementacoes do mesmo contrato e o tipo de divergencia silenciosa que ja
+ * custou caro no backend deste projeto.
+ *
+ * ATENCAO: todo bloco do registry `@beui` declara `lib/utils.ts` entre os
+ * arquivos dele e **sobrescreve este arquivo** na instalacao (aconteceu 3x em
+ * 22/09: morphing-search, signup-form e table). Depois de qualquer
+ * `shadcn add @beui/...`, conferir se este arquivo voltou ao reexport.
  */
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+export { cn } from 'cn'

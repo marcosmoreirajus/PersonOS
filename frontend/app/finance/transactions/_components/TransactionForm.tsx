@@ -112,7 +112,9 @@ export default function TransactionForm({ categories, onCreated }: TransactionFo
             >
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.icon} {c.name}
+                  {/* Sem icone aqui: <option> so aceita texto. O seletor
+                      nativo sai na troca pelo combobox do shadcn. */}
+                  {c.name}
                 </option>
               ))}
             </select>

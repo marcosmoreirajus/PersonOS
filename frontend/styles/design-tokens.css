@@ -16,7 +16,6 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-canvas: var(--canvas);
-  --radius-card-cut: var(--radius-card-cut);
   --color-amber-accent: var(--amber-accent);
   --color-sage: var(--sage);
   --color-dusty-blue: var(--dusty-blue);
@@ -97,13 +96,16 @@
   /* Radius alto no estilo WikiOS — bordas bem arredondadas em toda a UI. */
   --radius: 0.75rem;
 
-  /* Canvas quente ("papel") + raio assimétrico dos cards de dado — validados
-     no preview "Papel & Âmbar" (2026-09-16). Cards continuam brancos
-     (--card, acima, sem mudança); só o fundo da página fica quente. */
-  --canvas: #f5f1e7;
-  --radius-card-cut: 6px;
+  /* Canvas neutro — 2026-09-22. ~~Quente ("papel", #f5f1e7)~~ saiu: o fundo
+     amarelado era a assinatura visual que o Marco quer evitar. Fica um
+     neutro quase branco, um passo abaixo do card (que é branco puro), pra o
+     card continuar se destacando do fundo sem precisar de sombra forte.
+     O raio assimétrico dos cards (--radius-card-cut) foi removido na mesma
+     decisão: todos os cantos iguais, como na referência. */
+  --canvas: oklch(0.985 0 0);
 
-  /* Acento âmbar — decisão de 2026-09-14: só em linha de gráfico em
+  /* Acento âmbar — MANTIDO na revisão de 2026-09-22: o que incomodava
+     era o fundo, não o acento. Decisão de 2026-09-14: só em linha de gráfico em
      destaque e badge de categoria tintada, NUNCA em CTA/botão (esses
      continuam pretos sólidos, sem mudança). Distinto do --accent do
      shadcn (usado pra hover states), não reutilizar esse token pra isso. */
@@ -159,8 +161,7 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 
-  --canvas: #201d17;
-  --radius-card-cut: 6px;
+  --canvas: oklch(0.145 0 0);
   --amber-accent: #ec8a52;
   --positive: #4cba7f;
   --sage: #96a67d;

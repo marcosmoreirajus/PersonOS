@@ -153,7 +153,7 @@ function DailyHeatmap({ transactionsByDay, plannedByDay, month }: DailyHeatmapPr
           const cell = (
             <div
               className={cn(
-                'flex h-12 w-full flex-col justify-between overflow-hidden rounded-tl-card-cut border border-border px-1.5 py-1 text-left transition-shadow',
+                'flex h-12 w-full flex-col justify-between overflow-hidden rounded-xl border border-border px-1.5 py-1 text-left transition-shadow',
                 isToday && 'border-foreground',
                 hasPlanned && !hasSpent && 'border-dashed border-foreground/40',
                 hasOverdue && 'border-destructive/60',

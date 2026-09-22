@@ -7,6 +7,7 @@ import { CardGrid } from '@/components/ui/card-grid'
 import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle'
 import { MoneyValue } from '@/components/ui/money-value'
 import TransactionForm, { type Category } from './_components/TransactionForm'
+import { categoryIcon } from '@/lib/category-icons'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -82,7 +83,16 @@ export default function TransactionsPage() {
                 <Card key={t.id}>
                   <CardContent className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <span className="text-lg">{category?.icon ?? '📌'}</span>
+                      {(() => {
+                        // Icone monocromatico dentro de um circulo neutro: a cor
+                        // da categoria, quando existir, entra por fora.
+                        const Icon = categoryIcon(category?.icon)
+                        return (
+                          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                            <Icon className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                          </span>
+                        )
+                      })()}
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-foreground">
                           {t.description || category?.name || 'Sem descrição'}
