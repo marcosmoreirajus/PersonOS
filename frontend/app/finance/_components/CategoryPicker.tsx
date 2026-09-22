@@ -67,8 +67,8 @@ export function CategoryPicker({
   className?: string
 }) {
   return (
-    <Combobox value={value} onValueChange={onChange}>
-      <ComboboxTrigger className={cn('min-w-0', className)}>
+    <Combobox value={value} onValueChange={onChange} className={cn('w-full', className)}>
+      <ComboboxTrigger className="min-w-0">
         <ComboboxInput id={id} placeholder={placeholder} aria-label="Categoria" />
       </ComboboxTrigger>
       <ComboboxContent>
@@ -94,9 +94,9 @@ export function CategoryPicker({
  * possível pelos chips de filtro abaixo da barra, que é onde o usuário já
  * olha para saber o que está filtrando.
  *
- * A largura é limitada: como filtro ele divide a barra com busca e tipo, e
- * esticar até o fim da linha fazia ele parecer o conteúdo principal da tela
- * em vez de um controle.
+ * A largura vai no **root**, não no trigger: o root de `MultiSelect` é
+ * `relative w-full`, então limitar só o trigger deixava o root ocupando a
+ * linha inteira e empurrando os controles seguintes para baixo.
  */
 export function CategoryMultiPicker({
   categories,
@@ -112,8 +112,8 @@ export function CategoryMultiPicker({
   className?: string
 }) {
   return (
-    <MultiSelect value={value} onValueChange={onChange}>
-      <MultiSelectTrigger className={cn('h-10 min-h-10 w-full min-w-0 sm:w-56', className)}>
+    <MultiSelect value={value} onValueChange={onChange} className={cn('w-full sm:w-56', className)}>
+      <MultiSelectTrigger className="h-10 min-h-10 w-full min-w-0">
         {/* Campo único: digitar filtra, e o próprio placeholder resume o que
             está selecionado — o trigger não muda de altura. */}
         <MultiSelectInput

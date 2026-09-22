@@ -310,7 +310,12 @@ export default function TransactionsPage() {
           ))}
         </div>
 
-        <CategoryMultiPicker categories={categories} value={categorias} onChange={setCategorias} />
+        <CategoryMultiPicker
+          categories={categories}
+          value={categorias}
+          onChange={setCategorias}
+          className="shrink-0"
+        />
 
         <span className="shrink-0 whitespace-nowrap text-sm text-muted-foreground sm:ml-auto">
           {filtradas.length} {filtradas.length === 1 ? 'transação' : 'transações'}

@@ -90,7 +90,7 @@ export function BulkActionsBar({
 
   return (
     <div className="sticky bottom-4 z-30 flex flex-col gap-2 rounded-xl border border-border bg-background p-2 shadow-lg">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
         <span className="flex shrink-0 items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm font-medium text-foreground">
           {ids.length} {ids.length === 1 ? 'selecionada' : 'selecionadas'}
           <button onClick={onClear} aria-label="Limpar seleção" className="text-muted-foreground hover:text-foreground">
@@ -105,7 +105,7 @@ export function BulkActionsBar({
           value={pendente.category_id != null ? String(pendente.category_id) : ''}
           onChange={(v) => setPendente((a) => ({ ...a, category_id: v ? Number(v) : undefined }))}
           placeholder="Definir categoria..."
-          className="w-56"
+          className="w-56 shrink-0"
         />
 
         {/* Marcar e desmarcar precisam ser escolhas distintas: com um botão só,
