@@ -104,6 +104,18 @@ class PostponePayload(BaseModel):
     scope: Scope = Scope.ONLY_THIS
 
 
+class ReconcilePayload(BaseModel):
+    """
+    Resolve uma linha em espera.
+
+    `merge` funde no registro existente (o candidato sugerido, ou `with_id` se o
+    usuário identificou outro); `not_duplicate` a confirma como transação nova.
+    """
+
+    action: Literal["merge", "not_duplicate"]
+    with_id: int | None = None
+
+
 class HistoryEvent(BaseModel):
     at: datetime
     event: str
@@ -130,6 +142,8 @@ class TransactionResponse(BaseModel):
     source: TransactionSource
     external_id: str | None
     import_hash: str | None
+    bank_description: str | None = None
+    reconcile_candidate_id: int | None = None
     history: list[HistoryEvent] = Field(default_factory=list)
     created_at: datetime
 

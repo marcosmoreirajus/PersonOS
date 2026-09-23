@@ -165,6 +165,26 @@ Se editar e excluir não tocassem o molde, a extensão do mês seguinte regenera
 5. **Classificação** das linhas confirmadas: memória determinística primeiro; o que sobrar vai para a IA **em lote**; o que a IA não souber com certeza fica `category_id = null`.
 6. **Resumo**: importadas, já existentes, aguardando conciliação, e classificadas **separando memória × IA** — é esse número que comprova a queda de dependência de IA mês a mês.
 
+### Decisões de implementação (Fatia 3, 23/09)
+
+O fluxo acima deixava pontos em aberto. Como foram resolvidos, e por quê:
+
+1. **O hash leva um contador de ocorrência.** `sha1(descrição + valor + tipo + data + conta + "#n")`, onde `n` é a ordem da mesma base dentro do arquivo. Dois cafés de R$ 8 no mesmo dia geram a mesma base; sem o contador a segunda linha seria descartada como "já importada". Reimportar continua idempotente.
+2. **FITID é a identidade quando existe.** O banco dizendo que duas linhas têm FITIDs diferentes é a palavra final: o hash não pode contradizê-lo. O hash só vale contra registros que vieram **sem** FITID (CSV, digitado). `external_id` é `"<ACCTID>:<FITID>"`.
+3. **Candidato a duplicata é quem não tem FITID** — digitado à mão, gerado por série ou importado de CSV. Compra igual vinda do banco com outro FITID não é candidata. Isso inclui a ocorrência **prevista** de uma série: é assim que "previsto vira realizado" acontece.
+4. **Palavra genérica não casa** (`compra`, `cartão`, `pix`, `pagamento`, `boleto`…). Casamento por palavra-chave exige um token de 4+ letras que não esteja nessa lista; contenção de uma descrição na outra só vale se a menor tiver algum token assim.
+5. **Cada candidato é reivindicado por uma linha só**, inclusive por linhas que já estão esperando de importações anteriores.
+6. **Mesmo extrato em dois formatos vai para a fila, não duplica.** CSV não tem conta, então o hash diverge do OFX. Tirar a conta do hash resolveria, mas faria duas contas com a mesma linha (uma transferência aparece nas duas pontas) perderem uma em silêncio — pior. A linha OFX vira suspeita do registro vindo do CSV; ao fundir, ele absorve o FITID e **mantém o hash antigo**, e a partir daí os dois formatos são reconhecidos.
+7. **Ao fundir, a data do usuário prevalece** se o registro já estava efetivado (é edição dele); se estava previsto, herda a data do extrato.
+8. **Fundir com valor diferente** (escolha manual — juros, tarifa) mantém o valor do usuário e grava `amount_bank` no evento, em vez de deixar a diferença sumir.
+9. **Prévia e commit recalculam a partir do arquivo.** O commit não aceita linhas do cliente: o que entra na base não pode depender de um payload adulterável.
+10. **Linha inválida é reportada, nunca engolida** — com número da linha e motivo em português. As válidas entram.
+11. **Erro de falso negativo custa mais que o de falso positivo:** suspeitar demais vira uma linha a conferir; suspeitar de menos duplica dinheiro em silêncio.
+
+**Layout do CSV/XLSX da aplicação:** colunas `data`, `descricao`, `valor` (aliases aceitos: `historico`, `memo`, `amount`…) e `id` opcional. Data `DD/MM/AAAA` ou `AAAA-MM-DD`; valor **assinado** (negativo = saída), com vírgula ou ponto decimal; separador `;` ou `,` detectado. `.xls` antigo é recusado com orientação para salvar como `.xlsx`.
+
+**Ainda sem decisão de modelo:** OFX de **cartão de crédito** é lido como qualquer outro extrato, mas a relação entre a fatura paga na conta corrente e as compras no cartão (dupla contagem) segue em aberto.
+
 ### Conciliar
 
 Ao confirmar que a linha duplica um registro existente, **fundir**: o registro que permanece mantém `id`, `category_id` e tudo que foi editado, mas **absorve** `external_id`, `import_hash` e a descrição do banco; a linha em espera é removida e o evento `reconciled_with` entra no histórico.

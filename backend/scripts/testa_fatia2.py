@@ -105,14 +105,31 @@ def main():
     todas = DataService.load_json("transactions")
     ocorrencias = [x for x in todas if x.get("series_id") == r["series_id"]]
     checa("recorrência sem fim gera 12", len(ocorrencias) == 12, "gerou %d" % len(ocorrencias))
+    # Regressão: o ajuste de sobra do parcelamento chegou a rodar em recorrência
+    # e gerou a primeira ocorrência em -399,00. Contar registros não pegava.
+    checa("recorrência: todas as ocorrências têm o mesmo valor (39,90)",
+          {x["amount"] for x in ocorrencias} == {39.9}, str(sorted({x["amount"] for x in ocorrencias})))
 
     # ------------------------------------------------ extensão idempotente
-    # A primeira extensão materializa as séries que vieram da migração e que a
-    # Fatia 1 deliberadamente não gerou — então ela precisa criar registros. A
-    # idempotência se mede da segunda em diante.
+    # O teste monta a própria situação em vez de depender do estado do dado
+    # real (que já foi estendido): uma série "migrada" é uma série gravada sem
+    # nenhuma ocorrência, começando no passado.
+    series = DataService.load_json("series")
+    migrada = {
+        "id": max(x["id"] for x in series) + 1, "user_id": 1, "kind": "recurring",
+        "description": "Serie migrada", "type": "expense", "category_id": 8, "account_id": None,
+        "amount": 100.0, "frequency": "monthly", "anchor_day": 5,
+        "start_date": (date(hoje.year, hoje.month, 5).replace(year=hoje.year - 1)).isoformat(),
+        "total_count": None, "end_date": None, "ended_at": None,
+    }
+    series.append(migrada)
+    DataService.save_json("series", series)
+
     primeira = DataService.estender_series(1)
-    checa("primeira extensão materializa as séries migradas", primeira["geradas"] > 0,
+    checa("primeira extensão materializa a série migrada", primeira["geradas"] > 0,
           "%d geradas, %d atrasadas" % (primeira["geradas"], primeira["atrasadas"]))
+    checa("ausência maior que a janela preenche o passado como atrasadas",
+          primeira["atrasadas"] >= 12, "%d atrasadas" % primeira["atrasadas"])
 
     antes = len(DataService.load_json("transactions"))
     segunda = DataService.estender_series(1)

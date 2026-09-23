@@ -1,15 +1,18 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.schemas import (
     BulkAction,
     PostponePayload,
+    ReconcilePayload,
     SeriesExtend,
     SettlePayload,
     TransactionCreate,
     TransactionUpdate,
 )
 from app.services import DataService, BusinessService
+from app.services import import_service as ImportService
+from app.services.import_service import ArquivoInvalido
 
 app = FastAPI(
     title=settings.api_title,
@@ -69,8 +72,15 @@ async def get_transactions():
 
 
 @app.get("/api/transactions/user/{user_id}")
-async def get_user_transactions(user_id: int):
-    return {"data": DataService.get_transactions_by_user(user_id)}
+async def get_user_transactions(user_id: int, ingest_state: str = "confirmed"):
+    """
+    Por padrão só as confirmadas: é o que saldo, relatório e listagem enxergam.
+    `awaiting_reconciliation` devolve a fila de conciliação; `all`, as duas.
+    """
+    todas = DataService.get_transactions_by_user(user_id, include_unconfirmed=True)
+    if ingest_state != "all":
+        todas = [t for t in todas if t.get("ingest_state", "confirmed") == ingest_state]
+    return {"data": todas}
 
 
 @app.post("/api/transactions")
@@ -116,6 +126,58 @@ async def delete_transaction(transaction_id: int, scope: str = "only_this"):
     if removidas == 0:
         return {"error": "Transaction not found"}, 404
     return {"data": {"deleted": removidas}}
+
+
+# Importação de extrato (Fatia 3)
+#
+# Limite de tamanho: um extrato pessoal tem centenas de linhas; acima disso o
+# usuário provavelmente escolheu o arquivo errado, e ler tudo em memória a cada
+# prévia deixa de ser barato.
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
+
+async def _ler_upload(file: UploadFile) -> bytes:
+    conteudo = await file.read()
+    if len(conteudo) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Arquivo grande demais (limite de 5 MB).")
+    if not conteudo:
+        raise HTTPException(status_code=400, detail="O arquivo está vazio.")
+    return conteudo
+
+
+@app.post("/api/import/preview")
+async def import_preview(file: UploadFile = File(...), user_id: int = Form(...)):
+    """Lê e classifica o arquivo SEM gravar nada."""
+    conteudo = await _ler_upload(file)
+    try:
+        return {"data": ImportService.analisar(user_id, file.filename or "", conteudo)}
+    except ArquivoInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/import/commit")
+async def import_commit(file: UploadFile = File(...), user_id: int = Form(...)):
+    """
+    Grava o que a prévia mostrou. Recalcula a partir do arquivo em vez de
+    aceitar linhas do cliente: o que entra na base não pode depender de um
+    payload adulterável.
+    """
+    conteudo = await _ler_upload(file)
+    try:
+        return {"data": ImportService.importar(user_id, file.filename or "", conteudo)}
+    except ArquivoInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/reconcile/{transaction_id}")
+async def reconcile(transaction_id: int, payload: ReconcilePayload):
+    try:
+        resultado = ImportService.conciliar(transaction_id, payload.action, payload.with_id)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"data": resultado}
 
 
 # Dashboard
@@ -194,6 +256,5 @@ async def update_business_section(section: str, request: Request):
 
 
 # Próximas fatias (ver docs/finance/PRD.md):
-# - Fatia 3: POST /api/import/preview e /commit, POST /api/reconcile/{id}
 # - Fatia 4: GET /api/review/user/{user_id}
 # - Autenticação JWT

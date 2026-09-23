@@ -151,7 +151,13 @@ class DataService:
         if series_id is not None:
             criada = DataService.gerar_ocorrencias_da_serie(series_id, transactions)
             if criada:
-                DataService._ajustar_primeira_parcela(series_id, amount)
+                # A sobra de centavos só existe em parcelamento, onde o valor
+                # informado é o TOTAL. Numa recorrência o valor informado é o
+                # da própria ocorrência, e aplicar o ajuste ali "corrigia" a
+                # primeira para `total - soma das outras` (uma recorrência de
+                # 39,90 gerava a primeira ocorrência em -399,00).
+                if series["kind"] == "installment":
+                    DataService._ajustar_primeira_parcela(series_id, amount)
                 return criada[0]
 
         history = [{"at": now, "event": "created", "source": source}]

@@ -17,9 +17,14 @@ export type OverdueTransaction = {
   amount: number
   description: string | null
   category_id: number | null
+  /** Onde o lançamento vive — banco ou cartão. Nulo = ainda não há módulo. */
+  account_id: number | null
   due_date: string
   settled_at: string | null
 }
+
+/** `accountNames[account_id] -> nome amigável` (banco/cartão). Vem do futuro módulo. */
+export type OverdueAccountNames = Record<number, string>
 
 type Categoria = { id: number; name: string; icon: string }
 
