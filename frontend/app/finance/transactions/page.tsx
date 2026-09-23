@@ -14,6 +14,7 @@ import { categoryIcon } from '@/lib/category-icons'
 import { cn } from '@/lib/utils'
 import TransactionDialog, { type Category, type DialogSeed } from './_components/TransactionDialog'
 import DeleteDialog from './_components/DeleteDialog'
+import OverdueAlert from './_components/OverdueAlert'
 import BulkActionsBar from './_components/BulkActionsBar'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -261,6 +262,8 @@ export default function TransactionsPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <OverdueAlert transactions={transactions} categories={categories} onChanged={fetchData} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-foreground">Transações</h1>
         <Button onClick={abrirNovo}>
