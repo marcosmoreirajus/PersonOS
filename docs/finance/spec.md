@@ -109,6 +109,10 @@ Arquivo novo: `backend/data/series.json`. Um mecanismo, dois sabores.
 
 O **total da dívida nunca é gravado** — é sempre `SUM(amount)` das transações da série. Se uma parcela vier com juros, o total simplesmente muda.
 
+**Divisão do total em parcelas.** Na criação, o usuário informa o **total** e o app divide — é assim que a compra acontece ("6.000 em 24x"). O que se guarda é o valor da **parcela**, porque é ela que aparece na fatura e que a importação vai tentar casar.
+
+A parcela é **truncada para baixo** em centavos e a **sobra vai para a primeira**, seguindo a convenção do crédito parcelado no Brasil (cartão, carnê e crediário cobram a diferença na entrada). Duas consequências pretendidas: a soma das parcelas bate **exatamente** com o total informado — obrigatório, já que o total exibido é essa soma — e a primeira parcela é sempre a **maior**, nunca a menor. Arredondar em vez de truncar quebraria a segunda: 100 em 7x daria parcela de 14,29 e primeira de 14,26, a menor de todas.
+
 ### Geração
 
 O critério é **ter fim conhecido**, não o `kind`:

@@ -113,19 +113,23 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
   /**
    * Prévia da divisão.
    *
-   * Quando o total não divide exato, a sobra de centavos vai para a última
-   * parcela — e isso é mostrado, não escondido: o total exibido no app é a
-   * soma das parcelas, então ele precisa bater com o que foi digitado.
+   * Quando o total não divide exato, a sobra vai para a **primeira** parcela —
+   * convenção do crédito parcelado no Brasil, e é mostrada em vez de
+   * escondida: o total exibido no app é a soma das parcelas, então precisa
+   * bater com o que foi digitado.
+   *
+   * A parcela é truncada para baixo (não arredondada) para a sobra ser sempre
+   * positiva e a primeira ficar sempre a maior.
    */
   const previaParcelas = (() => {
     const total = Number(amount.replace(/\./g, '').replace(',', '.'))
     const n = Number(parcelas)
     if (!total || !n || n < 2) return 'Informe o total e o nº de parcelas'
-    const parcela = Math.round((total / n) * 100) / 100
-    const ultima = Math.round((total - parcela * (n - 1)) * 100) / 100
-    return ultima === parcela
+    const parcela = Math.floor((total / n) * 100) / 100
+    const primeira = Math.round((total - parcela * (n - 1)) * 100) / 100
+    return primeira === parcela
       ? `${n}x de ${moeda(parcela)}`
-      : `${n - 1}x de ${moeda(parcela)} + 1x de ${moeda(ultima)}`
+      : `1x de ${moeda(primeira)} + ${n - 1}x de ${moeda(parcela)}`
   })()
 
   async function submit(addAnother: boolean) {

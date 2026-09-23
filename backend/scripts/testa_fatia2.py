@@ -64,8 +64,9 @@ def main():
     soma = round(sum(p["amount"] for p in parcelas), 2)
     checa("soma das parcelas bate com o total informado", soma == 6000.0, "soma %.2f" % soma)
 
-    # Divisão inexata: a sobra vai para a última parcela, senão o total exibido
-    # (que é a soma) deixaria de bater com o que foi digitado.
+    # Divisão inexata: a sobra vai para a PRIMEIRA parcela (convenção do
+    # crédito parcelado no Brasil), senão o total exibido — que é a soma —
+    # deixaria de bater com o que foi digitado.
     q = DataService.create_transaction(
         user_id=1, category_id=11, type="expense", amount=1000.0,
         due_date=hoje.isoformat(), description="Divisao inexata",
@@ -74,6 +75,22 @@ def main():
     tres = [x for x in DataService.load_json("transactions") if x.get("series_id") == q["series_id"]]
     checa("1.000 em 3x soma exatamente 1.000", round(sum(x["amount"] for x in tres), 2) == 1000.0,
           str(sorted(x["amount"] for x in tres)))
+    tres_ord = sorted(tres, key=lambda x: x["due_date"])
+    checa("a primeira parcela é a maior", tres_ord[0]["amount"] > tres_ord[1]["amount"],
+          "1a=%.2f demais=%.2f" % (tres_ord[0]["amount"], tres_ord[1]["amount"]))
+
+    # Arredondar para cima faria a primeira ficar MENOR que as demais; truncar
+    # para baixo mantém a sobra positiva.
+    sete = DataService.create_transaction(
+        user_id=1, category_id=11, type="expense", amount=100.0,
+        due_date=hoje.isoformat(), description="Cem em sete",
+        series={"kind": "installment", "frequency": "monthly", "total_count": 7},
+    )
+    s7 = sorted([x for x in DataService.load_json("transactions") if x.get("series_id") == sete["series_id"]],
+                key=lambda x: x["due_date"])
+    checa("100 em 7x: soma exata e primeira maior",
+          round(sum(x["amount"] for x in s7), 2) == 100.0 and s7[0]["amount"] > s7[1]["amount"],
+          "1a=%.2f demais=%.2f" % (s7[0]["amount"], s7[1]["amount"]))
 
     # ------------------------------------------- recorrência sem fim = 12
     r = DataService.create_transaction(

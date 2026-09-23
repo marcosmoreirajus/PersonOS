@@ -119,11 +119,17 @@ class DataService:
             # Parcelado recebe o TOTAL e guarda o valor da PARCELA: é a parcela
             # que aparece na fatura e que a importação vai tentar casar. O
             # total continua sendo a soma, nunca um campo — a diferença de
-            # centavos da divisão vai para a última parcela, logo abaixo.
+            # centavos da divisão vai para a primeira parcela, logo abaixo.
             valor_parcela = amount
             n = series.get("total_count")
             if series.get("kind") == "installment" and n:
-                valor_parcela = round(amount / n, 2)
+                # Trunca para baixo em vez de arredondar: assim a sobra é
+                # sempre positiva e a primeira parcela fica sempre a MAIOR,
+                # que é a convenção. Arredondando, 100 em 7x daria parcela de
+                # 14,29 e primeira de 14,26 — a menor de todas.
+                import math
+
+                valor_parcela = math.floor(amount / n * 100) / 100
             series_id = DataService.create_series(
                 user_id=user_id,
                 kind=series["kind"],
@@ -145,7 +151,7 @@ class DataService:
         if series_id is not None:
             criada = DataService.gerar_ocorrencias_da_serie(series_id, transactions)
             if criada:
-                DataService._ajustar_ultima_parcela(series_id, amount)
+                DataService._ajustar_primeira_parcela(series_id, amount)
                 return criada[0]
 
         history = [{"at": now, "event": "created", "source": source}]
@@ -318,14 +324,18 @@ class DataService:
 
 
     @staticmethod
-    def _ajustar_ultima_parcela(series_id: int, total: float) -> None:
+    def _ajustar_primeira_parcela(series_id: int, total: float) -> None:
         """
-        Joga a sobra da divisão na última parcela.
+        Joga a sobra da divisão na **primeira** parcela.
 
-        Sem isso, 1.000 em 3x viraria 333,33 x3 = 999,99 e o total exibido
-        (que é a soma) deixaria de bater com o que o usuário digitou. A sobra
-        vai no fim, e não no começo, porque a primeira parcela é a que o
-        usuário confere no extrato logo depois de comprar.
+        Sem o ajuste, 1.000 em 3x viraria 333,33 x3 = 999,99 e o total exibido
+        (que é a soma das parcelas) deixaria de bater com o que o usuário
+        digitou.
+
+        A sobra vai na primeira porque é essa a convenção do crédito
+        parcelado no Brasil — cartão, carnê e crediário cobram a diferença na
+        entrada. Pôr no fim faria o app discordar da fatura justamente na
+        parcela que o usuário confere primeiro, logo depois de comprar.
         """
         transactions = DataService.load_json("transactions")
         parcelas = sorted(
@@ -335,10 +345,10 @@ class DataService:
         if len(parcelas) < 2:
             return
 
-        soma_anteriores = sum(t["amount"] for t in parcelas[:-1])
-        ultima = round(total - soma_anteriores, 2)
-        if ultima != parcelas[-1]["amount"]:
-            parcelas[-1]["amount"] = ultima
+        soma_seguintes = sum(t["amount"] for t in parcelas[1:])
+        primeira = round(total - soma_seguintes, 2)
+        if primeira != parcelas[0]["amount"]:
+            parcelas[0]["amount"] = primeira
             DataService.save_json("transactions", transactions)
 
     # ------------------------------------------------------------------ #
