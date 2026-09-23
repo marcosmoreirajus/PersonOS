@@ -377,8 +377,27 @@ class DataService:
             for a in contas
         )
 
+    LOGO_MAX_CHARS = 300_000
+
     @staticmethod
-    def create_account(user_id: int, name: str, kind: str = "checking") -> Dict[str, Any]:
+    def _logo_valido(logo: str | None) -> str | None:
+        """
+        O logo é guardado como data URL de imagem no próprio JSON (o app não
+        serve arquivos estáticos). O frontend reduz a imagem antes de enviar;
+        aqui só barramos o que não é imagem ou é grande demais.
+        """
+        if not logo:
+            return None
+        if not logo.startswith("data:image/png;base64,") and not logo.startswith("data:image/jpeg;base64,") and not logo.startswith("data:image/webp;base64,"):
+            raise ValueError("O logo precisa ser uma imagem PNG, JPG ou WebP.")
+        if len(logo) > DataService.LOGO_MAX_CHARS:
+            raise ValueError("O logo é grande demais.")
+        return logo
+
+    @staticmethod
+    def create_account(
+        user_id: int, name: str, kind: str = "checking", initial_balance: float = 0, logo: str | None = None
+    ) -> Dict[str, Any]:
         """
         Cria uma conta. O nome é único por usuário (sem diferenciar caixa nem
         espaços repetidos): duas contas "Bradesco" fariam o usuário escolher a
@@ -397,6 +416,10 @@ class DataService:
             "user_id": user_id,
             "name": nome,
             "kind": kind,
+            # Saldo de abertura informado pelo usuário. Só é guardado: ainda não
+            # entra nas somas de saldo das telas.
+            "initial_balance": round(float(initial_balance), 2),
+            "logo": DataService._logo_valido(logo),
             # Identificador que o banco põe no arquivo (ACCTID do OFX). Guardado
             # na primeira importação e usado para avisar quando um arquivo de
             # outra conta é enviado para esta.
@@ -408,7 +431,13 @@ class DataService:
         return nova
 
     @staticmethod
-    def update_account(account_id: int, name: str | None = None, kind: str | None = None) -> Dict[str, Any] | None:
+    def update_account(
+        account_id: int,
+        name: str | None = None,
+        kind: str | None = None,
+        initial_balance: float | None = None,
+        logo: str | None = None,
+    ) -> Dict[str, Any] | None:
         contas = DataService.load_json("accounts")
         conta = next((a for a in contas if a["id"] == account_id), None)
         if conta is None:
@@ -422,6 +451,11 @@ class DataService:
             conta["name"] = nome
         if kind is not None:
             conta["kind"] = kind
+        if initial_balance is not None:
+            conta["initial_balance"] = round(float(initial_balance), 2)
+        if logo is not None:
+            # string vazia remove o logo
+            conta["logo"] = DataService._logo_valido(logo)
         DataService.save_json("accounts", contas)
         return conta
 

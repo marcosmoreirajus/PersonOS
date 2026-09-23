@@ -262,7 +262,7 @@ export default function FinanceDashboardPage() {
             <ArrowLeftRight className="size-4" />
             Transferência
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" render={<Link href="/finance/importar" />} nativeButton={false}>
             <FileUp className="size-4" />
             Importar
           </Button>

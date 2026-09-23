@@ -321,6 +321,23 @@ def main():
     conta_btg = DataService.create_account(1, "BTG", "checking")
     renomeada = DataService.update_account(conta_btg["id"], name="BTG Pactual")
     checa("renomear conta", renomeada["name"] == "BTG Pactual")
+    LOGO_OK = "data:image/png;base64,iVBORw0KGgo="
+    c_extra = DataService.create_account(1, "Poupança Teste", "savings", 1234.56, LOGO_OK)
+    checa("conta guarda tipo poupança, saldo e logo",
+          c_extra["kind"] == "savings" and c_extra["initial_balance"] == 1234.56 and c_extra["logo"] == LOGO_OK, str(c_extra)[:90])
+    try:
+        DataService.create_account(1, "Logo ruim", "checking", 0, "data:text/html;base64,AAAA")
+        checa("logo que não é imagem", False)
+    except ValueError:
+        checa("logo que não é imagem é recusado", True)
+    try:
+        DataService.create_account(1, "Logo grande", "checking", 0, "data:image/png;base64," + "A" * 400000)
+        checa("logo grande", False)
+    except ValueError:
+        checa("logo grande demais é recusado", True)
+    sem_logo = DataService.update_account(c_extra["id"], logo="")
+    checa("string vazia remove o logo e o saldo é mantido", sem_logo["logo"] is None and sem_logo["initial_balance"] == 1234.56)
+    checa("atualizar só o saldo", DataService.update_account(c_extra["id"], initial_balance=10)["initial_balance"] == 10.0)
     try:
         DataService.update_account(conta_btg["id"], name="Bradesco")
         checa("renomear para nome em uso é recusado", False)

@@ -7,6 +7,8 @@ class AccountCreate(BaseModel):
     user_id: int
     name: str
     kind: AccountKind = AccountKind.CHECKING
+    initial_balance: float = 0
+    logo: str | None = None
 
 
 class AccountUpdate(BaseModel):
@@ -14,6 +16,8 @@ class AccountUpdate(BaseModel):
 
     name: str | None = None
     kind: AccountKind | None = None
+    initial_balance: float | None = None
+    logo: str | None = None
 
 
 class AccountResponse(BaseModel):
@@ -21,6 +25,8 @@ class AccountResponse(BaseModel):
     user_id: int
     name: str
     kind: AccountKind
+    initial_balance: float = 0
+    logo: str | None = None
 
     class Config:
         from_attributes = True

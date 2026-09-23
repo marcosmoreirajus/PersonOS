@@ -144,7 +144,9 @@ async def get_accounts(user_id: int):
 @app.post("/api/accounts")
 async def create_account(payload: AccountCreate):
     try:
-        return {"data": DataService.create_account(payload.user_id, payload.name, payload.kind.value)}
+        return {"data": DataService.create_account(
+            payload.user_id, payload.name, payload.kind.value, payload.initial_balance, payload.logo
+        )}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -153,7 +155,11 @@ async def create_account(payload: AccountCreate):
 async def update_account(account_id: int, payload: AccountUpdate):
     try:
         conta = DataService.update_account(
-            account_id, payload.name, payload.kind.value if payload.kind else None
+            account_id,
+            payload.name,
+            payload.kind.value if payload.kind else None,
+            payload.initial_balance,
+            payload.logo,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
