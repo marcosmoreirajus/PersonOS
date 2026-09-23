@@ -1,4 +1,5 @@
 from app.models.transaction import (
+    AccountKind,
     CategoryType,
     IngestState,
     Scope,
@@ -9,6 +10,7 @@ from app.models.transaction import (
 )
 
 __all__ = [
+    "AccountKind",
     "CategoryType",
     "IngestState",
     "Scope",

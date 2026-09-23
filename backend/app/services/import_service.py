@@ -26,15 +26,21 @@ Decisões de implementação que o spec deixava em aberto, e por quê:
    cada uma com seu FITID, são transações distintas — o banco já disse — e
    suspeitar entre elas encheria a fila de falso positivo. Isso inclui o
    registro **previsto** de uma série: é assim que "previsto vira realizado"
-   acontece na conciliação, e o registro vindo de CSV pode ser candidato de uma
-   linha OFX do mesmo extrato (o CSV não tem conta, então os hashes divergem).
-   O hash NÃO deixa de levar a conta para resolver isso: duas contas com a mesma
-   linha (uma transferência aparece nas duas pontas) perderiam uma em silêncio.
+   acontece na conciliação.
 3. **Palavra genérica não casa** ("compra", "pix", "pagamento"…). Casaria quase
    tudo com o mesmo valor e a mesma data.
 4. **Cada candidato é reivindicado por uma linha só.** Duas linhas iguais no
    extrato e um lançamento manual: uma é suspeita, a outra entra limpa.
-5. **Erro de falso negativo custa mais que o de falso positivo.** Suspeitar de
+5. **A conta é escolhida pelo usuário e entra no hash e no id externo** — não o
+   ACCTID do arquivo. O CSV não tem conta; com a conta escolhida, o mesmo extrato
+   em CSV e em OFX gera o MESMO hash e é reconhecido como já importado. E duas
+   contas com a mesma linha (uma transferência aparece nas duas pontas) continuam
+   distintas, sem nenhum campo tirado do hash.
+6. **O ACCTID do arquivo serve de aviso, não de identidade.** Guardado na conta na
+   primeira importação; se depois chegar um arquivo com outro, a prévia avisa
+   "parece ser de outra conta" — o erro de mandar o extrato do Bradesco para a
+   conta do C6 não pode passar em silêncio.
+7. **Erro de falso negativo custa mais que o de falso positivo.** Suspeitar de
    mais vira uma linha a conferir; suspeitar de menos duplica dinheiro em silêncio.
 """
 
@@ -344,7 +350,7 @@ def _dias_entre(a: str, b: str) -> int:
     return abs((da - db).days)
 
 
-def classificar(linhas: List[Dict[str, Any]], existentes: List[Dict[str, Any]]) -> None:
+def classificar(linhas: List[Dict[str, Any]], existentes: List[Dict[str, Any]], account_id: int) -> None:
     """
     Marca cada linha como `nova`, `ja_importada` ou `suspeita` (com candidato).
 
@@ -362,11 +368,15 @@ def classificar(linhas: List[Dict[str, Any]], existentes: List[Dict[str, Any]]) 
     hash_todos = {t["import_hash"] for t in existentes if t.get("import_hash")}
 
     # Só registro sem FITID pode ser duplicata de uma linha do banco: quem tem
-    # FITID já foi identificado pelo próprio banco.
+    # FITID já foi identificado pelo próprio banco. E só da mesma conta — ou de
+    # nenhuma: o lançamento digitado à mão ainda não pergunta a conta, e um
+    # candidato de OUTRA conta não pode ser fundido com esta linha.
     candidatos = [
         t
         for t in existentes
-        if not t.get("external_id") and t.get("ingest_state", "confirmed") == "confirmed"
+        if not t.get("external_id")
+        and t.get("ingest_state", "confirmed") == "confirmed"
+        and t.get("account_id") in (None, account_id)
     ]
     # Candidato já reivindicado por uma linha que está esperando não é oferecido
     # a outra: o mesmo lançamento não pode ser duplicado por duas linhas.
@@ -419,96 +429,191 @@ def classificar(linhas: List[Dict[str, Any]], existentes: List[Dict[str, Any]]) 
 # --------------------------------------------------------------------------- #
 
 
-def analisar(user_id: int, nome: str, conteudo: bytes) -> Dict[str, Any]:
+def _conta_do_usuario(user_id: int, account_id: int) -> Dict[str, Any]:
+    conta = next(
+        (a for a in DataService.load_json("accounts") if a["id"] == account_id and a["user_id"] == user_id),
+        None,
+    )
+    if conta is None:
+        raise LookupError("Conta não encontrada.")
+    return conta
+
+
+def analisar(user_id: int, nome: str, conteudo: bytes, account_id: int) -> Dict[str, Any]:
     """Lê e classifica sem gravar nada — é o que a prévia mostra."""
-    formato, linhas, invalidas, conta = ler_arquivo(nome, conteudo)
+    conta = _conta_do_usuario(user_id, account_id)
+    formato, linhas, invalidas, acctid = ler_arquivo(nome, conteudo)
     if not linhas and not invalidas:
         raise ArquivoInvalido("Não encontrei nenhuma transação neste arquivo.")
 
-    _identificar(linhas, conta)
+    _identificar(linhas, "acc%d" % conta["id"])
     existentes = [t for t in DataService.load_json("transactions") if t["user_id"] == user_id]
-    classificar(linhas, existentes)
+    classificar(linhas, existentes, conta["id"])
 
     contagem = {"nova": 0, "ja_importada": 0, "suspeita": 0}
+    entradas = 0.0
+    saidas = 0.0
     for l in linhas:
         contagem[l["situacao"]] += 1
+        if l["type"] == "income":
+            entradas += l["amount"]
+        else:
+            saidas += l["amount"]
+
+    aviso = None
+    if acctid and conta.get("file_ref") and acctid != conta["file_ref"]:
+        aviso = (
+            "Este arquivo parece ser de outra conta (identificador %s; \"%s\" já recebeu arquivos do %s). "
+            "Confira se escolheu a conta certa." % (acctid, conta["name"], conta["file_ref"])
+        )
 
     return {
         "formato": formato,
-        "conta_do_arquivo": conta,
+        "conta": {"id": conta["id"], "name": conta["name"], "kind": conta["kind"]},
+        "aviso_conta": aviso,
+        "arquivo_acctid": acctid,
         "total": len(linhas),
         "contagem": contagem,
+        # Totais do arquivo inteiro: é o que denuncia um extrato com o sinal
+        # invertido (uma conta cheia de "entradas" que deveriam ser saídas).
+        "totais": {"entradas": round(entradas, 2), "saidas": round(saidas, 2)},
         "invalidas": invalidas,
         "linhas": linhas,
     }
 
 
-def importar(user_id: int, nome: str, conteudo: bytes) -> Dict[str, Any]:
+ACOES_DECISAO = ("merge", "not_duplicate", "queue")
+
+
+def _registro_importado(
+    l: Dict[str, Any], user_id: int, account_id: int, novo_id: int, agora: str, estado: str
+) -> Dict[str, Any]:
+    return {
+        "id": novo_id,
+        "user_id": user_id,
+        "type": l["type"],
+        "amount": l["amount"],
+        "description": l["descricao"],
+        # Nulo só nasce de importação: é o "o classificador não soube".
+        # A classificação automática é da Fatia 5.
+        "category_id": None,
+        "due_date": l["data"],
+        "settled_at": l["data"],
+        "account_id": account_id,
+        "is_internal_transfer": False,
+        "needs_transfer_review": False,
+        "series_id": None,
+        "series_index": None,
+        "ingest_state": estado,
+        "source": "import",
+        "external_id": l["external_id"],
+        "import_hash": l["import_hash"],
+        "bank_description": l["descricao"],
+        "reconcile_candidate_id": l.get("candidato_id") if estado == "awaiting_reconciliation" else None,
+        "history": [
+            {"at": agora, "event": "created", "source": "import"},
+            {"at": agora, "event": "settled", "on": l["data"]},
+        ],
+        "created_at": agora,
+    }
+
+
+def _validar_decisoes(analise: Dict[str, Any], decisoes: Optional[Dict[str, Any]]) -> Dict[str, str]:
     """
-    Grava o que a prévia mostrou: as novas entram confirmadas, as suspeitas
-    entram em espera, e o que já existia é ignorado.
+    Decisão vale só para linha suspeita deste arquivo. Uma decisão que não casa
+    com nenhuma é recusada em vez de ignorada: ignorar em silêncio faria o
+    usuário achar que decidiu algo que não foi aplicado.
+    """
+    if not decisoes:
+        return {}
+    suspeitas = {l["import_hash"] for l in analise["linhas"] if l["situacao"] == "suspeita"}
+    limpas: Dict[str, str] = {}
+    for chave, acao in decisoes.items():
+        if acao not in ACOES_DECISAO:
+            raise ArquivoInvalido("Decisão desconhecida: %s." % acao)
+        if chave not in suspeitas:
+            raise ArquivoInvalido("Há uma decisão para uma linha que não é suspeita de duplicidade neste arquivo.")
+        limpas[chave] = acao
+    return limpas
+
+
+def importar(
+    user_id: int,
+    nome: str,
+    conteudo: bytes,
+    account_id: int,
+    decisoes: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Grava o que a prévia mostrou.
+
+    Linhas novas entram confirmadas. Para cada linha SUSPEITA o usuário pode ter
+    decidido na hora — `merge` funde no candidato, `not_duplicate` a confirma
+    como nova — e o que ficar sem decisão (ou com `queue`) espera na fila de
+    conciliação. Linhas já importadas são ignoradas.
 
     Recalcula a partir do arquivo em vez de confiar em linhas devolvidas pelo
-    cliente — o que se grava não pode depender de um payload adulterável.
+    cliente: o que se grava não pode depender de um payload adulterável. A
+    decisão é o único dado do cliente aceito, e é validada contra o arquivo.
     """
-    analise = analisar(user_id, nome, conteudo)
+    analise = analisar(user_id, nome, conteudo, account_id)
+    escolhidas = _validar_decisoes(analise, decisoes)
+
     transactions = DataService.load_json("transactions")
     proximo = max((t["id"] for t in transactions), default=0) + 1
     agora = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     novas = 0
+    conciliadas = 0
     em_espera = 0
     for l in analise["linhas"]:
         if l["situacao"] == "ja_importada":
             continue
-        suspeita = l["situacao"] == "suspeita"
-        transactions.append(
-            {
-                "id": proximo,
-                "user_id": user_id,
-                "type": l["type"],
-                "amount": l["amount"],
-                "description": l["descricao"],
-                # Nulo só nasce de importação: é o "o classificador não soube".
-                # A classificação automática é da Fatia 5.
-                "category_id": None,
-                "due_date": l["data"],
-                "settled_at": l["data"],
-                "account_id": None,
-                "is_internal_transfer": False,
-                "needs_transfer_review": False,
-                "series_id": None,
-                "series_index": None,
-                "ingest_state": "awaiting_reconciliation" if suspeita else "confirmed",
-                "source": "import",
-                "external_id": l["external_id"],
-                "import_hash": l["import_hash"],
-                "bank_description": l["descricao"],
-                "reconcile_candidate_id": l.get("candidato_id"),
-                "history": [
-                    {"at": agora, "event": "created", "source": "import"},
-                    {"at": agora, "event": "settled", "on": l["data"]},
-                ],
-                "created_at": agora,
-            }
-        )
-        proximo += 1
-        if suspeita:
-            em_espera += 1
-        else:
-            novas += 1
 
-    if novas or em_espera:
-        DataService.save_json("transactions", transactions)
+        if l["situacao"] == "nova":
+            transactions.append(_registro_importado(l, user_id, account_id, proximo, agora, "confirmed"))
+            proximo += 1
+            novas += 1
+            continue
+
+        acao = escolhidas.get(l["import_hash"], "queue")
+        if acao == "merge":
+            alvo = next(t for t in transactions if t["id"] == l["candidato_id"])
+            registro = _registro_importado(l, user_id, account_id, 0, agora, "confirmed")
+            _aplicar_fusao(alvo, registro, agora)
+            conciliadas += 1
+        elif acao == "not_duplicate":
+            transactions.append(_registro_importado(l, user_id, account_id, proximo, agora, "confirmed"))
+            proximo += 1
+            novas += 1
+        else:
+            transactions.append(
+                _registro_importado(l, user_id, account_id, proximo, agora, "awaiting_reconciliation")
+            )
+            proximo += 1
+            em_espera += 1
+
+    DataService.save_json("transactions", transactions)
+
+    # Primeira importação da conta: guarda o identificador do banco para poder
+    # avisar se um arquivo de outra conta chegar aqui depois.
+    if analise["arquivo_acctid"]:
+        contas = DataService.load_json("accounts")
+        conta = next(a for a in contas if a["id"] == account_id)
+        if not conta.get("file_ref"):
+            conta["file_ref"] = analise["arquivo_acctid"]
+            DataService.save_json("accounts", contas)
 
     return {
         "formato": analise["formato"],
+        "conta": analise["conta"],
         "total": analise["total"],
         "importadas": novas,
+        "conciliadas": conciliadas,
         "ja_existiam": analise["contagem"]["ja_importada"],
         "aguardando_conciliacao": em_espera,
         "invalidas": analise["invalidas"],
-        # Todas as importadas confirmadas entram sem categoria até a Fatia 5.
+        # Todas as importadas entram sem categoria até a Fatia 5.
         "sem_categoria": novas,
         "classificadas": {"memoria": 0, "ia": 0},
     }
@@ -517,6 +622,41 @@ def importar(user_id: int, nome: str, conteudo: bytes) -> Dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # Conciliação
 # --------------------------------------------------------------------------- #
+
+
+def _aplicar_fusao(alvo: Dict[str, Any], linha: Dict[str, Any], agora: str) -> None:
+    """
+    Funde a linha do banco no registro existente.
+
+    O registro que fica absorve a identidade da linha — é isso que impede a
+    mesma linha de voltar como suspeita na próxima reimportação.
+    """
+    alvo["external_id"] = linha.get("external_id")
+    # O hash antigo é MANTIDO quando existe: ele é o que faz o arquivo original
+    # (ex.: o CSV) continuar sendo reconhecido. Só herda o da linha se não tinha.
+    if not alvo.get("import_hash"):
+        alvo["import_hash"] = linha.get("import_hash")
+    alvo["bank_description"] = linha.get("bank_description") or linha.get("description")
+    if alvo.get("account_id") is None:
+        alvo["account_id"] = linha.get("account_id")
+
+    evento: Dict[str, Any] = {
+        "at": agora,
+        "event": "reconciled_with",
+        "transaction_id": linha.get("id"),
+        "bank_description": alvo["bank_description"],
+    }
+    if _centavos(alvo["amount"]) != _centavos(linha["amount"]):
+        # Escolha manual com valor diferente (juros, tarifa): o valor do usuário
+        # é mantido, mas a diferença fica registrada em vez de sumir.
+        evento["amount_bank"] = linha["amount"]
+    alvo.setdefault("history", []).append(evento)
+
+    # Previsto vira realizado: o banco confirma que o dinheiro se moveu. Se o
+    # usuário já tinha efetivado, a data dele prevalece — é edição dele.
+    if not alvo.get("settled_at"):
+        alvo["settled_at"] = linha.get("settled_at") or linha["due_date"]
+        alvo["history"].append({"at": agora, "event": "settled", "on": alvo["settled_at"]})
 
 
 def conciliar(transaction_id: int, action: str, with_id: Optional[int] = None) -> Dict[str, Any]:
@@ -557,34 +697,78 @@ def conciliar(transaction_id: int, action: str, with_id: Optional[int] = None) -
     if alvo.get("external_id"):
         # Absorver sobrescreveria o FITID que o banco já deu a ele.
         raise ValueError("Este lançamento já tem identificador do banco; não há o que absorver.")
+    if alvo.get("account_id") not in (None, linha.get("account_id")):
+        raise ValueError("Este lançamento pertence a outra conta.")
 
-    # O registro que fica absorve a identidade da linha do banco. É isso que
-    # impede a mesma linha de voltar como suspeita na próxima reimportação.
-    alvo["external_id"] = linha.get("external_id")
-    # O hash antigo é MANTIDO quando existe: ele é o que faz o arquivo original
-    # (ex.: o CSV) continuar sendo reconhecido. Só herda o da linha se não tinha.
-    if not alvo.get("import_hash"):
-        alvo["import_hash"] = linha.get("import_hash")
-    alvo["bank_description"] = linha.get("bank_description") or linha.get("description")
-
-    evento: Dict[str, Any] = {
-        "at": agora,
-        "event": "reconciled_with",
-        "transaction_id": linha["id"],
-        "bank_description": alvo["bank_description"],
-    }
-    if _centavos(alvo["amount"]) != _centavos(linha["amount"]):
-        # Escolha manual com valor diferente (juros, tarifa): o valor do usuário
-        # é mantido, mas a diferença fica registrada em vez de sumir.
-        evento["amount_bank"] = linha["amount"]
-    alvo.setdefault("history", []).append(evento)
-
-    # Previsto vira realizado: o banco confirma que o dinheiro se moveu. Se o
-    # usuário já tinha efetivado, a data dele prevalece — é edição dele.
-    if not alvo.get("settled_at"):
-        alvo["settled_at"] = linha.get("settled_at") or linha["due_date"]
-        alvo["history"].append({"at": agora, "event": "settled", "on": alvo["settled_at"]})
-
+    _aplicar_fusao(alvo, linha, agora)
     transactions = [t for t in transactions if t["id"] != linha["id"]]
     DataService.save_json("transactions", transactions)
     return alvo
+
+
+# --------------------------------------------------------------------------- #
+# Modelo padrão para download
+# --------------------------------------------------------------------------- #
+
+# O layout da aplicação: o que o sistema precisa, e nada além. Sem etapa de
+# mapeamento de colunas — quem tem um arquivo de outro formato o ajusta a este.
+COLUNAS_MODELO = ("data", "descricao", "valor")
+
+INSTRUCOES_MODELO = [
+    ("data", "Dia do lançamento, em DD/MM/AAAA (ex.: 05/09/2026) ou AAAA-MM-DD."),
+    ("descricao", "Texto do lançamento, como aparece no extrato."),
+    ("valor", "Com sinal: NEGATIVO é saída, POSITIVO é entrada. Vírgula ou ponto decimal (ex.: -152,30)."),
+]
+
+EXEMPLOS_MODELO = [
+    ("05/09/2026", "Supermercado Extra", "-152,30"),
+    ("10/09/2026", "Salário setembro", "3500,00"),
+]
+
+
+def modelo_padrao(formato: str) -> Tuple[bytes, str, str]:
+    """
+    (conteúdo, tipo MIME, nome do arquivo) do modelo.
+
+    A aba/planilha de dados sai **só com o cabeçalho**: exemplos ali seriam
+    importados por engano por quem enviasse o modelo sem apagá-los. Os exemplos
+    ficam na aba de instruções do XLSX.
+    """
+    if formato == "csv":
+        # UTF-8 com BOM e ponto e vírgula: é o que o Excel em português abre
+        # sem quebrar acento nem juntar tudo numa coluna só.
+        texto = ";".join(COLUNAS_MODELO) + "\r\n"
+        return texto.encode("utf-8-sig"), "text/csv; charset=utf-8", "modelo-importacao.csv"
+
+    if formato == "xlsx":
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        dados = wb.active
+        dados.title = "Lançamentos"
+        dados.append(list(COLUNAS_MODELO))
+        for col, largura in zip("ABC", (14, 44, 14)):
+            dados.column_dimensions[col].width = largura
+
+        ajuda = wb.create_sheet("Como preencher")
+        ajuda.append(["Coluna", "O que colocar"])
+        for coluna, texto in INSTRUCOES_MODELO:
+            ajuda.append([coluna, texto])
+        ajuda.append([])
+        ajuda.append(["Exemplos (não são importados — ficam só nesta aba)"])
+        ajuda.append(list(COLUNAS_MODELO))
+        for linha in EXEMPLOS_MODELO:
+            ajuda.append(list(linha))
+        ajuda.column_dimensions["A"].width = 16
+        ajuda.column_dimensions["B"].width = 80
+
+        wb.active = 0  # a importação lê a aba ativa: precisa ser a de dados
+        buf = io.BytesIO()
+        wb.save(buf)
+        return (
+            buf.getvalue(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "modelo-importacao.xlsx",
+        )
+
+    raise ValueError("Formato de modelo desconhecido: %s" % formato)

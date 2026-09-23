@@ -69,3 +69,16 @@ class CategoryType(str, Enum):
     EXPENSE = "expense"
     INCOME = "income"
     BOTH = "both"
+
+
+class AccountKind(str, Enum):
+    """
+    Onde o dinheiro vive. Uma conta por banco: "Bradesco" e "C6" são contas
+    diferentes, e é isso que permite reconhecer o mesmo extrato importado duas
+    vezes sem confundi-lo com a mesma linha em outro banco.
+    """
+
+    CHECKING = "checking"
+    CARD = "card"
+    WALLET = "wallet"
+

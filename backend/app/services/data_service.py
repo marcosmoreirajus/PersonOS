@@ -358,6 +358,74 @@ class DataService:
             DataService.save_json("transactions", transactions)
 
     # ------------------------------------------------------------------ #
+    # Contas (mínimo — Fatia 3)
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def get_accounts(user_id: int) -> List[Dict[str, Any]]:
+        """Contas do usuário, em ordem alfabética."""
+        contas = [a for a in DataService.load_json("accounts") if a["user_id"] == user_id]
+        return sorted(contas, key=lambda a: a["name"].lower())
+
+    @staticmethod
+    def _nome_em_uso(contas: List[Dict[str, Any]], user_id: int, nome: str, ignorar_id: int | None = None) -> bool:
+        alvo = " ".join(nome.lower().split())
+        return any(
+            a["user_id"] == user_id
+            and a["id"] != ignorar_id
+            and " ".join(a["name"].lower().split()) == alvo
+            for a in contas
+        )
+
+    @staticmethod
+    def create_account(user_id: int, name: str, kind: str = "checking") -> Dict[str, Any]:
+        """
+        Cria uma conta. O nome é único por usuário (sem diferenciar caixa nem
+        espaços repetidos): duas contas "Bradesco" fariam o usuário escolher a
+        errada na importação, e o erro só apareceria como lançamentos no lugar
+        errado.
+        """
+        nome = " ".join(name.split())
+        if not nome:
+            raise ValueError("Dê um nome para a conta.")
+        contas = DataService.load_json("accounts")
+        if DataService._nome_em_uso(contas, user_id, nome):
+            raise ValueError("Já existe uma conta com esse nome.")
+
+        nova = {
+            "id": max((a["id"] for a in contas), default=0) + 1,
+            "user_id": user_id,
+            "name": nome,
+            "kind": kind,
+            # Identificador que o banco põe no arquivo (ACCTID do OFX). Guardado
+            # na primeira importação e usado para avisar quando um arquivo de
+            # outra conta é enviado para esta.
+            "file_ref": None,
+            "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+        contas.append(nova)
+        DataService.save_json("accounts", contas)
+        return nova
+
+    @staticmethod
+    def update_account(account_id: int, name: str | None = None, kind: str | None = None) -> Dict[str, Any] | None:
+        contas = DataService.load_json("accounts")
+        conta = next((a for a in contas if a["id"] == account_id), None)
+        if conta is None:
+            return None
+        if name is not None:
+            nome = " ".join(name.split())
+            if not nome:
+                raise ValueError("Dê um nome para a conta.")
+            if DataService._nome_em_uso(contas, conta["user_id"], nome, ignorar_id=account_id):
+                raise ValueError("Já existe uma conta com esse nome.")
+            conta["name"] = nome
+        if kind is not None:
+            conta["kind"] = kind
+        DataService.save_json("accounts", contas)
+        return conta
+
+    # ------------------------------------------------------------------ #
     # Geração de séries (Fatia 2)
     # ------------------------------------------------------------------ #
 

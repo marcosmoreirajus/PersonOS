@@ -1,7 +1,11 @@
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+import json
+
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.schemas import (
+    AccountCreate,
+    AccountUpdate,
     BulkAction,
     PostponePayload,
     ReconcilePayload,
@@ -128,6 +132,36 @@ async def delete_transaction(transaction_id: int, scope: str = "only_this"):
     return {"data": {"deleted": removidas}}
 
 
+# Contas (mínimo — Fatia 3)
+#
+# Uma conta por banco. Existem para a importação saber de onde o extrato veio
+# e para o mesmo extrato em CSV e OFX ser reconhecido como o mesmo.
+@app.get("/api/accounts/user/{user_id}")
+async def get_accounts(user_id: int):
+    return {"data": DataService.get_accounts(user_id)}
+
+
+@app.post("/api/accounts")
+async def create_account(payload: AccountCreate):
+    try:
+        return {"data": DataService.create_account(payload.user_id, payload.name, payload.kind.value)}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.patch("/api/accounts/{account_id}")
+async def update_account(account_id: int, payload: AccountUpdate):
+    try:
+        conta = DataService.update_account(
+            account_id, payload.name, payload.kind.value if payload.kind else None
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if conta is None:
+        raise HTTPException(status_code=404, detail="Conta não encontrada.")
+    return {"data": conta}
+
+
 # Importação de extrato (Fatia 3)
 #
 # Limite de tamanho: um extrato pessoal tem centenas de linhas; acima disso o
@@ -146,27 +180,62 @@ async def _ler_upload(file: UploadFile) -> bytes:
 
 
 @app.post("/api/import/preview")
-async def import_preview(file: UploadFile = File(...), user_id: int = Form(...)):
+async def import_preview(
+    file: UploadFile = File(...), user_id: int = Form(...), account_id: int = Form(...)
+):
     """Lê e classifica o arquivo SEM gravar nada."""
     conteudo = await _ler_upload(file)
     try:
-        return {"data": ImportService.analisar(user_id, file.filename or "", conteudo)}
+        return {"data": ImportService.analisar(user_id, file.filename or "", conteudo, account_id)}
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except ArquivoInvalido as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/import/commit")
-async def import_commit(file: UploadFile = File(...), user_id: int = Form(...)):
+async def import_commit(
+    file: UploadFile = File(...),
+    user_id: int = Form(...),
+    account_id: int = Form(...),
+    decisoes: str = Form(""),
+):
     """
     Grava o que a prévia mostrou. Recalcula a partir do arquivo em vez de
     aceitar linhas do cliente: o que entra na base não pode depender de um
     payload adulterável.
+
+    `decisoes` é um JSON `{import_hash: "merge" | "not_duplicate" | "queue"}` com
+    o que o usuário decidiu sobre as linhas suspeitas na prévia. É o único dado
+    do cliente aceito, e é validado contra o arquivo.
     """
     conteudo = await _ler_upload(file)
     try:
-        return {"data": ImportService.importar(user_id, file.filename or "", conteudo)}
+        escolhidas = json.loads(decisoes) if decisoes.strip() else {}
+        if not isinstance(escolhidas, dict):
+            raise ValueError
+    except ValueError:
+        raise HTTPException(status_code=400, detail="As decisões chegaram em formato inválido.")
+    try:
+        return {"data": ImportService.importar(user_id, file.filename or "", conteudo, account_id, escolhidas)}
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except ArquivoInvalido as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/import/template/{formato}")
+async def import_template(formato: str):
+    """Modelo do layout padrão do sistema (csv ou xlsx), para download."""
+    try:
+        conteudo, mime, nome = ImportService.modelo_padrao(formato)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Modelo disponível em csv ou xlsx.")
+    return Response(
+        content=conteudo,
+        media_type=mime,
+        headers={"Content-Disposition": 'attachment; filename="%s"' % nome},
+    )
 
 
 @app.post("/api/reconcile/{transaction_id}")
