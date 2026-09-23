@@ -47,7 +47,8 @@ def main():
         user_id=1,
         category_id=11,
         type="expense",
-        amount=250.0,
+        # No parcelado o valor informado é o TOTAL; a série guarda a parcela.
+        amount=6000.0,
         due_date=hoje.isoformat(),
         description="Geladeira",
         series={"kind": "installment", "frequency": "monthly", "total_count": 24},
@@ -60,6 +61,19 @@ def main():
         sorted(p["series_index"] for p in parcelas) == list(range(1, 25)),
     )
     checa("nenhuma parcela nasce efetivada", all(p["settled_at"] is None for p in parcelas))
+    soma = round(sum(p["amount"] for p in parcelas), 2)
+    checa("soma das parcelas bate com o total informado", soma == 6000.0, "soma %.2f" % soma)
+
+    # Divisão inexata: a sobra vai para a última parcela, senão o total exibido
+    # (que é a soma) deixaria de bater com o que foi digitado.
+    q = DataService.create_transaction(
+        user_id=1, category_id=11, type="expense", amount=1000.0,
+        due_date=hoje.isoformat(), description="Divisao inexata",
+        series={"kind": "installment", "frequency": "monthly", "total_count": 3},
+    )
+    tres = [x for x in DataService.load_json("transactions") if x.get("series_id") == q["series_id"]]
+    checa("1.000 em 3x soma exatamente 1.000", round(sum(x["amount"] for x in tres), 2) == 1000.0,
+          str(sorted(x["amount"] for x in tres)))
 
     # ------------------------------------------- recorrência sem fim = 12
     r = DataService.create_transaction(

@@ -116,6 +116,14 @@ class DataService:
 
         series_id = None
         if series:
+            # Parcelado recebe o TOTAL e guarda o valor da PARCELA: é a parcela
+            # que aparece na fatura e que a importação vai tentar casar. O
+            # total continua sendo a soma, nunca um campo — a diferença de
+            # centavos da divisão vai para a última parcela, logo abaixo.
+            valor_parcela = amount
+            n = series.get("total_count")
+            if series.get("kind") == "installment" and n:
+                valor_parcela = round(amount / n, 2)
             series_id = DataService.create_series(
                 user_id=user_id,
                 kind=series["kind"],
@@ -123,7 +131,7 @@ class DataService:
                 type=type,
                 category_id=category_id,
                 account_id=account_id,
-                amount=amount,
+                amount=valor_parcela,
                 frequency=series.get("frequency", "monthly"),
                 start_date=due_date,
                 total_count=series.get("total_count"),
@@ -137,6 +145,7 @@ class DataService:
         if series_id is not None:
             criada = DataService.gerar_ocorrencias_da_serie(series_id, transactions)
             if criada:
+                DataService._ajustar_ultima_parcela(series_id, amount)
                 return criada[0]
 
         history = [{"at": now, "event": "created", "source": source}]
@@ -307,6 +316,30 @@ class DataService:
         DataService.save_json("transactions", restantes)
         return removidas
 
+
+    @staticmethod
+    def _ajustar_ultima_parcela(series_id: int, total: float) -> None:
+        """
+        Joga a sobra da divisão na última parcela.
+
+        Sem isso, 1.000 em 3x viraria 333,33 x3 = 999,99 e o total exibido
+        (que é a soma) deixaria de bater com o que o usuário digitou. A sobra
+        vai no fim, e não no começo, porque a primeira parcela é a que o
+        usuário confere no extrato logo depois de comprar.
+        """
+        transactions = DataService.load_json("transactions")
+        parcelas = sorted(
+            [t for t in transactions if t.get("series_id") == series_id],
+            key=lambda t: t["due_date"],
+        )
+        if len(parcelas) < 2:
+            return
+
+        soma_anteriores = sum(t["amount"] for t in parcelas[:-1])
+        ultima = round(total - soma_anteriores, 2)
+        if ultima != parcelas[-1]["amount"]:
+            parcelas[-1]["amount"] = ultima
+            DataService.save_json("transactions", transactions)
 
     # ------------------------------------------------------------------ #
     # Geração de séries (Fatia 2)

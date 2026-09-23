@@ -42,6 +42,25 @@ type Props = {
   seed?: DialogSeed | null
 }
 
+type Repeticao = 'avista' | 'installment' | 'recurring'
+type Frequencia = 'monthly' | 'biweekly' | 'weekly'
+
+const REPETICOES: { value: Repeticao; label: string }[] = [
+  { value: 'avista', label: 'À vista' },
+  { value: 'installment', label: 'Parcelado' },
+  { value: 'recurring', label: 'Recorrente' },
+]
+
+const FREQUENCIAS: { value: Frequencia; label: string }[] = [
+  { value: 'monthly', label: 'Mensal' },
+  { value: 'biweekly', label: 'Quinzenal' },
+  { value: 'weekly', label: 'Semanal' },
+]
+
+function moeda(v: number) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
 function hoje() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -64,6 +83,10 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
   const [date, setDate] = useState(hoje)
   const [description, setDescription] = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [repeticao, setRepeticao] = useState<Repeticao>('avista')
+  const [parcelas, setParcelas] = useState('12')
+  const [frequencia, setFrequencia] = useState<Frequencia>('monthly')
+  const [ate, setAte] = useState('')
   const [saving, setSaving] = useState(false)
   const [erros, setErros] = useState<{ amount?: string; description?: string; category?: string }>({})
 
@@ -82,7 +105,28 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
       setAmount('')
       setDescription('')
     }
+    // Repetição não é herdada ao duplicar: duplicar copia o lançamento,
+    // não o contrato que o gerou — senão um clique criaria 24 registros.
+    setRepeticao('avista')
   }, [open, seed])
+
+  /**
+   * Prévia da divisão.
+   *
+   * Quando o total não divide exato, a sobra de centavos vai para a última
+   * parcela — e isso é mostrado, não escondido: o total exibido no app é a
+   * soma das parcelas, então ele precisa bater com o que foi digitado.
+   */
+  const previaParcelas = (() => {
+    const total = Number(amount.replace(/\./g, '').replace(',', '.'))
+    const n = Number(parcelas)
+    if (!total || !n || n < 2) return 'Informe o total e o nº de parcelas'
+    const parcela = Math.round((total / n) * 100) / 100
+    const ultima = Math.round((total - parcela * (n - 1)) * 100) / 100
+    return ultima === parcela
+      ? `${n}x de ${moeda(parcela)}`
+      : `${n - 1}x de ${moeda(parcela)} + 1x de ${moeda(ultima)}`
+  })()
 
   async function submit(addAnother: boolean) {
     const valor = Number(amount.replace(/\./g, '').replace(',', '.'))
@@ -106,6 +150,15 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
         due_date: date,
       }
 
+      // Série com fim conhecido (nº de parcelas ou data-limite) gera tudo; sem
+      // fim, o backend materializa a janela de 12 meses.
+      const series =
+        repeticao === 'installment'
+          ? { kind: 'installment', frequency: 'monthly', total_count: Number(parcelas) }
+          : repeticao === 'recurring'
+            ? { kind: 'recurring', frequency: frequencia, end_date: ate || null }
+            : null
+
       const res = editando
         ? await fetch(`${API_URL}/api/transactions/${seed!.id}`, {
             method: 'PATCH',
@@ -120,9 +173,12 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
             body: JSON.stringify({
               ...corpo,
               user_id: userId,
-              // Lançamento manual é fato consumado: nasce efetivado na data escolhida.
-              settled_at: date,
+              // Lançamento avulso é fato consumado: nasce efetivado na data
+              // escolhida. Série é compromisso futuro — as ocorrências nascem
+              // sem efetivação, e cada uma é marcada quando o dinheiro se move.
+              settled_at: series ? null : date,
               source: 'manual',
+              ...(series ? { series } : {}),
             }),
           })
 
@@ -174,7 +230,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
           <div className="grid grid-cols-2 gap-3">
             <Input
               id="amount"
-              label="Valor"
+              label={repeticao === 'installment' ? 'Valor total' : 'Valor'}
               inputMode="decimal"
               placeholder="0,00"
               value={amount}
@@ -194,6 +250,74 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
             error={erros.description}
             reserveErrorLine
           />
+
+          {!editando && (
+            <Field>
+              <FieldLabel>Repetição</FieldLabel>
+              <div className="flex gap-1 rounded-xl bg-muted p-1">
+                {REPETICOES.map((r) => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setRepeticao(r.value)}
+                    className={cn(
+                      'flex-1 rounded-lg px-3 py-1.5 text-sm transition-colors',
+                      repeticao === r.value
+                        ? 'bg-background font-medium text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+
+              {repeticao === 'installment' && (
+                <div className="mt-2 flex items-end gap-3">
+                  <Input
+                    id="parcelas"
+                    label="Parcelas"
+                    type="number"
+                    min={2}
+                    value={parcelas}
+                    onChange={setParcelas}
+                    className="w-32"
+                  />
+                  {/* Digita-se o total e o app mostra a parcela — é assim que
+                      a compra é feita ("6.000 em 24x"). O que fica guardado é o
+                      valor da parcela, que é o que aparece na fatura e o que a
+                      importação vai tentar casar. */}
+                  <p className="pb-1.5 text-xs text-muted-foreground">{previaParcelas}</p>
+                </div>
+              )}
+
+              {repeticao === 'recurring' && (
+                <div className="mt-2 flex flex-wrap items-end gap-3">
+                  <div className="flex gap-1 rounded-xl bg-muted p-1">
+                    {FREQUENCIAS.map((f) => (
+                      <button
+                        key={f.value}
+                        type="button"
+                        onClick={() => setFrequencia(f.value)}
+                        className={cn(
+                          'rounded-lg px-3 py-1.5 text-sm transition-colors',
+                          frequencia === f.value
+                            ? 'bg-background font-medium text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                  <Input id="ate" label="Até (opcional)" type="date" value={ate} onChange={setAte} className="w-44" />
+                  <p className="pb-1.5 text-xs text-muted-foreground">
+                    {ate ? 'Gera até a data informada.' : 'Sem data de fim: gera os próximos 12 meses.'}
+                  </p>
+                </div>
+              )}
+            </Field>
+          )}
 
           <Field>
             <FieldLabel htmlFor="category">Categoria</FieldLabel>
