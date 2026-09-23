@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ChevronDown, CircleAlert } from 'lucide-react'
+import { Check, ChevronDown, CircleAlert, LoaderCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -32,6 +32,12 @@ function formatDate(iso: string) {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 }
 
+/** Rótulo amigável da conta do lançamento: nome do banco/cartão ou "s/ conta". */
+function contaLabel(t: OverdueTransaction, names?: OverdueAccountNames) {
+  const nome = t.account_id != null ? names?.[t.account_id] : undefined
+  return nome ?? 's/ conta'
+}
+
 function diasDeAtraso(due: string, hoje: string) {
   const ms = new Date(`${hoje}T00:00:00Z`).getTime() - new Date(`${due}T00:00:00Z`).getTime()
   return Math.round(ms / 86400000)
@@ -59,10 +65,13 @@ export function OverdueAlert({
   transactions,
   categories,
   onChanged,
+  accountNames,
 }: {
   transactions: OverdueTransaction[]
   categories: Categoria[]
   onChanged: () => void
+  /** Rótulo amigável de cada conta (banco/cartão). Opcional: vem do futuro módulo. */
+  accountNames?: OverdueAccountNames
 }) {
   const [aberto, setAberto] = useState(false)
   const [salvando, setSalvando] = useState<number | null>(null)
@@ -162,7 +171,8 @@ export function OverdueAlert({
                         {t.description ?? 'Sem descrição'}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {formatDate(t.due_date)} · {dias} {dias === 1 ? 'dia' : 'dias'} em atraso
+                        {formatDate(t.due_date)} · {dias} {dias === 1 ? 'dia' : 'dias'} em atraso ·{' '}
+                        {contaLabel(t, accountNames)}
                       </span>
                     </span>
                     <span
@@ -176,16 +186,24 @@ export function OverdueAlert({
                     </span>
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="shrink-0"
+                      size="icon"
+                      className={cn(
+                        'size-8 shrink-0',
+                        // O _"marcar"_ é a mesma ação para os dois lados; o que muda
+                        // é o eixo (pagar/cobrar) — e é isso que a cor do ícone diz:
+                        // recebimento confirma em verde, despesa em neutro.
+                        t.type === 'income' && 'text-positive'
+                      )}
                       disabled={salvando === t.id}
                       onClick={() => efetivar(t)}
+                      aria-label={t.type === 'income' ? 'Marcar recebido' : 'Marcar pago'}
+                      title={t.type === 'income' ? 'Marcar recebido' : 'Marcar pago'}
                     >
-                      {salvando === t.id
-                        ? 'Salvando...'
-                        : t.type === 'income'
-                          ? 'Marcar recebido'
-                          : 'Marcar pago'}
+                      {salvando === t.id ? (
+                        <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Check className="size-4" strokeWidth={2} aria-hidden="true" />
+                      )}
                     </Button>
                   </li>
                 )

@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, FileUp } from 'lucide-react'
 
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { MoneyValue } from '@/components/ui/money-value'
 import { StatCard } from './_components/StatCard'
 import { CategoryBreakdown, type BreakdownKind, type CategoryDatum } from './_components/CategoryBreakdown'
 import { DailyHeatmap, type HeatmapTransaction, type PlannedOutflow } from './_components/DailyHeatmap'
+import TransactionDialog from './transactions/_components/TransactionDialog'
 import {
   effectiveStatus,
   toScheduledItems,
@@ -40,6 +43,7 @@ type Category = {
   name: string
   icon: string
   color: string
+  type: 'expense' | 'income' | 'both'
 }
 
 function formatDate(iso: string) {
@@ -59,6 +63,12 @@ export default function FinanceDashboardPage() {
   const [month, setMonth] = useState(() => new Date())
   const [expanded, setExpanded] = useState(false)
   const [breakdownKind, setBreakdownKind] = useState<BreakdownKind>('expense')
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogKind, setDialogKind] = useState<'expense' | 'income' | 'transfer'>('expense')
+  // O cadastro de lançamento vive aqui na Visão Geral: os botões rápidos de
+  // Despesas/Entradas/Transferência só escolhem o tipo — o resto é o mesmo dialog
+  // das Transações, já apontado para o mês aberto.
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -98,7 +108,7 @@ export default function FinanceDashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshKey])
 
   const computed = useMemo(() => {
     const incomeTx = transactions.filter((t) => t.type === 'income')
@@ -218,6 +228,45 @@ export default function FinanceDashboardPage() {
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-semibold text-foreground">Visão geral</h1>
         <MonthPicker value={month} onChange={setMonth} />
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setDialogKind('expense')
+              setDialogOpen(true)
+            }}
+          >
+            <ArrowDownToLine className="size-4" />
+            Despesas
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setDialogKind('income')
+              setDialogOpen(true)
+            }}
+          >
+            <ArrowUpFromLine className="size-4" />
+            Entradas
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setDialogKind('transfer')
+              setDialogOpen(true)
+            }}
+          >
+            <ArrowLeftRight className="size-4" />
+            Transferência
+          </Button>
+          <Button variant="outline" size="sm">
+            <FileUp className="size-4" />
+            Importar
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -361,6 +410,15 @@ export default function FinanceDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <TransactionDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        categories={categories}
+        userId={CURRENT_USER_ID}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+        initialType={dialogKind === 'transfer' ? undefined : dialogKind}
+      />
     </div>
   )
 }

@@ -41,6 +41,12 @@ type Props = {
   onSaved: () => void
   /** Preenche o formulário: edição (com `id`) ou duplicação (sem `id`). */
   seed?: DialogSeed | null
+  /**
+   * Tipo a pré-selecionar numa criação — os botões rápidos da Visão Geral
+   * (Despesas/Entradas/Transferência) abrem aqui o mesmo cadastro já apontado.
+   * Vira a escolha padrão quando não há `seed`.
+   */
+  initialType?: 'expense' | 'income'
 }
 
 type Repeticao = 'avista' | 'installment' | 'recurring'
@@ -76,7 +82,7 @@ function hoje() {
  *   signifique sempre "o classificador não soube", nunca "o usuário pulou" —
  *   e é por isso que o seletor não tem opção "Sem categoria".
  */
-export function TransactionDialog({ open, onOpenChange, categories, userId, onSaved, seed }: Props) {
+export function TransactionDialog({ open, onOpenChange, categories, userId, onSaved, seed, initialType }: Props) {
   const editando = Boolean(seed?.id)
 
   const [type, setType] = useState<'expense' | 'income'>('expense')
@@ -105,6 +111,9 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
     } else {
       setAmount('')
       setDescription('')
+      // Sem seed, o tipo cabe a quem abriu: os botões rápidos da Visão Geral
+      // entram já decidindo se é despesa ou entrada.
+      setType(initialType ?? 'expense')
     }
     // Repetição não é herdada ao duplicar: duplicar copia o lançamento,
     // não o contrato que o gerou — senão um clique criaria 24 registros.

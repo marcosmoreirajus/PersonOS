@@ -193,6 +193,14 @@ export default function TransactionsPage() {
         },
       },
       {
+        key: 'account_id',
+        header: 'Conta',
+        width: '140px',
+        // O nome amigável da conta chega com o módulo de Contas (futuro);
+        // enquanto isso a coluna existe mas o lançamento ainda não tem conta.
+        cell: () => <span className="text-xs text-muted-foreground">—</span>,
+      },
+      {
         key: 'amount',
         header: 'Valor',
         sortable: true,
