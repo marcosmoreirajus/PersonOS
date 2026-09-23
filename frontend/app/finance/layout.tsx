@@ -4,6 +4,7 @@ import { AppShell, AppSidebarTrigger } from '@/components/ui/app-shell'
 import { EyeToggle } from '@/components/ui/eye-toggle'
 import { ValuesVisibilityProvider } from '@/components/ui/money-value'
 import FinanceTabs from './_components/FinanceTabs'
+import SeriesExtensionGate from './_components/SeriesExtensionGate'
 
 export default function FinanceLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,7 +23,11 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
             <EyeToggle />
           </div>
         </header>
-        <main className="p-6 lg:p-8">{children}</main>
+        <main className="p-6 lg:p-8">
+          {/* A janela das séries roda antes das telas buscarem dados,
+              senão a primeira carga do mês mostraria a lista de antes. */}
+          <SeriesExtensionGate>{children}</SeriesExtensionGate>
+        </main>
       </AppShell>
     </ValuesVisibilityProvider>
   )

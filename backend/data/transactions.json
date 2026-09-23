@@ -407,5 +407,2030 @@
     ],
     "created_at": "2026-09-22T21:47:07.808307Z",
     "card_invoice": true
+  },
+  {
+    "id": 16,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2026-10-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 17,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2026-11-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 18,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2026-12-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 19,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2027-01-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 20,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2027-02-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 21,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2027-03-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 22,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2027-04-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 23,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2027-05-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 24,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2027-06-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 25,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2027-07-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 26,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2027-08-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 27,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 1800.0,
+    "description": "Aluguel",
+    "category_id": 5,
+    "due_date": "2027-09-10",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 1,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 28,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2026-10-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 29,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2026-11-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 30,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2026-12-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 31,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2027-01-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 32,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2027-02-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 33,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2027-03-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 34,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2027-04-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 35,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2027-05-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 36,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2027-06-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 37,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2027-07-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 38,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2027-08-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 39,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 214.3,
+    "description": "Conta de luz",
+    "category_id": 8,
+    "due_date": "2027-09-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 2,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 40,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 187.0,
+    "description": "IPVA",
+    "category_id": 7,
+    "due_date": "2026-07-25",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 3,
+    "series_index": 1,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 41,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 187.0,
+    "description": "IPVA",
+    "category_id": 7,
+    "due_date": "2026-08-25",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 3,
+    "series_index": 2,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 42,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 187.0,
+    "description": "IPVA",
+    "category_id": 7,
+    "due_date": "2026-11-25",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 3,
+    "series_index": 5,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 43,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2026-10-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 44,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2026-11-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 45,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2026-12-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 46,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2027-01-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 47,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2027-02-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 48,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2027-03-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 49,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2027-04-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 50,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2027-05-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 51,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2027-06-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 52,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2027-07-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 53,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 39.9,
+    "description": "Netflix",
+    "category_id": 9,
+    "due_date": "2027-08-27",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 4,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 54,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2026-10-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 55,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2026-11-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 56,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2026-12-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 57,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2027-01-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 58,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2027-02-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 59,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2027-03-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 60,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2027-04-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 61,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2027-05-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 62,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2027-06-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 63,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2027-07-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 64,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2027-08-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 65,
+    "user_id": 1,
+    "type": "income",
+    "amount": 6500.0,
+    "description": "Nota fiscal — cliente PJ",
+    "category_id": 16,
+    "due_date": "2027-09-15",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 5,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 66,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2026-09-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 67,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2026-10-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 68,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2026-11-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 69,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2026-12-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 70,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2027-01-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 71,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2027-02-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 72,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2027-03-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 73,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2027-04-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 74,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2027-05-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 75,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2027-06-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 76,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2027-07-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 77,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2027-08-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 78,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 98.5,
+    "description": "Conta de água",
+    "category_id": 8,
+    "due_date": "2027-09-20",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 6,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 79,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2026-10-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 80,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2026-11-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 81,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2026-12-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 82,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2027-01-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 83,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2027-02-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 84,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2027-03-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 85,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2027-04-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 86,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2027-05-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 87,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2027-06-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 88,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2027-07-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 89,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2027-08-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
+  },
+  {
+    "id": 90,
+    "user_id": 1,
+    "type": "expense",
+    "amount": 2350.0,
+    "description": "Fatura do cartão",
+    "category_id": 17,
+    "due_date": "2027-09-22",
+    "settled_at": null,
+    "account_id": null,
+    "is_internal_transfer": false,
+    "needs_transfer_review": false,
+    "series_id": 7,
+    "series_index": null,
+    "ingest_state": "confirmed",
+    "source": "manual",
+    "external_id": null,
+    "import_hash": null,
+    "history": [
+      {
+        "at": "2026-09-23T14:10:14.897284Z",
+        "event": "created",
+        "source": "series"
+      }
+    ],
+    "created_at": "2026-09-23T14:10:14.897284Z"
   }
 ]

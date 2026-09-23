@@ -14,9 +14,11 @@ import {
   isInMonth,
   monthForecast,
   pendingSummary,
+  projectedToScheduledItems,
   toScheduledItems,
   type Category,
   type ScheduledItem,
+  type Series,
 } from './_components/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -33,6 +35,8 @@ export default function AgendadasPage() {
   const [error, setError] = useState<string | null>(null)
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [filters, setFilters] = useState<ScheduledFiltersValue>(EMPTY_FILTERS)
+  const [series, setSeries] = useState<Series[]>([])
+  const [projetados, setProjetados] = useState<ScheduledItem[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -55,6 +59,7 @@ export default function AgendadasPage() {
         ])
         if (!cancelled) {
           setItems(toScheduledItems(transactionsJson.data || [], seriesJson.data || []))
+          setSeries(seriesJson.data || [])
           setCategories(categoriesJson.data || [])
         }
       } catch {
@@ -70,7 +75,39 @@ export default function AgendadasPage() {
     }
   }, [])
 
-  const monthItems = useMemo(() => items.filter((item) => isInMonth(item, month)), [items, month])
+  const materializadosDoMes = useMemo(() => items.filter((item) => isInMonth(item, month)), [items, month])
+
+  // Projeção só entra quando o mês não tem nada materializado — ou seja, além
+  // do horizonte de geração. Dentro dele, o que vale é o registro de verdade;
+  // somar os dois mostraria a mesma obrigação duas vezes.
+  useEffect(() => {
+    if (materializadosDoMes.length > 0 || series.length === 0) {
+      setProjetados([])
+      return
+    }
+    let cancelado = false
+    const de = new Date(month.getFullYear(), month.getMonth(), 1).toISOString().slice(0, 10)
+    const ate = new Date(month.getFullYear(), month.getMonth() + 1, 0).toISOString().slice(0, 10)
+
+    fetch(`${API_URL}/api/series/projection/${CURRENT_USER_ID}?de=${de}&ate=${ate}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (!cancelado) setProjetados(projectedToScheduledItems(json.data || [], series))
+      })
+      .catch(() => {
+        if (!cancelado) setProjetados([])
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [month, materializadosDoMes.length, series])
+
+  const monthItems = useMemo(
+    () => (materializadosDoMes.length > 0 ? materializadosDoMes : projetados),
+    [materializadosDoMes, projetados]
+  )
+
+  const mostrandoProjecao = materializadosDoMes.length === 0 && projetados.length > 0
 
   const categoryMeta = useMemo(() => buildCategoryMeta(monthItems, categories), [monthItems, categories])
   const forecast = useMemo(() => monthForecast(monthItems), [monthItems])
@@ -144,6 +181,10 @@ export default function AgendadasPage() {
             <CardTitle>Próximos vencimentos</CardTitle>
             <CardDescription>
               {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'itens'} no mês
+              {/* Além do horizonte de geração não existe registro — o que
+                  aparece é calculado da regra da série. Dizer isso evita que
+                  o usuário tente pagar algo que ainda não existe. */}
+              {mostrandoProjecao && ' · previsão, ainda não lançada'}
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -15,6 +15,12 @@ export type ScheduledFrequency = 'semanal' | 'quinzenal' | 'mensal'
 
 export type ScheduledItem = {
   id: number
+  /**
+   * Ocorrência **calculada**, não gravada — além do horizonte de geração.
+   * Aparece no calendário e nos totais do mês, mas não pode ser paga nem
+   * editada: ela ainda não existe como registro.
+   */
+  projected?: boolean
   name: string
   /** Conta a pagar (`expense`) ou receita a receber (`income`) — mesmo eixo de `transactions.json`. */
   type: 'income' | 'expense'
@@ -32,6 +38,50 @@ export type ScheduledItem = {
   value: number
   due_date: string
   status: 'pending' | 'paid'
+}
+
+/** Ocorrência projetada, como vem de `/api/series/projection`. */
+export type ProjectedOccurrence = {
+  series_id: number
+  series_index: number | null
+  type: 'income' | 'expense'
+  amount: number
+  description: string | null
+  category_id: number | null
+  due_date: string
+}
+
+/**
+ * Converte projeções em itens da tela.
+ *
+ * Recebem id negativo derivado da série e da data: precisam de chave estável
+ * pro React, e um id positivo se confundiria com registro de verdade.
+ */
+export function projectedToScheduledItems(
+  projecoes: ProjectedOccurrence[],
+  series: Series[]
+): ScheduledItem[] {
+  const byId = new Map(series.map((s) => [s.id, s]))
+  return projecoes.map((p, i) => {
+    const s = byId.get(p.series_id)
+    const nature: ScheduledNature = !s ? 'a_vista' : s.kind === 'installment' ? 'parcelado' : 'recorrente'
+    return {
+      id: -(i + 1),
+      projected: true,
+      name: p.description ?? 'Sem descrição',
+      type: p.type,
+      category_id: p.category_id ?? -1,
+      nature,
+      frequency: s && s.kind === 'recurring' ? FREQUENCY_FROM_API[s.frequency] : undefined,
+      installment:
+        s && s.kind === 'installment' && p.series_index != null && s.total_count != null
+          ? { current: p.series_index, total: s.total_count }
+          : undefined,
+      value: p.amount,
+      due_date: p.due_date,
+      status: 'pending' as const,
+    }
+  })
 }
 
 /** Transação como vem de `/api/transactions` depois da Fatia 1. */
