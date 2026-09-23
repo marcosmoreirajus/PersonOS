@@ -99,7 +99,9 @@ export function OverdueAlert({
 
   return (
     <Collapsible open={aberto} onOpenChange={setAberto}>
-      <div className="rounded-xl border border-border bg-card">
+      {/* `overflow-hidden` porque o hover do gatilho é retangular: sem recorte,
+          o preenchimento vaza pelos cantos arredondados do container. */}
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         <CollapsibleTrigger
           render={
             <button
