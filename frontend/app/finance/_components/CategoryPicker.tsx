@@ -25,6 +25,21 @@ export type PickerCategory = {
   id: number
   name: string
   icon: string
+  /** `both` é o guarda-chuva ("Outros"), que serve aos dois lados. */
+  type: 'expense' | 'income' | 'both'
+}
+
+/**
+ * Categorias que se aplicam a um tipo de lançamento.
+ *
+ * Oferecer "Salário" para uma despesa não é só ruído: é um par que o usuário
+ * pode escolher sem perceber e que envenena o relatório depois.
+ */
+export function categoriasDoTipo<T extends { type: 'expense' | 'income' | 'both' }>(
+  categories: T[],
+  tipo: 'expense' | 'income'
+): T[] {
+  return categories.filter((c) => c.type === tipo || c.type === 'both')
 }
 
 /** Ícone monocromático em círculo neutro — mesmo tratamento da lista. */

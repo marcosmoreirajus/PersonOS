@@ -248,6 +248,13 @@ export default function TransactionsPage() {
     return Math.min(CABECALHO + linhas * LINHA, 560)
   }, [filtradas.length])
 
+  // Tipos presentes na seleção: o lote só pode oferecer categorias que valham
+  // para todos os lançamentos marcados.
+  const tiposSelecionados = useMemo(() => {
+    const ids = new Set(selecionadas)
+    return transactions.filter((t) => ids.has(String(t.id))).map((t) => t.type)
+  }, [selecionadas, transactions])
+
   const chips = [
     tipo !== 'all' && {
       label: `Tipo: ${tipo === 'income' ? 'Entradas' : 'Saídas'}`,
@@ -392,6 +399,7 @@ export default function TransactionsPage() {
 
       <BulkActionsBar
         ids={selecionadas}
+        tipos={tiposSelecionados}
         categories={categories}
         onClear={() => setSelecionadas([])}
         onDone={fetchData}

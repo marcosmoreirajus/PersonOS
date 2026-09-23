@@ -2,102 +2,119 @@
   {
     "id": 1,
     "name": "Alimentação",
+    "type": "expense",
     "icon": "utensils",
     "color": "#dd7635"
   },
   {
     "id": 2,
     "name": "Transporte",
+    "type": "expense",
     "icon": "car",
     "color": "#5b7c99"
   },
   {
     "id": 3,
     "name": "Saúde",
+    "type": "expense",
     "icon": "heart-pulse",
     "color": "#a8674f"
   },
   {
     "id": 4,
     "name": "Lazer",
+    "type": "expense",
     "icon": "clapperboard",
     "color": "#7c8c63"
   },
   {
     "id": 5,
     "name": "Moradia",
+    "type": "expense",
     "icon": "house",
     "color": "#a8a29e"
   },
   {
     "id": 6,
     "name": "Outros",
+    "type": "both",
     "icon": "shapes",
     "color": "#95A5A6"
   },
   {
     "id": 7,
     "name": "Impostos e taxas",
+    "type": "expense",
     "icon": "landmark",
     "color": "#a8a29e"
   },
   {
     "id": 8,
     "name": "Contas da casa",
+    "type": "expense",
     "icon": "plug",
     "color": "#a8a29e"
   },
   {
     "id": 9,
     "name": "Assinaturas",
+    "type": "expense",
     "icon": "repeat",
     "color": "#a8a29e"
   },
   {
     "id": 10,
     "name": "Educação",
+    "type": "expense",
     "icon": "graduation-cap",
     "color": "#a8a29e"
   },
   {
     "id": 11,
     "name": "Compras",
+    "type": "expense",
     "icon": "shopping-bag",
     "color": "#a8a29e"
   },
   {
     "id": 12,
     "name": "Cuidados pessoais",
+    "type": "expense",
     "icon": "scissors",
     "color": "#a8a29e"
   },
   {
     "id": 13,
     "name": "Pets",
+    "type": "expense",
     "icon": "paw-print",
     "color": "#a8a29e"
   },
   {
     "id": 14,
     "name": "Viagens",
+    "type": "expense",
     "icon": "plane",
     "color": "#a8a29e"
   },
   {
     "id": 15,
     "name": "Salário",
+    "type": "income",
     "icon": "wallet",
     "color": "#a8a29e"
   },
   {
     "id": 16,
     "name": "Renda PJ",
+    "type": "income",
     "icon": "briefcase",
     "color": "#a8a29e"
   },
   {
     "id": 17,
     "name": "Fatura do cartão",
+    "type": "expense",
     "icon": "credit-card",
     "color": "#a8a29e"
   }

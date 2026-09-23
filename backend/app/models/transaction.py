@@ -55,3 +55,17 @@ class Scope(str, Enum):
     ONLY_THIS = "only_this"
     THIS_AND_FUTURE = "this_and_future"
     ALL = "all"
+
+
+class CategoryType(str, Enum):
+    """
+    A que lado da transação a categoria pertence.
+
+    `BOTH` existe para o guarda-chuva ("Outros"), que serve aos dois. Sem esse
+    campo o formulário oferece "Salário" para uma despesa — um par que o
+    usuário escolhe sem perceber e que envenena o relatório depois.
+    """
+
+    EXPENSE = "expense"
+    INCOME = "income"
+    BOTH = "both"

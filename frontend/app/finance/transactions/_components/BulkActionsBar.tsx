@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { CategoryPicker, type PickerCategory } from '../../_components/CategoryPicker'
+import { CategoryPicker, categoriasDoTipo, type PickerCategory } from '../../_components/CategoryPicker'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -33,11 +33,14 @@ type Pendente = {
  */
 export function BulkActionsBar({
   ids,
+  tipos,
   categories,
   onClear,
   onDone,
 }: {
   ids: string[]
+  /** Tipos presentes na seleção — decide quais categorias podem ser aplicadas. */
+  tipos: ('income' | 'expense')[]
   categories: PickerCategory[]
   onClear: () => void
   onDone: () => void
@@ -45,6 +48,15 @@ export function BulkActionsBar({
   const [pendente, setPendente] = useState<Pendente>({})
   const [saving, setSaving] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
+
+  // Seleção de um tipo só oferece as categorias dele; seleção mista oferece
+  // apenas as que servem aos dois lados, senão o lote gravaria "Salário" numa
+  // despesa que estava junto por acaso.
+  const disponiveis = useMemo(() => {
+    const unicos = [...new Set(tipos)]
+    if (unicos.length === 1) return categoriasDoTipo(categories, unicos[0])
+    return categories.filter((c) => c.type === 'both')
+  }, [categories, tipos])
 
   const mudancas = useMemo(() => {
     const lista: { key: keyof Pendente; label: string }[] = []
@@ -108,7 +120,7 @@ export function BulkActionsBar({
             diferentes entre si. Este campo é o instrumento de escolher, não
             o estado da seleção. */}
         <CategoryPicker
-          categories={categories}
+          categories={disponiveis}
           value=""
           onChange={(v) => v && setPendente((a) => ({ ...a, category_id: Number(v) }))}
           placeholder="Definir categoria..."

@@ -1,4 +1,5 @@
 from app.models.transaction import (
+    CategoryType,
     IngestState,
     Scope,
     SeriesFrequency,
@@ -8,6 +9,7 @@ from app.models.transaction import (
 )
 
 __all__ = [
+    "CategoryType",
     "IngestState",
     "Scope",
     "SeriesFrequency",

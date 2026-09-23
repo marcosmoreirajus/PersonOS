@@ -1,21 +1,22 @@
 from pydantic import BaseModel
-from datetime import datetime
+
+from app.models.transaction import CategoryType
 
 
 class CategoryCreate(BaseModel):
     name: str
-    description: str | None = None
-    icon: str | None = None
+    type: CategoryType
+    # Nome do ícone lucide (ex.: "utensils"), não emoji — decisão de 22/09.
+    icon: str
     color: str = "#000000"
 
 
 class CategoryResponse(BaseModel):
     id: int
     name: str
-    description: str | None
-    icon: str | None
+    type: CategoryType
+    icon: str
     color: str
-    created_at: datetime
 
     class Config:
         from_attributes = True

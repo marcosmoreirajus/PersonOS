@@ -61,6 +61,12 @@ Linha importada de extrato nasce com `settled_at` preenchido — o banco só inf
 
 **Regra inegociável:** todo endpoint de leitura agregada — saldo, dashboard, relatórios, listagem padrão de transações, exportação — filtra `ingest_state == "confirmed"`. O único lugar que enxerga `awaiting_reconciliation` é a tela "A revisar".
 
+### Categoria tem lado
+
+Cada categoria carrega `type`: `expense`, `income` ou `both`. O formulário de lançamento só oferece as que se aplicam ao tipo escolhido, e trocar entrada/saída **limpa** a categoria que deixou de valer — manter uma que não pertence ao novo tipo gravaria o par errado em silêncio.
+
+`both` existe para o guarda-chuva ("Outros"), que serve aos dois lados. Em operação em **lote**, seleção de um tipo só oferece as categorias dele; seleção mista oferece apenas as `both`, senão o lote gravaria "Salário" numa despesa que estava marcada junto por acaso.
+
 ### Balde virtual "Sem categoria"
 
 `category_id = null`. **Nunca** criar uma linha "Sem categoria" em `categories.json`: ela apareceria no seletor do cadastro e a memória de classificação poderia aprender a classificá-la *como* tal, esvaziando a fila sem ninguém revisar nada. "Outros" (id 6) é escolha deliberada e continua sendo outra coisa.

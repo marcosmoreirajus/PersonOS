@@ -11,7 +11,7 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 // usa `motion/input`; campo de tela (busca, filtro) usa `ui/input`.
 import { Input } from '@/components/motion/input'
 import { cn } from '@/lib/utils'
-import { CategoryPicker } from '../../_components/CategoryPicker'
+import { CategoryPicker, categoriasDoTipo } from '../../_components/CategoryPicker'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -19,6 +19,7 @@ export type Category = {
   id: number
   name: string
   icon: string
+  type: 'expense' | 'income' | 'both'
 }
 
 /** O que o diálogo precisa saber de um lançamento pra editar ou duplicar. */
@@ -216,7 +217,14 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
               <button
                 key={t}
                 type="button"
-                onClick={() => setType(t)}
+                onClick={() => {
+                  setType(t)
+                  // Trocar entrada/saída pode invalidar a categoria escolhida:
+                  // manter uma que não pertence ao novo tipo gravaria o par
+                  // errado em silêncio.
+                  const cat = categories.find((c) => String(c.id) === categoryId)
+                  if (cat && cat.type !== 'both' && cat.type !== t) setCategoryId('')
+                }}
                 className={cn(
                   'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                   type === t
@@ -328,7 +336,12 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
             {/* Combobox com busca: com 17 categorias (e mais quando virarem
                 customizáveis), percorrer a lista inteira num select nativo é
                 atrito em cima do caminho mais usado do app. */}
-            <CategoryPicker id="category" categories={categories} value={categoryId} onChange={setCategoryId} />
+            <CategoryPicker
+              id="category"
+              categories={categoriasDoTipo(categories, type)}
+              value={categoryId}
+              onChange={setCategoryId}
+            />
             {erros.category && <FieldError>{erros.category}</FieldError>}
           </Field>
         </div>
