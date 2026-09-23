@@ -43,6 +43,18 @@ function MonthStrip({ value, onChange, getMonthAlert, className }: MonthStripPro
         <button type="button" aria-label="Próximo ano" onClick={() => onChange(new Date(year + 1, monthIndex, 1))} className={arrowClass}>
           <ChevronRight className="size-4" />
         </button>
+        {/* A faixa mostra um ano inteiro, então o mês de hoje já aparece
+            marcado — mas só quando se está no ano dele. Navegando por ano, o
+            atalho evita contar cliques de volta. */}
+        {(year !== today.getFullYear() || monthIndex !== today.getMonth()) && (
+          <button
+            type="button"
+            onClick={() => onChange(new Date(today.getFullYear(), today.getMonth(), 1))}
+            className="ml-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent"
+          >
+            Hoje
+          </button>
+        )}
       </div>
 
       {/* Rola só a faixa (não a página) em telas estreitas. */}

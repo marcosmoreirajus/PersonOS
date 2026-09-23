@@ -30,6 +30,11 @@ function MonthPicker({ value, onChange, className }: MonthPickerProps) {
   const year = value.getFullYear()
   const monthIndex = value.getMonth()
 
+  const hoje = new Date()
+  const anoAtual = hoje.getFullYear()
+  const mesAtual = hoje.getMonth()
+  const noMesAtual = year === anoAtual && monthIndex === mesAtual
+
   return (
     <div className={cn('inline-flex items-center gap-0.5', className)}>
       <button type="button" aria-label="Mês anterior" onClick={() => onChange(new Date(year, monthIndex - 1, 1))} className={arrowClass}>
@@ -64,23 +69,48 @@ function MonthPicker({ value, onChange, className }: MonthPickerProps) {
                 </button>
               </div>
               <div className="grid grid-cols-3 gap-1">
-                {MONTHS.map((m, i) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => {
-                      onChange(new Date(year, i, 1))
-                      setOpen(false)
-                    }}
-                    className={cn(
-                      'rounded-md py-1.5 text-xs font-medium transition-colors',
-                      i === monthIndex ? 'bg-foreground text-background' : 'text-secondary-foreground hover:bg-accent'
-                    )}
-                  >
-                    {m}
-                  </button>
-                ))}
+                {MONTHS.map((m, i) => {
+                  const ehMesAtual = year === anoAtual && i === mesAtual
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => {
+                        onChange(new Date(year, i, 1))
+                        setOpen(false)
+                      }}
+                      className={cn(
+                        'rounded-md py-1.5 text-xs font-medium transition-colors',
+                        i === monthIndex
+                          ? 'bg-foreground text-background'
+                          : 'text-secondary-foreground hover:bg-accent',
+                        // O mês de hoje ganha um anel quando NÃO é o selecionado:
+                        // no selecionado o fundo sólido já o distingue, e somar
+                        // os dois destaques faria parecer um terceiro estado.
+                        ehMesAtual && i !== monthIndex && 'ring-1 ring-border ring-inset'
+                      )}
+                    >
+                      {m}
+                    </button>
+                  )
+                })}
               </div>
+
+              {/* Voltar ao mês de hoje é o caminho mais usado depois de
+                  navegar — sem isso, quem foi parar em 2028 precisa contar
+                  cliques de volta. Desabilitado quando já se está nele, pra
+                  não oferecer uma ação sem efeito. */}
+              <button
+                type="button"
+                disabled={noMesAtual}
+                onClick={() => {
+                  onChange(new Date(anoAtual, mesAtual, 1))
+                  setOpen(false)
+                }}
+                className="mt-2 w-full rounded-md border border-border py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                Ir para o mês atual
+              </button>
             </Popover.Popup>
           </Popover.Positioner>
         </Popover.Portal>
