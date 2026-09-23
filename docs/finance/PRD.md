@@ -62,7 +62,8 @@ Todo o conteúdo deste PRD vem de uma sabatina de duas sessões (21 e 22/09/2026
 
 **Fora do escopo / fase futura:**
 
-- **Módulo Contas e Cartões** — a origem do lançamento é uma *conta genérica* (entidade mínima), não o módulo completo. Adiado desde 12/09 e reafirmado na sabatina.
+- **Módulo Contas e Cartões completo** (saldos, extrato por conta, exclusão, ícone do banco). Reaberto em 23/09 só na versão **mínima** (nome + tipo, uma conta por banco), porque a importação exige escolher a conta de destino. Fatura de cartão paga é uma saída comum na conta que pagou.
+- **Layouts por banco** (Bradesco, BTG, C6) e mapeamento de colunas: a importação usa OFX e um layout padrão do sistema (CSV/XLSX, modelo para download).
 - **Open Finance** e qualquer sincronização automática com banco.
 - **WhatsApp / OCR** como canais de entrada.
 - Metas e orçamento (módulo próprio, adiado 2x).
@@ -90,7 +91,7 @@ Entidade série, geração (fim conhecido gera tudo; indefinido usa janela de 12
 
 ### Fatia 3 — Importação e conciliação
 
-Upload, parse, detecção de duplicidade, entrada parcial, espelho de espera na própria tabela, fusão ao conciliar.
+Página `/finance/importar` em passos (Origem → Revisar → Confirmar), conta de destino, parse, detecção de duplicidade com decisão por linha na revisão, entrada parcial, espelho de espera na própria tabela, fusão ao conciliar.
 
 **Aceite:** importar um arquivo com 3 linhas repetidas de um extrato já importado resulta em 0 duplicatas gravadas; conciliar uma linha com um lançamento manual e reimportar o mesmo arquivo não gera nova suspeita.
 

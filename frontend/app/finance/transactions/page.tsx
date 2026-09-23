@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Copy, FileUp, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 
@@ -15,7 +16,6 @@ import { cn } from '@/lib/utils'
 import TransactionDialog, { type Category, type DialogSeed } from './_components/TransactionDialog'
 import DeleteDialog from './_components/DeleteDialog'
 import OverdueAlert from './_components/OverdueAlert'
-import ImportDialog from './_components/ImportDialog'
 import BulkActionsBar from './_components/BulkActionsBar'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -72,7 +72,6 @@ export default function TransactionsPage() {
   const [categorias, setCategorias] = useState<string[]>([])
   const [selecionadas, setSelecionadas] = useState<string[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
   // `seed` preenche o formulario: com id = edicao, sem id = duplicacao.
   const [seed, setSeed] = useState<DialogSeed | null>(null)
   const [excluindo, setExcluindo] = useState<Transaction | null>(null)
@@ -278,7 +277,7 @@ export default function TransactionsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-foreground">Transações</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
+          <Button variant="outline" render={<Link href="/finance/importar" />} nativeButton={false}>
             <FileUp className="size-4" strokeWidth={1.5} aria-hidden="true" />
             Importar extrato
           </Button>
@@ -424,12 +423,6 @@ export default function TransactionsPage() {
         seed={seed}
       />
 
-      <ImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        userId={CURRENT_USER_ID}
-        onImported={fetchData}
-      />
 
       <DeleteDialog
         transaction={excluindo}
