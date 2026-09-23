@@ -1,15 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Copy, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Copy, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { MoneyValue } from '@/components/ui/money-value'
 import { ActionsMenu } from '@/components/ui/actions-menu'
 import { CategoryMultiPicker } from '../_components/CategoryPicker'
 import { Table, type TableColumn } from '@/components/motion/table'
-import { MorphingSearch, type MorphingSearchItem } from '@/components/motion/morphing-search'
 import { categoryIcon } from '@/lib/category-icons'
 import { cn } from '@/lib/utils'
 import TransactionDialog, { type Category, type DialogSeed } from './_components/TransactionDialog'
@@ -132,17 +132,6 @@ export default function TransactionsPage() {
     }
     return { entradas, saidas, resultado: entradas - saidas }
   }, [filtradas])
-
-  const searchItems: MorphingSearchItem[] = useMemo(
-    () =>
-      filtradas.slice(0, 8).map((t) => ({
-        id: String(t.id),
-        title: t.description ?? 'Sem descrição',
-        description: `${formatDate(t.settled_at ?? t.due_date)} · ${categoriaPorId.get(t.category_id ?? -1)?.name ?? 'Sem categoria'}`,
-        icon: categoryIcon(categoriaPorId.get(t.category_id ?? -1)?.icon),
-      })),
-    [filtradas, categoriaPorId]
-  )
 
   const columns: TableColumn<Transaction>[] = useMemo(
     () => [
@@ -281,12 +270,35 @@ export default function TransactionsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-3">
-        <MorphingSearch
-          items={searchItems}
-          placeholder="Buscar por descrição..."
-          onQueryChange={setQuery}
-          emptyMessage="Nenhuma transação encontrada."
-        />
+        {/* Campo de filtro persistente, não paleta de comando: o
+            `MorphingSearch` limpa a própria query toda vez que abre ou
+            fecha (`useOnOpen(open, () => setQuery(''))`), porque foi feito
+            pra sessões de busca efêmeras. Como filtro de tabela ele apagava
+            o termo assim que perdia o foco. */}
+        <div className="relative w-full shrink-0 sm:w-72">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por descrição..."
+            aria-label="Buscar por descrição"
+            className="pl-9"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="Limpar busca"
+              className="absolute top-1/2 right-2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <X className="size-3.5" strokeWidth={2} aria-hidden="true" />
+            </button>
+          )}
+        </div>
 
         <div
           role="group"
