@@ -1,7 +1,14 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.schemas import BulkAction, TransactionCreate, TransactionUpdate
+from app.schemas import (
+    BulkAction,
+    PostponePayload,
+    SeriesExtend,
+    SettlePayload,
+    TransactionCreate,
+    TransactionUpdate,
+)
 from app.services import DataService, BusinessService
 
 app = FastAPI(
@@ -134,6 +141,40 @@ async def get_series(user_id: int):
     return {"data": DataService.get_series(user_id)}
 
 
+@app.post("/api/series/extend")
+async def extend_series(payload: SeriesExtend):
+    """
+    Roda a janela das séries do usuário.
+
+    Chamada na virada do mês (primeira abertura do app) e ao navegar além do
+    horizonte. Idempotente: repetir não duplica.
+    """
+    return {"data": DataService.estender_series(payload.user_id)}
+
+
+@app.get("/api/series/projection/{user_id}")
+async def project_series(user_id: int, de: str, ate: str):
+    """Ocorrências calculadas do intervalo, sem gravar — leitura projeta."""
+    return {"data": DataService.projetar_series(user_id, de, ate)}
+
+
+@app.post("/api/transactions/{transaction_id}/settle")
+async def settle_transaction(transaction_id: int, payload: SettlePayload | None = None):
+    atualizada = DataService.settle_transaction(transaction_id, payload.on.isoformat() if payload and payload.on else None)
+    if atualizada is None:
+        return {"error": "Transaction not found"}, 404
+    return {"data": atualizada}
+
+
+@app.post("/api/transactions/{transaction_id}/postpone")
+async def postpone_transaction(transaction_id: int, payload: PostponePayload | None = None):
+    movidas = DataService.postpone_transaction(transaction_id, payload.scope.value if payload else "only_this")
+    if movidas == 0:
+        return {"error": "Transaction not found"}, 404
+    return {"data": {"moved": movidas}}
+
+
+
 # Rotas do Módulo Negócio (dados em Markdown, desacoplado do Módulo Finanças)
 @app.get("/api/business/{section}")
 async def get_business_section(section: str):
@@ -153,9 +194,6 @@ async def update_business_section(section: str, request: Request):
 
 
 # Próximas fatias (ver docs/finance/PRD.md):
-# - Fatia 2: POST /settle, POST /postpone, POST /api/series/extend
-#   (PATCH/DELETE com `scope` já existem, adiantados junto das ações da
-#   tela de Transações)
 # - Fatia 3: POST /api/import/preview e /commit, POST /api/reconcile/{id}
 # - Fatia 4: GET /api/review/user/{user_id}
 # - Autenticação JWT

@@ -83,6 +83,27 @@ class BulkAction(BaseModel):
     changes: BulkChanges | None = None
 
 
+class SeriesExtend(BaseModel):
+    """Roda a janela das séries de um usuário."""
+
+    user_id: int
+
+
+class SettlePayload(BaseModel):
+    """Data em que o dinheiro se moveu. Sem ela, hoje."""
+
+    on: date | None = None
+
+
+class PostponePayload(BaseModel):
+    """
+    Adiar um vencimento. `scope` segue a mesma tríade das outras operações —
+    mas adiar nunca toca o molde da série: é exceção pontual, não contrato novo.
+    """
+
+    scope: Scope = Scope.ONLY_THIS
+
+
 class HistoryEvent(BaseModel):
     at: datetime
     event: str

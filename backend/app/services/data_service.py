@@ -1,7 +1,9 @@
 import json
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Dict, Any
+
+from app.services import series_engine
 
 # Caminho dos dados
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
@@ -127,6 +129,15 @@ class DataService:
                 total_count=series.get("total_count"),
                 end_date=series.get("end_date"),
             )["id"]
+
+        # Série com fim conhecido gera tudo; indefinida, os 12 meses da
+        # janela. A primeira ocorrência sai daqui junto das demais, em vez de
+        # ser criada à mão e as outras depois — duas origens para o mesmo
+        # registro divergiriam no dia em que uma das duas mudasse.
+        if series_id is not None:
+            criada = DataService.gerar_ocorrencias_da_serie(series_id, transactions)
+            if criada:
+                return criada[0]
 
         history = [{"at": now, "event": "created", "source": source}]
         if settled_at:
@@ -295,6 +306,136 @@ class DataService:
         removidas = len(transactions) - len(restantes)
         DataService.save_json("transactions", restantes)
         return removidas
+
+
+    # ------------------------------------------------------------------ #
+    # Geração de séries (Fatia 2)
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def gerar_ocorrencias_da_serie(
+        series_id: int, transactions: List[Dict[str, Any]] | None = None
+    ) -> List[Dict[str, Any]]:
+        """Materializa o que falta de uma série e persiste."""
+        transactions = transactions if transactions is not None else DataService.load_json("transactions")
+        serie = next((s for s in DataService.load_json("series") if s["id"] == series_id), None)
+        if serie is None:
+            return []
+
+        agora = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        proximo = max((t["id"] for t in transactions), default=0) + 1
+        novas = series_engine.gerar(serie, transactions, date.today(), agora, proximo)
+        if novas:
+            transactions.extend(novas)
+            DataService.save_json("transactions", transactions)
+        return novas
+
+    @staticmethod
+    def estender_series(user_id: int) -> Dict[str, Any]:
+        """
+        Roda a janela de todas as séries ativas do usuário.
+
+        Idempotente de propósito: é chamada na virada do mês e ao navegar
+        para um mês distante, e as duas podem acontecer na mesma sessão. A
+        chave é (série, vencimento), então repetir não duplica.
+
+        Série encerrada não entra — é o que impede a assinatura cancelada de
+        voltar na próxima extensão.
+        """
+        transactions = DataService.load_json("transactions")
+        series = [
+            s
+            for s in DataService.load_json("series")
+            if s["user_id"] == user_id and not s.get("ended_at")
+        ]
+
+        agora = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        hoje = date.today()
+        criadas: List[Dict[str, Any]] = []
+
+        for serie in series:
+            proximo = max((t["id"] for t in transactions), default=0) + 1
+            novas = series_engine.gerar(serie, transactions, hoje, agora, proximo)
+            transactions.extend(novas)
+            criadas.extend(novas)
+
+        if criadas:
+            DataService.save_json("transactions", transactions)
+
+        atrasadas = sum(1 for t in criadas if t["due_date"] < hoje.isoformat())
+        return {"geradas": len(criadas), "atrasadas": atrasadas}
+
+    @staticmethod
+    def projetar_series(user_id: int, de: str, ate: str) -> List[Dict[str, Any]]:
+        """
+        Ocorrências calculadas de um intervalo, sem gravar nada.
+
+        Leitura projeta, escrita materializa: navegar para um mês distante
+        mostra o que está previsto sem criar dado que ninguém pediu.
+        """
+        transactions = DataService.load_json("transactions")
+        materializadas = {
+            (t.get("series_id"), t["due_date"]) for t in transactions if t.get("series_id")
+        }
+
+        inicio = date(int(de[:4]), int(de[5:7]), int(de[8:10]))
+        fim = date(int(ate[:4]), int(ate[5:7]), int(ate[8:10]))
+
+        fora = []
+        for serie in DataService.load_json("series"):
+            if serie["user_id"] != user_id or serie.get("ended_at"):
+                continue
+            for proj in series_engine.projetar(serie, inicio, fim):
+                if (serie["id"], proj["due_date"]) not in materializadas:
+                    fora.append(proj)
+        return fora
+
+    @staticmethod
+    def settle_transaction(transaction_id: int, on: str | None = None) -> Dict[str, Any] | None:
+        """Marca a efetivação. Sem data informada, é hoje."""
+        quando = on or date.today().isoformat()
+        return DataService.update_transaction(transaction_id, {"settled_at": quando}, "only_this")
+
+    @staticmethod
+    def postpone_transaction(transaction_id: int, scope: str = "only_this") -> int:
+        """
+        Adia um vencimento em um período da série (ou um mês, se avulso).
+
+        Pular é adiamento, não dispensa: o compromisso continua existindo com
+        data nova, e por isso **não toca o molde** — a série retoma o ritmo.
+        O rastro de que a data mudou fica no evento `due_date_moved`.
+        """
+        transactions = DataService.load_json("transactions")
+        alvo = next((t for t in transactions if t["id"] == transaction_id), None)
+        if alvo is None:
+            return 0
+
+        serie = None
+        if alvo.get("series_id"):
+            serie = next(
+                (s for s in DataService.load_json("series") if s["id"] == alvo["series_id"]), None
+            )
+        frequencia = (serie or {}).get("frequency", "monthly")
+
+        agora = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        alvos = DataService._alvos_do_escopo(transactions, alvo, scope)
+
+        for registro in alvos:
+            atual = series_engine._parse(registro["due_date"])
+            if frequencia == "monthly":
+                nova = series_engine._soma_meses(atual, 1, atual.day)
+            elif frequencia == "biweekly":
+                nova = atual + timedelta(days=14)
+            else:
+                nova = atual + timedelta(days=7)
+            anterior = registro["due_date"]
+            registro["due_date"] = nova.isoformat()
+            registro.setdefault("history", []).append(
+                {"at": agora, "event": "due_date_moved", "from": anterior, "to": registro["due_date"]}
+            )
+
+        DataService.save_json("transactions", transactions)
+        return len(alvos)
 
     # ------------------------------------------------------------------ #
     # Séries (recorrência e parcelamento)
