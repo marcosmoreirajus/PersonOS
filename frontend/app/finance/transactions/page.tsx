@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Copy, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { Copy, FileUp, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import TransactionDialog, { type Category, type DialogSeed } from './_components/TransactionDialog'
 import DeleteDialog from './_components/DeleteDialog'
 import OverdueAlert from './_components/OverdueAlert'
+import ImportDialog from './_components/ImportDialog'
 import BulkActionsBar from './_components/BulkActionsBar'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -26,6 +27,8 @@ type Transaction = {
   amount: number
   description: string | null
   category_id: number | null
+  /** Vem da API em todo lançamento; nulo até existir o módulo de Contas. */
+  account_id: number | null
   due_date: string
   settled_at: string | null
   is_internal_transfer: boolean
@@ -69,6 +72,7 @@ export default function TransactionsPage() {
   const [categorias, setCategorias] = useState<string[]>([])
   const [selecionadas, setSelecionadas] = useState<string[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   // `seed` preenche o formulario: com id = edicao, sem id = duplicacao.
   const [seed, setSeed] = useState<DialogSeed | null>(null)
   const [excluindo, setExcluindo] = useState<Transaction | null>(null)
@@ -273,10 +277,16 @@ export default function TransactionsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-foreground">Transações</h1>
-        <Button onClick={abrirNovo}>
-          <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
-          Lançamento manual
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <FileUp className="size-4" strokeWidth={1.5} aria-hidden="true" />
+            Importar extrato
+          </Button>
+          <Button onClick={abrirNovo}>
+            <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
+            Lançamento manual
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-3">
@@ -412,6 +422,13 @@ export default function TransactionsPage() {
         userId={CURRENT_USER_ID}
         onSaved={fetchData}
         seed={seed}
+      />
+
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        userId={CURRENT_USER_ID}
+        onImported={fetchData}
       />
 
       <DeleteDialog
