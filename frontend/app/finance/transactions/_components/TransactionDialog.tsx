@@ -6,7 +6,10 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+// Formulário usa o Input animado (rótulo, erro com shake e linha de erro
+// reservada). Ver a convenção em docs/design-system.md: campo de formulário
+// usa `motion/input`; campo de tela (busca, filtro) usa `ui/input`.
+import { Input } from '@/components/motion/input'
 import { cn } from '@/lib/utils'
 import { CategoryPicker } from '../../_components/CategoryPicker'
 
@@ -62,13 +65,13 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
   const [description, setDescription] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [erros, setErros] = useState<{ amount?: string; description?: string; category?: string }>({})
 
   // Reidrata ao abrir: em edição e em duplicação o formulário parte do
   // lançamento de origem; em criação, de um estado limpo.
   useEffect(() => {
     if (!open) return
-    setError(null)
+    setErros({})
     if (seed) {
       setType(seed.type)
       setAmount(String(seed.amount).replace('.', ','))
@@ -83,12 +86,17 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
 
   async function submit(addAnother: boolean) {
     const valor = Number(amount.replace(/\./g, '').replace(',', '.'))
-    if (!valor || valor <= 0) return setError('Informe um valor maior que zero.')
-    if (!description.trim()) return setError('A descrição é obrigatória.')
-    if (!categoryId) return setError('Escolha uma categoria.')
+    // Todos os campos são validados de uma vez: apontar um erro por vez faz o
+    // usuário corrigir, salvar e descobrir o próximo.
+    const novos = {
+      amount: !valor || valor <= 0 ? 'Informe um valor maior que zero.' : undefined,
+      description: !description.trim() ? 'A descrição é obrigatória.' : undefined,
+      category: !categoryId ? 'Escolha uma categoria.' : undefined,
+    }
+    setErros(novos)
+    if (novos.amount || novos.description || novos.category) return
 
     setSaving(true)
-    setError(null)
     try {
       const corpo = {
         category_id: Number(categoryId),
@@ -128,7 +136,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
         onOpenChange(false)
       }
     } catch {
-      setError('Não foi possível salvar a transação.')
+      setErros({ amount: 'Não foi possível salvar a transação.' })
     } finally {
       setSaving(false)
     }
@@ -164,31 +172,28 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field>
-              <FieldLabel htmlFor="amount">Valor</FieldLabel>
-              <Input
-                id="amount"
-                inputMode="decimal"
-                placeholder="0,00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="date">Data</FieldLabel>
-              <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </Field>
+            <Input
+              id="amount"
+              label="Valor"
+              inputMode="decimal"
+              placeholder="0,00"
+              value={amount}
+              onChange={setAmount}
+              error={erros.amount}
+              reserveErrorLine
+            />
+            <Input id="date" label="Data" type="date" value={date} onChange={setDate} reserveErrorLine />
           </div>
 
-          <Field>
-            <FieldLabel htmlFor="description">Descrição</FieldLabel>
-            <Input
-              id="description"
-              placeholder="Descreva a transação"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </Field>
+          <Input
+            id="description"
+            label="Descrição"
+            placeholder="Descreva a transação"
+            value={description}
+            onChange={setDescription}
+            error={erros.description}
+            reserveErrorLine
+          />
 
           <Field>
             <FieldLabel htmlFor="category">Categoria</FieldLabel>
@@ -196,9 +201,8 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
                 customizáveis), percorrer a lista inteira num select nativo é
                 atrito em cima do caminho mais usado do app. */}
             <CategoryPicker id="category" categories={categories} value={categoryId} onChange={setCategoryId} />
+            {erros.category && <FieldError>{erros.category}</FieldError>}
           </Field>
-
-          {error && <FieldError>{error}</FieldError>}
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">

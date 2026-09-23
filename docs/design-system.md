@@ -136,7 +136,64 @@ esse arquivo agora:
 (`tracking-[-0.01em]`). Não se aplica a `<h1>` de página nem a valores
 numéricos em destaque (esses continuam bold onde já eram).
 
-## Componentes (`frontend/components/ui/`)
+## De onde vem cada componente (`ui/` × `motion/`)
+
+Duas origens convivem no projeto, e a regra de qual usar precisa ser explícita
+— sem ela, a mesma necessidade é resolvida de dois jeitos em telas diferentes,
+e um dia alguém conserta o arquivo errado.
+
+| Pasta | Origem | Papel |
+|---|---|---|
+| `components/ui/` | shadcn/ui sobre **Base UI** (padrão desde julho/2026) | vocabulário base: botão, card, diálogo, rótulo, select, tabela estática… |
+| `components/motion/` | registry **beUI** | comportamento rico que o vocabulário base não tem: data grid, combobox com busca, multi-select, sidebar animada, input de formulário |
+
+**Regra de escolha:** usar `ui/` por padrão. Recorrer a `motion/` só quando o
+componente base não resolve o comportamento — e nunca manter os dois vivos
+para a mesma função.
+
+### Casos já decididos
+
+- **Campo de formulário** → `motion/input`. Tem rótulo, mensagem de erro com
+  shake e `reserveErrorLine`, que **reserva a linha da mensagem** e evita o
+  formulário pular quando a validação aparece.
+- **Campo de tela** (busca, filtro) → `ui/input`. Não tem rótulo nem
+  validação; é um campo solto dentro de uma barra.
+- **Tabela de dados** (ordenação, seleção, volume) → `motion/table`.
+  **Tabela estática** (um resumo de poucas linhas) → `ui/table`, porque
+  virtualizar cinco linhas é custo sem retorno.
+- **Escolha entre muitas opções** → `motion/combobox` (uma) ou
+  `motion/multi-select` (várias). O `ui/select` fica para listas curtas e
+  fechadas, onde buscar não ajuda.
+- **Navegação estrutural** → `ui/app-shell` (`AppShell` + `SectionTabs`),
+  construído sobre `motion/animated-sidebar`.
+
+### Cuidados com os blocos do beUI
+
+1. **Todo bloco declara `lib/utils.ts` entre os arquivos dele e sobrescreve o
+   do projeto na instalação.** Já aconteceu 6 vezes. Depois de qualquer
+   `shadcn add @beui/...`, conferir se o arquivo voltou ao reexport de `cn`.
+2. **Blocos trazem primitivas próprias.** O `signup-form` veio com um segundo
+   `input`, um segundo `checkbox` e uma árvore inteira de `button`. Podar o
+   que duplica primitiva existente, na hora da instalação.
+3. **Ler o código antes de compor.** Um componente copiado não tem
+   documentação: a composição pretendida está nas classes e no `value` das
+   peças. Compor por analogia com outra biblioteca compila e parece
+   funcionar, mas produz o resultado errado.
+4. **Perguntar que problema o componente resolve, não com o que ele se
+   parece.** O `morphing-search` foi adotado como filtro de tabela e removido
+   depois: ele é paleta de comando e limpa a própria busca ao fechar, por
+   design.
+
+### Componentes instalados e depois removidos
+
+`ui/sidebar`, `ui/command`, `ui/sheet`, `ui/input-group`, `hooks/use-mobile` e
+`motion/morphing-search` foram removidos por ficarem sem consumidor. Código
+órfão não é verificado por nada — nem pelo runtime, nem pelo type checker, nem
+pelo teste manual — e quando duplica algo em uso, cria dois caminhos para a
+mesma coisa. Todos voltam com um `npx shadcn add <nome>` no dia em que
+tiverem dono.
+
+## Componentes (`frontend/components/`)
 
 ### `cn()` — `frontend/lib/utils.ts`
 
