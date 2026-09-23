@@ -111,21 +111,22 @@ export function CategoryMultiPicker({
   placeholder?: string
   className?: string
 }) {
+  const resumo =
+    value.length === 1
+      ? (categories.find((c) => String(c.id) === value[0])?.name ?? '1 categoria')
+      : `${value.length} categorias`
+
   return (
     <MultiSelect value={value} onValueChange={onChange} className={cn('w-full sm:w-56', className)}>
       <MultiSelectTrigger className="h-10 min-h-10 w-full min-w-0">
-        {/* Campo único: digitar filtra, e o próprio placeholder resume o que
-            está selecionado — o trigger não muda de altura. */}
-        <MultiSelectInput
-          placeholder={
-            value.length === 0
-              ? placeholder
-              : value.length === 1
-                ? (categories.find((c) => String(c.id) === value[0])?.name ?? '1 categoria')
-                : `${value.length} categorias`
-          }
-          aria-label="Buscar categoria"
-        />
+        {/* O resumo é renderizado aqui, não como placeholder do input: o
+            componente zera o placeholder assim que há seleção
+            (`placeholder={values.length ? '' : placeholder}`), porque assume
+            que os tokens é que mostram o que foi escolhido. Sem tokens e sem
+            este span, o campo ficava visualmente vazio mesmo com filtro
+            ativo. */}
+        {value.length > 0 && <span className="shrink-0 truncate text-sm text-foreground">{resumo}</span>}
+        <MultiSelectInput placeholder={placeholder} aria-label="Buscar categoria" />
       </MultiSelectTrigger>
       <MultiSelectContent>
         <MultiSelectList ariaLabel="Categorias">
