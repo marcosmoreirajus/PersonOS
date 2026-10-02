@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { CircleAlert } from 'lucide-react'
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { MoneyValue } from '@/components/ui/money-value'
@@ -10,11 +12,16 @@ import { categoryColorByRank } from '@/lib/category-colors'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
 
+/** A fila "A revisar" filtrada só nos lançamentos sem categoria. */
+const REVISAR_SEM_CATEGORIA = '/finance/revisar?secao=sem-categoria'
+
 type DashboardSummary = {
   balance: number
   income: number
   expense: number
   expenses_by_category: Record<string, number>
+  /** Gasto efetivado com `category_id` nulo — o balde virtual do spec. */
+  uncategorized_expense: number
 }
 
 export default function RelatoriosPage() {
@@ -59,10 +66,24 @@ export default function RelatoriosPage() {
     )
   }
 
-  const categoryData: CategoryDatum[] = Object.entries(summary.expenses_by_category)
+  // A escala de ranking é só das categorias reais. O balde "Sem categoria"
+  // entra depois, pelo peso, em `--foreground`: se o não classificado é o
+  // maior gasto, ele encabeça a lista — é isso que o relatório precisa
+  // gritar (spec, "Ambiguidades resolvidas" 2).
+  const realCategories: CategoryDatum[] = Object.entries(summary.expenses_by_category)
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value)
     .map((d, rank) => ({ ...d, color: categoryColorByRank(rank) }))
+  const uncategorized = summary.uncategorized_expense ?? 0
+  const categoryData: CategoryDatum[] =
+    uncategorized > 0
+      ? [
+          ...realCategories,
+          { name: 'Sem categoria', value: uncategorized, color: 'var(--foreground)', href: REVISAR_SEM_CATEGORIA },
+        ].sort((a, b) => b.value - a.value)
+      : realCategories
+  const totalPorCategoria = categoryData.reduce((s, d) => s + d.value, 0)
+  const pctSemCategoria = totalPorCategoria > 0 ? (uncategorized / totalPorCategoria) * 100 : 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -94,7 +115,19 @@ export default function RelatoriosPage() {
           <CardTitle>Despesas por categoria</CardTitle>
           <CardDescription>Onde o dinheiro saiu, do mês inteiro registrado</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
+          {uncategorized > 0 && (
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-border bg-muted px-4 py-2 text-sm text-foreground">
+              <CircleAlert className="size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+              {/* Arredonda para cima: 0,4% sem categoria não pode aparecer como 0%. */}
+              <span>
+                {Math.ceil(pctSemCategoria)}% das despesas (<MoneyValue value={uncategorized} />) estão sem categoria.
+              </span>
+              <Link href={REVISAR_SEM_CATEGORIA} className="font-medium underline underline-offset-4">
+                Classificar agora
+              </Link>
+            </p>
+          )}
           <CategoryBreakdown data={categoryData} />
         </CardContent>
       </Card>

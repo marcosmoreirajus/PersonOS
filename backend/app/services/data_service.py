@@ -647,6 +647,55 @@ class DataService:
         return next((i for i in all_data if i["user_id"] == user_id), {})
 
     @staticmethod
+    def get_review(user_id: int) -> Dict[str, Any]:
+        """
+        A fila "A revisar": o que falta o usuário resolver, num lugar só.
+
+        É o único leitor de `awaiting_reconciliation` (regra do spec). Sem
+        categoria entram confirmadas e já efetivadas, de qualquer tipo — o
+        mesmo recorte do balde do relatório. Previsto fica de fora: uma
+        recorrência sem categoria poria 12 ocorrências na fila, e classificar
+        uma não resolveria as outras. Transferência interna também fica, por
+        não ter categoria a dar. Não é aviso de prazo: ver GLOSSARY.md.
+        """
+        todas = DataService.get_transactions_by_user(user_id, include_unconfirmed=True)
+        por_id = {t["id"]: t for t in todas}
+
+        def recente_primeiro(t: Dict[str, Any]) -> tuple:
+            return (t.get("settled_at") or t.get("due_date") or "", t["id"])
+
+        a_conciliar = []
+        for t in todas:
+            if t.get("ingest_state") != "awaiting_reconciliation":
+                continue
+            # O candidato pode ter sido excluído depois da importação: a linha
+            # continua na fila, só sem o comparativo.
+            cand = por_id.get(t.get("reconcile_candidate_id"))
+            a_conciliar.append({**t, "candidato": {
+                "id": cand["id"],
+                "description": cand["description"],
+                "amount": cand["amount"],
+                "due_date": cand["due_date"],
+                "settled_at": cand.get("settled_at"),
+            } if cand else None})
+
+        sem_categoria = [
+            t for t in todas
+            if t.get("ingest_state", "confirmed") == "confirmed"
+            and t.get("settled_at")
+            and t.get("category_id") is None
+            and not t.get("is_internal_transfer")
+        ]
+
+        a_conciliar.sort(key=recente_primeiro, reverse=True)
+        sem_categoria.sort(key=recente_primeiro, reverse=True)
+        return {
+            "a_conciliar": a_conciliar,
+            "sem_categoria": sem_categoria,
+            "total": len(a_conciliar) + len(sem_categoria),
+        }
+
+    @staticmethod
     def get_dashboard_summary(user_id: int) -> Dict[str, Any]:
         """Retorna resumo para dashboard."""
         # Só o efetivado: o previsto existe em transactions desde a fonte
@@ -657,19 +706,30 @@ class DataService:
         expense = sum(t["amount"] for t in transactions if t["type"] == "expense")
         balance = income - expense
 
-        # Despesas por categoria
+        # Despesas por categoria. O nulo NÃO vira uma categoria: vai num balde
+        # à parte, que o relatório mostra fora da escala das categorias reais
+        # (ver "Balde virtual" no spec). Antes caía em "Outro", misturado com
+        # "Outros", que é escolha deliberada. Transferência interna não tem
+        # categoria a dar, então não engorda o balde.
         expenses_by_category = {}
+        uncategorized_expense = 0
         for t in transactions:
-            if t["type"] == "expense":
-                cat_id = t["category_id"]
-                category = DataService.get_category_by_id(cat_id)
-                cat_name = category["name"] if category else "Outro"
-                expenses_by_category[cat_name] = expenses_by_category.get(cat_name, 0) + t["amount"]
+            if t["type"] != "expense":
+                continue
+            cat_id = t.get("category_id")
+            if cat_id is None:
+                if not t.get("is_internal_transfer"):
+                    uncategorized_expense += t["amount"]
+                continue
+            category = DataService.get_category_by_id(cat_id)
+            cat_name = category["name"] if category else "Outro"
+            expenses_by_category[cat_name] = expenses_by_category.get(cat_name, 0) + t["amount"]
 
         return {
             "balance": balance,
             "income": income,
             "expense": expense,
             "expenses_by_category": expenses_by_category,
+            "uncategorized_expense": uncategorized_expense,
             "recent_transactions": sorted(transactions, key=lambda x: x["settled_at"], reverse=True)[:5],
         }

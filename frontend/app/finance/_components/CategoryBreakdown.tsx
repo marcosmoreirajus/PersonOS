@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -10,6 +11,19 @@ export interface CategoryDatum {
   name: string
   value: number
   color: string
+  /** Torna o rótulo um link — ex.: o balde "Sem categoria" leva à fila. */
+  href?: string
+}
+
+/** Rótulo da categoria; vira link quando o dado aponta para algum lugar. */
+function CategoryLabel({ d }: { d: Pick<CategoryDatum, 'name' | 'color' | 'href'> }) {
+  const badge = <Badge color={d.color}>{d.name}</Badge>
+  if (!d.href) return badge
+  return (
+    <Link href={d.href} className="rounded-full underline-offset-4 hover:underline focus-visible:outline-2">
+      {badge}
+    </Link>
+  )
 }
 
 export type BreakdownKind = 'expense' | 'income'
@@ -152,7 +166,7 @@ function CategoryBreakdown({ data, kind = 'expense', onKindChange }: CategoryBre
           <div className="flex flex-col gap-2">
             {slices.map((s) => (
               <div key={s.name} className="flex items-center justify-between gap-4 text-sm">
-                <Badge color={s.color}>{s.name}</Badge>
+                <CategoryLabel d={s} />
                 <span className="font-medium text-foreground">{s.pct.toFixed(0)}%</span>
               </div>
             ))}
@@ -165,7 +179,7 @@ function CategoryBreakdown({ data, kind = 'expense', onKindChange }: CategoryBre
           {slices.map((s) => (
             <div key={s.name} className="flex flex-col gap-1.5" title={`${s.name} — ${formatCurrency(s.value)} (${s.pct.toFixed(0)}%)`}>
               <div className="flex items-center justify-between gap-4 text-sm">
-                <Badge color={s.color}>{s.name}</Badge>
+                <CategoryLabel d={s} />
                 <span className="font-medium text-foreground"><MoneyValue value={s.value} /></span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -194,7 +208,7 @@ function CategoryBreakdown({ data, kind = 'expense', onKindChange }: CategoryBre
           <div className="flex flex-col gap-2">
             {slices.map((s) => (
               <div key={s.name} className="flex items-center justify-between gap-4 text-sm">
-                <Badge color={s.color}>{s.name}</Badge>
+                <CategoryLabel d={s} />
                 <span className="font-medium text-foreground">{s.pct.toFixed(0)}%</span>
               </div>
             ))}

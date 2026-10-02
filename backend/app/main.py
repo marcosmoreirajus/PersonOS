@@ -255,6 +255,14 @@ async def reconcile(transaction_id: int, payload: ReconcilePayload):
     return {"data": resultado}
 
 
+# "A revisar" (Fatia 4): itens aguardando conciliação + lançamentos sem
+# categoria. Resolver um item usa as rotas que já existem — /api/reconcile
+# para a conciliação, PATCH de transação para a categoria.
+@app.get("/api/review/user/{user_id}")
+async def get_review(user_id: int):
+    return {"data": DataService.get_review(user_id)}
+
+
 # Dashboard
 @app.get("/api/dashboard/{user_id}")
 async def get_dashboard(user_id: int):
@@ -331,5 +339,4 @@ async def update_business_section(section: str, request: Request):
 
 
 # Próximas fatias (ver docs/finance/PRD.md):
-# - Fatia 4: GET /api/review/user/{user_id}
 # - Autenticação JWT

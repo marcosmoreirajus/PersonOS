@@ -92,8 +92,8 @@ function derivarAvisos(transactions: Transaction[]): Aviso[] {
       id: 'sem-categoria',
       icon: Tag,
       title: `${plural(semCategoria.length, 'lançamento', 'lançamentos')} sem categoria`,
-      description: 'Ficam fora dos gráficos por categoria até serem revisados.',
-      href: '/finance/transactions',
+      description: 'Aparecem como "Sem categoria" nos relatórios até serem classificados.',
+      href: '/finance/revisar?secao=sem-categoria',
     })
   }
   return avisos

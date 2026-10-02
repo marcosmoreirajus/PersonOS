@@ -110,6 +110,8 @@ export type TabItem = {
   href: string
   label: string
   icon?: LucideIcon
+  /** Contador ao lado do rótulo; zero ou ausente não mostra nada. */
+  count?: number
 }
 
 /**
@@ -140,6 +142,16 @@ export function SectionTabs({ items, className }: { items: TabItem[]; className?
           >
             {item.icon && <item.icon className="size-4" strokeWidth={1.5} aria-hidden="true" />}
             {item.label}
+            {item.count ? (
+              <span
+                className={cn(
+                  'min-w-5 rounded-full px-1.5 text-center text-xs font-medium tabular-nums',
+                  active ? 'bg-background/20 text-background' : 'bg-muted text-foreground'
+                )}
+              >
+                {item.count > 99 ? '99+' : item.count}
+              </span>
+            ) : null}
           </Link>
         )
       })}

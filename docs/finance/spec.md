@@ -185,6 +185,17 @@ O fluxo acima deixava pontos em aberto. Como foram resolvidos, e por quê:
 10. **Linha inválida é reportada, nunca engolida** — com número da linha e motivo em português. As válidas entram.
 11. **Erro de falso negativo custa mais que o de falso positivo:** suspeitar demais vira uma linha a conferir; suspeitar de menos duplica dinheiro em silêncio.
 
+### Decisões de implementação (Fatia 4, 02/10)
+
+O spec dizia "transações sem categoria" sem recortar. Como ficou, e por quê (rever se o uso mostrar outra coisa):
+
+1. **Fila e balde usam o mesmo recorte:** confirmado, **efetivado** e `category_id IS NULL`. Previsto fica de fora: uma recorrência sem categoria poria 12 ocorrências na fila, e classificar uma não resolveria as outras.
+2. **Receita sem categoria entra na fila**, porque classificar é o mesmo trabalho. **No balde de Relatórios, não entra**, porque o gráfico é de despesas.
+3. **Transferência interna fica fora da fila e do balde**, porque não tem categoria a dar. Isso deixa visível uma dívida anterior: `get_dashboard_summary` ainda soma transferência interna em receita/despesa, contra a regra "fora de receita/despesa/relatórios". Por isso o total do gráfico por categoria pode ficar abaixo do card de Despesa.
+4. **O percentual do aviso** é calculado sobre o total do gráfico (categorias reais + balde) e arredondado **para cima**, para que 0,4% não apareça como 0%.
+5. **A fila filtrada** é `/finance/revisar?secao=sem-categoria` (ou `conciliar`). Um valor desconhecido mostra a fila inteira.
+6. **O aviso "sem categoria" do sino** continua lá e agora aponta para a fila. Quem o remove é a #2 (Q4 do grilling do sino).
+
 **Layout do CSV/XLSX da aplicação:** colunas `data`, `descricao`, `valor` (aliases aceitos: `historico`, `memo`, `amount`…) e `id` opcional. Data `DD/MM/AAAA` ou `AAAA-MM-DD`; valor **assinado** (negativo = saída), com vírgula ou ponto decimal; separador `;` ou `,` detectado. `.xls` antigo é recusado com orientação para salvar como `.xlsx`.
 
 **Ainda sem decisão de modelo:** OFX de **cartão de crédito** é lido como qualquer outro extrato, mas a relação entre a fatura paga na conta corrente e as compras no cartão (dupla contagem) segue em aberto.
