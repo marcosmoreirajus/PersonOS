@@ -6,17 +6,18 @@ import { usePathname } from 'next/navigation'
 import {
   Briefcase,
   CalendarDays,
-  PanelLeftClose,
-  PanelLeftOpen,
+  PanelLeft,
   Plane,
   Settings,
   Target,
   Wallet,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 
 import {
   AnimatedSidebar,
+  AnimatedSidebarClose,
   AnimatedSidebarContent,
   AnimatedSidebarFooter,
   AnimatedSidebarGroup,
@@ -81,13 +82,32 @@ export function AppShell({ children, sidebarOpen = true }: { children: ReactNode
       }}
     >
       <AnimatedSidebar collapsible="icon" ariaLabel="Módulos">
-        <AnimatedSidebarHeader>
-          <Link href="/" className="flex items-center gap-2 px-2 py-1">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-foreground text-sm font-semibold text-background">
-              P
-            </span>
-            <span className="truncate text-sm font-semibold text-foreground">PersonOS</span>
-          </Link>
+        {/* Cabeçalho no molde do demo do beUI (logo + nome que some ao
+            recolher + X só no celular), com o botão de recolher aqui dentro,
+            a pedido do Marco (02/10). Recolhida, a linha vira coluna para o
+            botão caber abaixo do logo. */}
+        <AnimatedSidebarHeader className="p-3 pb-2">
+          <div className="flex min-h-11 items-center gap-3 overflow-hidden px-2 group-data-[state=collapsed]/sidebar:flex-col group-data-[state=collapsed]/sidebar:gap-2 group-data-[state=collapsed]/sidebar:px-0">
+            <Link
+              href="/"
+              aria-label="PersonOS — início"
+              className="flex min-w-0 items-center gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-foreground text-sm font-semibold text-background">
+                P
+              </span>
+              <span className="truncate text-sm font-semibold text-foreground group-data-[state=collapsed]/sidebar:hidden">
+                PersonOS
+              </span>
+            </Link>
+            <SidebarCollapseButton />
+            <AnimatedSidebarClose
+              aria-label="Fechar menu"
+              className="ml-auto size-8 text-muted-foreground hover:bg-muted md:hidden"
+            >
+              <X aria-hidden="true" className="size-4" />
+            </AnimatedSidebarClose>
+          </div>
         </AnimatedSidebarHeader>
 
         <AnimatedSidebarContent>
@@ -188,24 +208,42 @@ export function SectionTabs({ items, className }: { items: TabItem[]; className?
 }
 
 /**
- * Botão de recolher/expandir a sidebar, no cabeçalho de cada módulo.
- *
- * O trigger do componente base não desenha nada — era um botão vazio e
- * invisível no cabeçalho. No celular a sidebar vira gaveta, então o mesmo
- * botão abre o menu. Atalho: Ctrl+B (⌘B no Mac), já tratado pelo provider.
+ * Recolher/expandir, dentro do cabeçalho da sidebar (só desktop; no celular
+ * a sidebar é gaveta e fecha pelo X). Ícone e estilo do trigger do demo do
+ * beUI: `PanelLeft`, cinza, fundo `muted` no hover. Atalho: Ctrl+B (⌘B no
+ * Mac), já tratado pelo provider.
+ */
+function SidebarCollapseButton() {
+  const { open, toggleSidebar } = useAnimatedSidebar()
+  const rotulo = open ? 'Recolher menu' : 'Expandir menu'
+  return (
+    <button
+      type="button"
+      onClick={toggleSidebar}
+      aria-label={rotulo}
+      aria-expanded={open}
+      title={`${rotulo} (Ctrl+B)`}
+      className="ml-auto hidden size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring md:inline-flex group-data-[state=collapsed]/sidebar:ml-0"
+    >
+      <PanelLeft aria-hidden="true" className="size-4" />
+    </button>
+  )
+}
+
+/**
+ * Abre a sidebar no celular, onde ela vira gaveta e some da tela. No
+ * desktop o botão de recolher mora dentro da própria sidebar
+ * (`SidebarCollapseButton`), então este fica escondido a partir de `md`.
+ * O trigger do beUI não desenha nada sozinho — por isso o ícone aqui.
  */
 export function AppSidebarTrigger() {
-  const { isMobile, open } = useAnimatedSidebar()
-  const rotulo = isMobile ? 'Abrir menu' : open ? 'Recolher menu' : 'Expandir menu'
-  const Icon = isMobile || !open ? PanelLeftOpen : PanelLeftClose
-
   return (
     <AnimatedSidebarTrigger
-      aria-label={rotulo}
-      title={isMobile ? rotulo : `${rotulo} (Ctrl+B)`}
-      className="size-9 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      aria-label="Abrir menu"
+      title="Abrir menu"
+      className="size-9 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
     >
-      <Icon className="size-4" strokeWidth={1.5} aria-hidden="true" />
+      <PanelLeft aria-hidden="true" className="size-4" />
     </AnimatedSidebarTrigger>
   )
 }

@@ -186,10 +186,16 @@ para a mesma função.
   fechadas, onde buscar não ajuda.
 - **Navegação estrutural** → `ui/app-shell` (`AppShell` + `SectionTabs`),
   construído sobre `motion/animated-sidebar`. A sidebar **recolhe para só
-  ícones** pelo `AppSidebarTrigger` no cabeçalho de cada módulo (ícone
-  `PanelLeftClose`/`PanelLeftOpen`), pelo rail na borda ou com Ctrl+B. O
-  trigger do beUI não desenha nada; usar sempre o `AppSidebarTrigger` do
-  app-shell. O estado fica no cookie `personos-sidebar` (`lib/sidebar.ts`),
+  ícones** pelo botão **dentro do cabeçalho dela**, à direita de "PersonOS"
+  (decisão do Marco, 02/10), pelo rail na borda ou com Ctrl+B. Recolhida, o
+  nome some e o botão vai para baixo do logo. O cabeçalho segue o molde do
+  demo do beUI (logo `size-7 rounded-lg`, nome com
+  `group-data-[state=collapsed]/sidebar:hidden`, X de fechar só no celular), e
+  o botão usa o ícone e o estilo do trigger do demo (`PanelLeft`,
+  `text-muted-foreground`, `hover:bg-muted`). No demo esse botão fica fora da
+  sidebar; aqui ficou dentro de propósito. O `AppSidebarTrigger` no cabeçalho
+  dos módulos só aparece no celular, para abrir a gaveta. O trigger do beUI
+  não desenha nada sozinho. O estado fica no cookie `personos-sidebar` (`lib/sidebar.ts`),
   lido no servidor pelo layout do módulo (`sidebarAbertaNoCookie`) para
   a página já nascer no estado certo. No `localStorage`, ela abriria e
   fecharia a cada carga. No celular, a sidebar vira gaveta e o mesmo botão
