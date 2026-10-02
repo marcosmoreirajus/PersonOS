@@ -9,7 +9,12 @@ import { Button } from '@/components/ui/button'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { MoneyValue } from '@/components/ui/money-value'
 import { StatCard } from './_components/StatCard'
-import { CategoryBreakdown, type BreakdownKind, type CategoryDatum } from './_components/CategoryBreakdown'
+import {
+  CategoryBreakdown,
+  rankWithUncategorized,
+  type BreakdownKind,
+  type CategoryDatum,
+} from './_components/CategoryBreakdown'
 import { DailyHeatmap, type HeatmapTransaction, type PlannedOutflow } from './_components/DailyHeatmap'
 import TransactionDialog from './transactions/_components/TransactionDialog'
 import {
@@ -19,6 +24,7 @@ import {
   type Series,
 } from './agendadas/_components/types'
 import { categoryColorByRank, incomeColorByRank } from '@/lib/category-colors'
+import { formatDateBR } from '@/lib/dates'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -35,7 +41,10 @@ type Transaction = {
   series_id: number | null
   series_index: number | null
   card_invoice?: boolean
-  category_id: number
+  /** Nulo = "Sem categoria" (balde virtual, nunca "Outros"). */
+  category_id: number | null
+  /** Dinheiro trocando de bolso: fora de toda soma. */
+  is_internal_transfer?: boolean
 }
 
 type Category = {
@@ -44,10 +53,6 @@ type Category = {
   icon: string
   color: string
   type: 'expense' | 'income' | 'both'
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 }
 
 function dayKey(iso: string) {
@@ -111,8 +116,11 @@ export default function FinanceDashboardPage() {
   }, [refreshKey])
 
   const computed = useMemo(() => {
-    const incomeTx = transactions.filter((t) => t.type === 'income')
-    const expenseTx = transactions.filter((t) => t.type === 'expense')
+    // Transferência interna fica fora de cards, saldo, gráficos e mapa de
+    // calor (spec); continua só em "Últimas transações", que é lista.
+    const somaveis = transactions.filter((t) => !t.is_internal_transfer)
+    const incomeTx = somaveis.filter((t) => t.type === 'income')
+    const expenseTx = somaveis.filter((t) => t.type === 'expense')
     const income = incomeTx.reduce((s, t) => s + t.amount, 0)
     const expense = expenseTx.reduce((s, t) => s + t.amount, 0)
     const balance = income - expense
@@ -126,7 +134,7 @@ export default function FinanceDashboardPage() {
     }
 
     const netByDay = new Map<string, number>()
-    for (const t of transactions) {
+    for (const t of somaveis) {
       const key = dayKey(t.settled_at!)
       const delta = t.type === 'income' ? t.amount : -t.amount
       netByDay.set(key, (netByDay.get(key) ?? 0) + delta)
@@ -139,7 +147,7 @@ export default function FinanceDashboardPage() {
     })
 
     const transactionsByDay = new Map<string, HeatmapTransaction[]>()
-    for (const t of transactions) {
+    for (const t of somaveis) {
       const key = dayKey(t.settled_at!)
       const cat = categories.find((c) => c.id === t.category_id)
       const entry: HeatmapTransaction = {
@@ -154,19 +162,23 @@ export default function FinanceDashboardPage() {
 
     function byCategory(list: Transaction[], colorByRank: (rank: number) => string): CategoryDatum[] {
       const totals = new Map<number, number>()
-      for (const t of list) totals.set(t.category_id, (totals.get(t.category_id) ?? 0) + t.amount)
-      return [...totals.entries()]
-        .map(([catId, value]) => {
-          const cat = categories.find((c) => c.id === catId)
-          return { name: cat?.name ?? 'Outros', value }
-        })
-        .sort((a, b) => b.value - a.value)
-        .map((d, rank) => ({ ...d, color: colorByRank(rank) }))
+      let semCategoria = 0
+      for (const t of list) {
+        if (t.category_id == null) semCategoria += t.amount
+        else totals.set(t.category_id, (totals.get(t.category_id) ?? 0) + t.amount)
+      }
+      const real = [...totals.entries()].map(([catId, value]) => ({
+        name: categories.find((c) => c.id === catId)?.name ?? 'Categoria removida',
+        value,
+      }))
+      return rankWithUncategorized(real, semCategoria, colorByRank)
     }
     const categoryData = byCategory(expenseTx, categoryColorByRank)
     const incomeCategoryData = byCategory(incomeTx, incomeColorByRank)
 
-    const topCategory = categoryData[0]
+    // "Maior categoria" é sempre uma categoria de verdade; o balde tem o
+    // próprio destaque no gráfico.
+    const topCategory = categoryData.find((d) => !d.href)
     const biggestExpense = expenseTx.reduce((max, t) => (t.amount > (max?.amount ?? 0) ? t : max), null as Transaction | null)
     const biggestIncome = incomeTx.reduce((max, t) => (t.amount > (max?.amount ?? 0) ? t : max), null as Transaction | null)
 
@@ -398,7 +410,7 @@ export default function FinanceDashboardPage() {
                   <li key={t.id} className="flex items-center justify-between text-sm">
                     <div className="flex flex-col">
                       <span className="text-foreground">{t.description || 'Sem descrição'}</span>
-                      <span className="text-xs text-muted-foreground">{formatDate(t.settled_at!)}</span>
+                      <span className="text-xs text-muted-foreground">{formatDateBR(t.settled_at!)}</span>
                     </div>
                     <span className={t.type === 'income' ? 'font-medium text-foreground' : 'font-medium text-muted-foreground'}>
                       {t.type === 'income' ? '+' : '-'}

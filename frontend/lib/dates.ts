@@ -15,3 +15,14 @@ export function isoLocal(d: Date = new Date()): string {
 export function hojeLocal(): string {
   return isoLocal()
 }
+
+/**
+ * Data de calendário (`AAAA-MM-DD`) em `DD/MM/AAAA`.
+ *
+ * Lê só os 10 primeiros caracteres e fixa meia-noite UTC formatando em UTC:
+ * assim o dia nunca anda, nem no Brasil (UTC-3), nem se chegar um instante
+ * com hora no lugar da data.
+ */
+export function formatDateBR(iso: string): string {
+  return new Date(`${iso.slice(0, 10)}T00:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+}

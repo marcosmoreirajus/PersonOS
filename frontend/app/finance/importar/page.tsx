@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { FileDropzone } from './_components/FileDropzone'
 import { NovaContaDialog, TIPOS_CONTA, type Conta } from './_components/NovaContaDialog'
 import { Steps } from './_components/Steps'
+import { formatDateBR } from '@/lib/dates'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -62,10 +63,6 @@ const DECISOES: { value: Decisao; label: string }[] = [
   { value: 'not_duplicate', label: 'É nova' },
   { value: 'queue', label: 'Deixar na fila' },
 ]
-
-function formatDate(iso: string) {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
-}
 
 /**
  * Importação de extrato em passos: Origem → Revisar → Confirmar.
@@ -296,12 +293,12 @@ export default function ImportarPage() {
               <TableBody>
                 {previa.linhas.slice(0, LIMITE_LINHAS).map((l) => (
                   <TableRow key={l.linha} className={SITUACAO[l.situacao].linha}>
-                    <TableCell className="tabular-nums">{formatDate(l.data)}</TableCell>
+                    <TableCell className="tabular-nums">{formatDateBR(l.data)}</TableCell>
                     <TableCell className="max-w-[20rem]">
                       <span className="block truncate">{l.descricao}</span>
                       {l.candidato && (
                         <span className="block truncate text-xs text-muted-foreground">
-                          Parece com: {l.candidato.descricao ?? 'lançamento'} · {formatDate(l.candidato.data)}
+                          Parece com: {l.candidato.descricao ?? 'lançamento'} · {formatDateBR(l.candidato.data)}
                         </span>
                       )}
                     </TableCell>

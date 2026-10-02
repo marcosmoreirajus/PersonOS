@@ -701,25 +701,27 @@ class DataService:
         # Só o efetivado: o previsto existe em transactions desde a fonte
         # única, mas não pode somar em saldo/cards/relatórios.
         transactions = DataService.get_settled_by_user(user_id)
+        # Transferência interna é dinheiro trocando de bolso: fora de
+        # receita, despesa, saldo e relatórios (spec). Continua nas "últimas",
+        # que é lista e não soma — como em Transações.
+        somaveis = [t for t in transactions if not t.get("is_internal_transfer")]
 
-        income = sum(t["amount"] for t in transactions if t["type"] == "income")
-        expense = sum(t["amount"] for t in transactions if t["type"] == "expense")
+        income = sum(t["amount"] for t in somaveis if t["type"] == "income")
+        expense = sum(t["amount"] for t in somaveis if t["type"] == "expense")
         balance = income - expense
 
         # Despesas por categoria. O nulo NÃO vira uma categoria: vai num balde
         # à parte, que o relatório mostra fora da escala das categorias reais
         # (ver "Balde virtual" no spec). Antes caía em "Outro", misturado com
-        # "Outros", que é escolha deliberada. Transferência interna não tem
-        # categoria a dar, então não engorda o balde.
+        # "Outros", que é escolha deliberada.
         expenses_by_category = {}
         uncategorized_expense = 0
-        for t in transactions:
+        for t in somaveis:
             if t["type"] != "expense":
                 continue
             cat_id = t.get("category_id")
             if cat_id is None:
-                if not t.get("is_internal_transfer"):
-                    uncategorized_expense += t["amount"]
+                uncategorized_expense += t["amount"]
                 continue
             category = DataService.get_category_by_id(cat_id)
             cat_name = category["name"] if category else "Outro"

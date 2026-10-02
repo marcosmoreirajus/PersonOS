@@ -6,14 +6,11 @@ import { CircleAlert } from 'lucide-react'
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { MoneyValue } from '@/components/ui/money-value'
-import { CategoryBreakdown, type CategoryDatum } from '../_components/CategoryBreakdown'
+import { CategoryBreakdown, rankWithUncategorized, REVISAR_SEM_CATEGORIA } from '../_components/CategoryBreakdown'
 import { categoryColorByRank } from '@/lib/category-colors'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
-
-/** A fila "A revisar" filtrada só nos lançamentos sem categoria. */
-const REVISAR_SEM_CATEGORIA = '/finance/revisar?secao=sem-categoria'
 
 type DashboardSummary = {
   balance: number
@@ -66,24 +63,14 @@ export default function RelatoriosPage() {
     )
   }
 
-  // A escala de ranking é só das categorias reais. O balde "Sem categoria"
-  // entra depois, pelo peso, em `--foreground`: se o não classificado é o
-  // maior gasto, ele encabeça a lista — é isso que o relatório precisa
-  // gritar (spec, "Ambiguidades resolvidas" 2).
-  const realCategories: CategoryDatum[] = Object.entries(summary.expenses_by_category)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .map((d, rank) => ({ ...d, color: categoryColorByRank(rank) }))
   const uncategorized = summary.uncategorized_expense ?? 0
-  const categoryData: CategoryDatum[] =
-    uncategorized > 0
-      ? [
-          ...realCategories,
-          { name: 'Sem categoria', value: uncategorized, color: 'var(--foreground)', href: REVISAR_SEM_CATEGORIA },
-        ].sort((a, b) => b.value - a.value)
-      : realCategories
-  const totalPorCategoria = categoryData.reduce((s, d) => s + d.value, 0)
-  const pctSemCategoria = totalPorCategoria > 0 ? (uncategorized / totalPorCategoria) * 100 : 0
+  const categoryData = rankWithUncategorized(
+    Object.entries(summary.expenses_by_category).map(([name, value]) => ({ name, value })),
+    uncategorized,
+    categoryColorByRank
+  )
+  // Sem transferência interna nas somas, categorias + balde = despesa do card.
+  const pctSemCategoria = summary.expense > 0 ? (uncategorized / summary.expense) * 100 : 0
 
   return (
     <div className="flex flex-col gap-6">

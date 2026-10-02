@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { MoneyValue } from '@/components/ui/money-value'
 import { categoryIcon } from '@/lib/category-icons'
 import { cn } from '@/lib/utils'
-import { hojeLocal } from '@/lib/dates'
+import { hojeLocal, formatDateBR } from '@/lib/dates'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -28,10 +28,6 @@ export type OverdueTransaction = {
 export type OverdueAccountNames = Record<number, string>
 
 type Categoria = { id: number; name: string; icon: string }
-
-function formatDate(iso: string) {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
-}
 
 /** Rótulo amigável da conta do lançamento: nome do banco/cartão ou "s/ conta". */
 function contaLabel(t: OverdueTransaction, names?: OverdueAccountNames) {
@@ -172,7 +168,7 @@ export function OverdueAlert({
                         {t.description ?? 'Sem descrição'}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {formatDate(t.due_date)} · {dias} {dias === 1 ? 'dia' : 'dias'} em atraso ·{' '}
+                        {formatDateBR(t.due_date)} · {dias} {dias === 1 ? 'dia' : 'dias'} em atraso ·{' '}
                         {contaLabel(t, accountNames)}
                       </span>
                     </span>

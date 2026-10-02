@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, type SortState, type TableColumn } from '@/components/motion/table'
 import { categoryIcon } from '@/lib/category-icons'
 import { cn } from '@/lib/utils'
-import { hojeLocal } from '@/lib/dates'
+import { hojeLocal, formatDateBR } from '@/lib/dates'
 import TransactionDialog, { type Category, type DialogSeed } from './_components/TransactionDialog'
 import DeleteDialog from './_components/DeleteDialog'
 import OverdueAlert from './_components/OverdueAlert'
@@ -50,10 +50,6 @@ const SITUACAO_META: Record<Situacao, { label: string; className: string }> = {
   realizado: { label: 'Realizado', className: 'text-muted-foreground' },
   previsto: { label: 'A vencer', className: 'text-muted-foreground' },
   atrasado: { label: 'Em atraso', className: 'text-destructive' },
-}
-
-function formatDate(iso: string) {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 }
 
 type TipoFiltro = 'all' | 'income' | 'expense'
@@ -160,7 +156,7 @@ export default function TransactionsPage() {
         sortable: true,
         width: '120px',
         sortValue: (t) => t.settled_at ?? t.due_date,
-        cell: (t) => <span className="tabular-nums">{formatDate(t.settled_at ?? t.due_date)}</span>,
+        cell: (t) => <span className="tabular-nums">{formatDateBR(t.settled_at ?? t.due_date)}</span>,
       },
       {
         key: 'description',

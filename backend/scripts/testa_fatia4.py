@@ -86,6 +86,10 @@ def main():
     checa("categorias reais continuam lá", por_cat.get("Alimentação") == 300.0 and len(por_cat) == 2, str(por_cat))
     checa("resumo informa o gasto sem categoria", resumo.get("uncategorized_expense") == 500.0,
           str(resumo.get("uncategorized_expense")))
+    # Spec: is_internal_transfer = "fora de receita/despesa/relatórios".
+    # Despesa = 300 + 200 + 350 + 150; os 400 da TED não entram.
+    checa("transferência interna não soma em despesa", resumo["expense"] == 1000.0, str(resumo["expense"]))
+    checa("saldo sem a transferência interna", resumo["balance"] == 0.0, str(resumo["balance"]))
     # 500 de gasto real sem categoria; os 999 previstos, os 300 em espera e os
     # 400 de transferência interna (que não precisa de categoria) ficam fora.
     checa("previsto, em espera e transferência interna não entram no balde",

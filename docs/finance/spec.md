@@ -191,7 +191,8 @@ O spec dizia "transações sem categoria" sem recortar. Como ficou, e por quê (
 
 1. **Fila e balde usam o mesmo recorte:** confirmado, **efetivado** e `category_id IS NULL`. Previsto fica de fora: uma recorrência sem categoria poria 12 ocorrências na fila, e classificar uma não resolveria as outras.
 2. **Receita sem categoria entra na fila**, porque classificar é o mesmo trabalho. **No balde de Relatórios, não entra**, porque o gráfico é de despesas.
-3. **Transferência interna fica fora da fila e do balde**, porque não tem categoria a dar. Isso deixa visível uma dívida anterior: `get_dashboard_summary` ainda soma transferência interna em receita/despesa, contra a regra "fora de receita/despesa/relatórios". Por isso o total do gráfico por categoria pode ficar abaixo do card de Despesa.
+3. **Transferência interna fica fora da fila, do balde e de toda soma** (receita, despesa, saldo, gráficos, mapa de calor), e só aparece em listas. ~~`get_dashboard_summary` ainda soma transferência interna~~ → corrigido em 02/10 no resumo e na Visão Geral, que agora seguem Transações, onde já estava assim. Os 4 lançamentos marcados por engano nos dados foram desmarcados (backup em `data/_backup-2026-10-02/`).
+7. **A Visão Geral também mostra o balde** "Sem categoria", em despesas e em receitas, e o "maior categoria" do card conta só as categorias reais.
 4. **O percentual do aviso** é calculado sobre o total do gráfico (categorias reais + balde) e arredondado **para cima**, para que 0,4% não apareça como 0%.
 5. **A fila filtrada** é `/finance/revisar?secao=sem-categoria` (ou `conciliar`). Um valor desconhecido mostra a fila inteira.
 6. **O aviso "sem categoria" do sino** continua lá e agora aponta para a fila. Quem o remove é a #2 (Q4 do grilling do sino).

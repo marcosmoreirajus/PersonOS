@@ -68,6 +68,26 @@ de 4 tons simultâneos + neutro (paleta "pequena e controlada" mantida). Usada
 em despesas/categorias — **nunca no Módulo Patrimônio**, que é propositalmente
 P&B (ver "Módulo Finanças" abaixo).
 
+**Balde "Sem categoria" — fora da escala de ranking** (decisão de 2026-09-21,
+implementada em 2026-10-02, ver `docs/finance/spec.md` "Balde virtual"): gasto
+com `category_id` nulo **não** é uma categoria e não disputa o ranking. As
+categorias reais distribuem as cores entre si; o balde entra depois, na
+posição pelo peso, em `--foreground` (o neutro forte: preto no claro, branco
+no escuro), com o rótulo clicável para a fila "A revisar". Consequências
+deliberadas sobre a regra acima:
+
+- O âmbar marca a **maior categoria real**. Quando o balde é o maior gasto, ele
+  encabeça a lista e o âmbar fica no 2º item, de propósito.
+- O balde é o único tom além dos "4 + neutro". Ele é o oposto do neutro da
+  cauda: grita em vez de sumir. Cinza foi proposto e **recusado**, porque
+  esconderia justamente o que falta classificar.
+- `--foreground` como cor de dado também aparece em Patrimônio (P&B), mas em
+  outra tela, então não há colisão num mesmo gráfico.
+- Nunca juntar o nulo em "Outros": "Outros" é uma escolha deliberada do usuário.
+
+Montado por `rankWithUncategorized` (`finance/_components/CategoryBreakdown.tsx`),
+usado pelas duas telas que montam o breakdown.
+
 **Dark mode**: ativa via classe `.dark` na raiz do documento (padrão
 shadcn/ui `@custom-variant dark (&:is(.dark *))`), não por
 `prefers-color-scheme` diretamente. Desde 16/09 existe um controle real —

@@ -10,6 +10,7 @@ import { MoneyValue } from '@/components/ui/money-value'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { CategoryPicker, categoriasDoTipo, type PickerCategory } from '../_components/CategoryPicker'
 import { REVIEW_CHANGED_EVENT } from '../_components/FinanceTabs'
+import { formatDateBR } from '@/lib/dates'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
@@ -33,10 +34,6 @@ type Fila = {
 
 /** Seções que um link pode pedir sozinhas — ex.: o balde de Relatórios. */
 type Secao = 'conciliar' | 'sem-categoria'
-
-function formatDate(iso: string) {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
-}
 
 function Valor({ t }: { t: Pick<Lancamento, 'type' | 'amount'> }) {
   return (
@@ -166,13 +163,13 @@ function Revisar() {
                 <TableBody>
                   {fila.a_conciliar.map((t) => (
                     <TableRow key={t.id}>
-                      <TableCell className="tabular-nums">{formatDate(t.settled_at ?? t.due_date)}</TableCell>
+                      <TableCell className="tabular-nums">{formatDateBR(t.settled_at ?? t.due_date)}</TableCell>
                       <TableCell className="max-w-[22rem]">
                         <span className="block truncate">{t.description}</span>
                         <span className="block truncate text-xs text-muted-foreground">
                           {t.candidato ? (
                             <>
-                              Parece com: {t.candidato.description} · {formatDate(t.candidato.settled_at ?? t.candidato.due_date)} ·{' '}
+                              Parece com: {t.candidato.description} · {formatDateBR(t.candidato.settled_at ?? t.candidato.due_date)} ·{' '}
                               <MoneyValue value={t.candidato.amount} />
                             </>
                           ) : (
@@ -233,7 +230,7 @@ function Revisar() {
                 <TableBody>
                   {fila.sem_categoria.map((t) => (
                     <TableRow key={t.id}>
-                      <TableCell className="tabular-nums">{formatDate(t.settled_at ?? t.due_date)}</TableCell>
+                      <TableCell className="tabular-nums">{formatDateBR(t.settled_at ?? t.due_date)}</TableCell>
                       <TableCell className="max-w-[22rem]">
                         <span className="block truncate">{t.description}</span>
                       </TableCell>

@@ -15,6 +15,33 @@ export interface CategoryDatum {
   href?: string
 }
 
+/** A fila "A revisar" filtrada só nos lançamentos sem categoria. */
+export const REVISAR_SEM_CATEGORIA = '/finance/revisar?secao=sem-categoria'
+
+/**
+ * Monta os dados do gráfico com o balde virtual "Sem categoria".
+ *
+ * A escala de ranking é só das categorias reais; o balde entra depois, pelo
+ * peso, em `--foreground` e clicável para a fila. Se o não classificado é o
+ * maior, ele encabeça a lista — é isso que o gráfico precisa gritar (spec,
+ * "Ambiguidades resolvidas" 2). Nunca juntar o nulo em "Outros": esse é uma
+ * escolha deliberada.
+ */
+export function rankWithUncategorized(
+  real: { name: string; value: number }[],
+  uncategorized: number,
+  colorByRank: (rank: number) => string
+): CategoryDatum[] {
+  const ranked: CategoryDatum[] = [...real]
+    .sort((a, b) => b.value - a.value)
+    .map((d, rank) => ({ ...d, color: colorByRank(rank) }))
+  if (uncategorized <= 0) return ranked
+  return [
+    ...ranked,
+    { name: 'Sem categoria', value: uncategorized, color: 'var(--foreground)', href: REVISAR_SEM_CATEGORIA },
+  ].sort((a, b) => b.value - a.value)
+}
+
 /** Rótulo da categoria; vira link quando o dado aponta para algum lugar. */
 function CategoryLabel({ d }: { d: Pick<CategoryDatum, 'name' | 'color' | 'href'> }) {
   const badge = <Badge color={d.color}>{d.name}</Badge>
