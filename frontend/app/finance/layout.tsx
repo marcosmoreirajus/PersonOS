@@ -1,14 +1,16 @@
 import { AppShell, AppSidebarTrigger } from '@/components/ui/app-shell'
+import { sidebarAbertaNoCookie } from '@/lib/sidebar-server'
 import { EyeToggle } from '@/components/ui/eye-toggle'
 import { ValuesVisibilityProvider } from '@/components/ui/money-value'
 import FinanceTabs from './_components/FinanceTabs'
 import { NotificationsBell } from './_components/NotificationsBell'
 import SeriesExtensionGate from './_components/SeriesExtensionGate'
 
-export default function FinanceLayout({ children }: { children: React.ReactNode }) {
+export default async function FinanceLayout({ children }: { children: React.ReactNode }) {
+  const sidebarOpen = await sidebarAbertaNoCookie()
   return (
     <ValuesVisibilityProvider>
-      <AppShell>
+      <AppShell sidebarOpen={sidebarOpen}>
         <header className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
           <AppSidebarTrigger />
           <FinanceTabs />

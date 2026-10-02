@@ -3,7 +3,17 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Briefcase, CalendarDays, Plane, Settings, Target, Wallet, type LucideIcon } from 'lucide-react'
+import {
+  Briefcase,
+  CalendarDays,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plane,
+  Settings,
+  Target,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 
 import {
   AnimatedSidebar,
@@ -18,7 +28,9 @@ import {
   AnimatedSidebarProvider,
   AnimatedSidebarRail,
   AnimatedSidebarTrigger,
+  useAnimatedSidebar,
 } from '@/components/motion/animated-sidebar'
+import { cookieDaSidebar } from '@/lib/sidebar'
 import { cn } from '@/lib/utils'
 
 type Modulo = {
@@ -56,11 +68,18 @@ const MODULOS: Modulo[] = [
  * Substitui as sidebars que cada módulo mantinha por conta própria — a
  * inconsistência anotada na própria decisão de 14/09.
  */
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, sidebarOpen = true }: { children: ReactNode; sidebarOpen?: boolean }) {
   const pathname = usePathname()
 
   return (
-    <AnimatedSidebarProvider>
+    <AnimatedSidebarProvider
+      // O layout do módulo lê o cookie no servidor e entrega o estado certo
+      // já no primeiro HTML; aqui só se grava a escolha nova (ver lib/sidebar.ts).
+      defaultOpen={sidebarOpen}
+      onOpenChange={(aberta) => {
+        document.cookie = cookieDaSidebar(aberta)
+      }}
+    >
       <AnimatedSidebar collapsible="icon" ariaLabel="Módulos">
         <AnimatedSidebarHeader>
           <Link href="/" className="flex items-center gap-2 px-2 py-1">
@@ -107,7 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </AnimatedSidebarMenu>
         </AnimatedSidebarFooter>
 
-        <AnimatedSidebarRail />
+        <AnimatedSidebarRail aria-label="Recolher ou expandir o menu" title="Recolher ou expandir o menu (Ctrl+B)" />
       </AnimatedSidebar>
 
       <AnimatedSidebarInset>{children}</AnimatedSidebarInset>
@@ -168,4 +187,25 @@ export function SectionTabs({ items, className }: { items: TabItem[]; className?
   )
 }
 
-export { AnimatedSidebarTrigger as AppSidebarTrigger }
+/**
+ * Botão de recolher/expandir a sidebar, no cabeçalho de cada módulo.
+ *
+ * O trigger do componente base não desenha nada — era um botão vazio e
+ * invisível no cabeçalho. No celular a sidebar vira gaveta, então o mesmo
+ * botão abre o menu. Atalho: Ctrl+B (⌘B no Mac), já tratado pelo provider.
+ */
+export function AppSidebarTrigger() {
+  const { isMobile, open } = useAnimatedSidebar()
+  const rotulo = isMobile ? 'Abrir menu' : open ? 'Recolher menu' : 'Expandir menu'
+  const Icon = isMobile || !open ? PanelLeftOpen : PanelLeftClose
+
+  return (
+    <AnimatedSidebarTrigger
+      aria-label={rotulo}
+      title={isMobile ? rotulo : `${rotulo} (Ctrl+B)`}
+      className="size-9 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+    >
+      <Icon className="size-4" strokeWidth={1.5} aria-hidden="true" />
+    </AnimatedSidebarTrigger>
+  )
+}

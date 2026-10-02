@@ -185,7 +185,15 @@ para a mesma função.
   `motion/multi-select` (várias). O `ui/select` fica para listas curtas e
   fechadas, onde buscar não ajuda.
 - **Navegação estrutural** → `ui/app-shell` (`AppShell` + `SectionTabs`),
-  construído sobre `motion/animated-sidebar`.
+  construído sobre `motion/animated-sidebar`. A sidebar **recolhe para só
+  ícones** pelo `AppSidebarTrigger` no cabeçalho de cada módulo (ícone
+  `PanelLeftClose`/`PanelLeftOpen`), pelo rail na borda ou com Ctrl+B. O
+  trigger do beUI não desenha nada; usar sempre o `AppSidebarTrigger` do
+  app-shell. O estado fica no cookie `personos-sidebar` (`lib/sidebar.ts`),
+  lido no servidor pelo layout do módulo (`sidebarAbertaNoCookie`) para
+  a página já nascer no estado certo. No `localStorage`, ela abriria e
+  fecharia a cada carga. No celular, a sidebar vira gaveta e o mesmo botão
+  a abre.
 
 ### Cuidados com os blocos do beUI
 

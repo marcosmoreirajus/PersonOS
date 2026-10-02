@@ -1,4 +1,5 @@
 import { AppShell, AppSidebarTrigger } from '@/components/ui/app-shell'
+import { sidebarAbertaNoCookie } from '@/lib/sidebar-server'
 import BusinessTabs from './_components/BusinessTabs'
 
 /**
@@ -7,9 +8,10 @@ import BusinessTabs from './_components/BusinessTabs'
  * navegação estrutural agora é a da casca, e as seções viraram tabs com os
  * tokens do tema.
  */
-export default function BusinessLayout({ children }: { children: React.ReactNode }) {
+export default async function BusinessLayout({ children }: { children: React.ReactNode }) {
+  const sidebarOpen = await sidebarAbertaNoCookie()
   return (
-    <AppShell>
+    <AppShell sidebarOpen={sidebarOpen}>
       <header className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
         <AppSidebarTrigger />
         <BusinessTabs />
