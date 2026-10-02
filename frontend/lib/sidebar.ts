@@ -11,6 +11,30 @@
 
 export const SIDEBAR_COOKIE = 'personos-sidebar'
 
+/**
+ * Modo da sidebar: `fixo` (recolhe e expande pelo botão, e fica como deixou)
+ * ou `auto` (sempre recolhida; expande por cima do conteúdo ao passar o
+ * mouse). Também do aparelho, também em cookie, pelo mesmo motivo.
+ */
+export const SIDEBAR_MODE_COOKIE = 'personos-sidebar-modo'
+export type SidebarMode = 'fixo' | 'auto'
+
+export function modoDaSidebar(valor: string | undefined): SidebarMode {
+  return valor === 'auto' ? 'auto' : 'fixo'
+}
+
+export function cookieDoModo(modo: SidebarMode): string {
+  return `${SIDEBAR_MODE_COOKIE}=${modo}; path=/; max-age=31536000; samesite=lax`
+}
+
+/** Lê um cookie no navegador (para a tela de Configurações mostrar o atual). */
+export function lerCookie(nome: string): string | undefined {
+  return document.cookie
+    .split('; ')
+    .find((c) => c.startsWith(`${nome}=`))
+    ?.slice(nome.length + 1)
+}
+
 /** Sem cookie, a sidebar começa expandida. */
 export function sidebarAberta(valor: string | undefined): boolean {
   return valor !== 'collapsed'

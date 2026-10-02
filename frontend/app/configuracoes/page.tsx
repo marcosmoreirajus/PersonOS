@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SidebarModeToggle } from '@/components/ui/sidebar-mode-toggle'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { JANELAS, opcaoJanela, type JanelaAVencer, type Preferencias } from '@/lib/avisos'
 
@@ -148,10 +149,24 @@ export default function ConfiguracoesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Aparência</CardTitle>
-          <CardDescription>Claro, escuro ou o que o sistema usar. Vale só neste aparelho.</CardDescription>
+          <CardDescription>Vale só neste aparelho.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ThemeToggle />
+          <FieldGroup>
+            <Field>
+              <FieldLabel>Tema</FieldLabel>
+              <ThemeToggle />
+              <FieldDescription>Claro, escuro ou o que o sistema usar.</FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel>Menu lateral</FieldLabel>
+              <SidebarModeToggle />
+              <FieldDescription>
+                Fixo: recolhe e expande pelo botão do menu (ou Ctrl+B). Automático: fica recolhido e expande por cima
+                da tela ao passar o mouse.
+              </FieldDescription>
+            </Field>
+          </FieldGroup>
         </CardContent>
       </Card>
 

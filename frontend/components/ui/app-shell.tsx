@@ -31,7 +31,7 @@ import {
   AnimatedSidebarTrigger,
   useAnimatedSidebar,
 } from '@/components/motion/animated-sidebar'
-import { cookieDaSidebar } from '@/lib/sidebar'
+import { cookieDaSidebar, type SidebarMode } from '@/lib/sidebar'
 import { cn } from '@/lib/utils'
 
 type Modulo = {
@@ -69,7 +69,16 @@ const MODULOS: Modulo[] = [
  * Substitui as sidebars que cada módulo mantinha por conta própria — a
  * inconsistência anotada na própria decisão de 14/09.
  */
-export function AppShell({ children, sidebarOpen = true }: { children: ReactNode; sidebarOpen?: boolean }) {
+export function AppShell({
+  children,
+  sidebarOpen = true,
+  sidebarMode = 'fixo',
+}: {
+  children: ReactNode
+  sidebarOpen?: boolean
+  sidebarMode?: SidebarMode
+}) {
+  const auto = sidebarMode === 'auto'
   const pathname = usePathname()
 
   return (
@@ -81,7 +90,7 @@ export function AppShell({ children, sidebarOpen = true }: { children: ReactNode
         document.cookie = cookieDaSidebar(aberta)
       }}
     >
-      <AnimatedSidebar collapsible="icon" ariaLabel="Módulos">
+      <AnimatedSidebar collapsible="icon" ariaLabel="Módulos" expandOnHover={auto}>
         {/* Cabeçalho no molde do demo do beUI (logo + nome que some ao
             recolher + X só no celular), com o botão de recolher aqui dentro,
             a pedido do Marco (02/10). Recolhida, a linha vira coluna para o
@@ -100,7 +109,8 @@ export function AppShell({ children, sidebarOpen = true }: { children: ReactNode
                 PersonOS
               </span>
             </Link>
-            <SidebarCollapseButton />
+            {/* No automático não há o que fixar: o hover decide. */}
+            {!auto && <SidebarCollapseButton />}
             <AnimatedSidebarClose
               aria-label="Fechar menu"
               className="ml-auto size-8 text-muted-foreground hover:bg-muted md:hidden"
@@ -146,7 +156,9 @@ export function AppShell({ children, sidebarOpen = true }: { children: ReactNode
           </AnimatedSidebarMenu>
         </AnimatedSidebarFooter>
 
-        <AnimatedSidebarRail aria-label="Recolher ou expandir o menu" title="Recolher ou expandir o menu (Ctrl+B)" />
+        {!auto && (
+          <AnimatedSidebarRail aria-label="Recolher ou expandir o menu" title="Recolher ou expandir o menu (Ctrl+B)" />
+        )}
       </AnimatedSidebar>
 
       <AnimatedSidebarInset>{children}</AnimatedSidebarInset>

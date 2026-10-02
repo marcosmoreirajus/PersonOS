@@ -1,5 +1,5 @@
 import { AppShell, AppSidebarTrigger } from '@/components/ui/app-shell'
-import { sidebarAbertaNoCookie } from '@/lib/sidebar-server'
+import { sidebarDoCookie } from '@/lib/sidebar-server'
 import BusinessTabs from './_components/BusinessTabs'
 
 /**
@@ -9,9 +9,9 @@ import BusinessTabs from './_components/BusinessTabs'
  * tokens do tema.
  */
 export default async function BusinessLayout({ children }: { children: React.ReactNode }) {
-  const sidebarOpen = await sidebarAbertaNoCookie()
+  const sidebar = await sidebarDoCookie()
   return (
-    <AppShell sidebarOpen={sidebarOpen}>
+    <AppShell {...sidebar}>
       <header className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
         <AppSidebarTrigger />
         <BusinessTabs />

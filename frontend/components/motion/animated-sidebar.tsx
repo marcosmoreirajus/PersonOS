@@ -494,7 +494,18 @@ export interface AnimatedSidebarProps
   collapsible?: SidebarCollapsible;
   ariaLabel?: string;
   panelClassName?: string;
+  /**
+   * PersonOS (02/10) — extensão local, não existe no beUI. Modo "automático":
+   * no layout a sidebar fica sempre na largura de ícones, e o painel expande
+   * POR CIMA do conteúdo ao passar o mouse ou focar com o teclado, sem
+   * empurrar a página. Ignora o `open` do provider.
+   */
+  expandOnHover?: boolean;
 }
+
+/** Atraso para abrir e fechar no modo automático: mouse só de passagem não abre. */
+const HOVER_OPEN_DELAY = 150;
+const HOVER_CLOSE_DELAY = 300;
 
 export const AnimatedSidebar = forwardRef<HTMLElement, AnimatedSidebarProps>(
   function AnimatedSidebar(
@@ -506,19 +517,37 @@ export const AnimatedSidebar = forwardRef<HTMLElement, AnimatedSidebarProps>(
       children,
       className,
       panelClassName,
+      expandOnHover = false,
       style,
       ...props
     },
     forwardedRef,
   ) {
     const context = useAnimatedSidebar();
-    const collapsed = collapsible !== "none" && !context.open;
+    const [peek, setPeek] = useState(false);
+    const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const auto = expandOnHover && collapsible === "icon";
+
+    useEffect(() => () => {
+      if (peekTimer.current) clearTimeout(peekTimer.current);
+    }, []);
+
+    const schedulePeek = (next: boolean, delay: number) => {
+      if (peekTimer.current) clearTimeout(peekTimer.current);
+      peekTimer.current = setTimeout(() => setPeek(next), delay);
+    };
+
+    // No automático o layout reserva só a largura de ícones; o que o painel
+    // mostra (e o que `collapsed` diz aos filhos) segue o hover.
+    const collapsed = auto ? !peek : collapsible !== "none" && !context.open;
     const offcanvas = collapsed && collapsible === "offcanvas";
-    const width = offcanvas
-      ? "0px"
-      : collapsed
-        ? "var(--sidebar-width-icon)"
-        : "var(--sidebar-width)";
+    const width = auto
+      ? "var(--sidebar-width-icon)"
+      : offcanvas
+        ? "0px"
+        : collapsed
+          ? "var(--sidebar-width-icon)"
+          : "var(--sidebar-width)";
 
     if (context.isMobile) {
       return (
@@ -550,6 +579,7 @@ export const AnimatedSidebar = forwardRef<HTMLElement, AnimatedSidebarProps>(
         style={style}
         className={cn(
           "group/sidebar relative hidden h-auto shrink-0 md:block will-change-[width]",
+          auto && "z-30",
           "peer",
           side === "right" && "order-last",
           className,
@@ -560,12 +590,30 @@ export const AnimatedSidebar = forwardRef<HTMLElement, AnimatedSidebarProps>(
           animate={{
             opacity: offcanvas ? 0 : 1,
             x: offcanvas ? (side === "left" ? "-100%" : "100%") : "0%",
+            ...(auto && {
+              width: peek ? "var(--sidebar-width)" : "var(--sidebar-width-icon)",
+            }),
           }}
           transition={
-            context.reduce ? REDUCED_TRANSITION : PANEL_TRANSITION
+            context.reduce ? REDUCED_TRANSITION : auto ? SIDEBAR_MORPH_TRANSITION : PANEL_TRANSITION
           }
+          {...(auto && {
+            onPointerEnter: () => schedulePeek(true, HOVER_OPEN_DELAY),
+            onPointerLeave: () => schedulePeek(false, HOVER_CLOSE_DELAY),
+            // Teclado: Tab para dentro expande na hora; sair do painel recolhe.
+            onFocus: () => schedulePeek(true, 0),
+            onBlur: (event: React.FocusEvent<HTMLDivElement>) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                schedulePeek(false, 0);
+              }
+            },
+          })}
           className={cn(
-            "sticky top-0 flex h-svh w-full flex-col overflow-hidden bg-background",
+            "sticky top-0 flex h-svh flex-col overflow-hidden bg-background",
+            // No automático a largura vem do `animate` e passa da área
+            // reservada: o painel sobrepõe o conteúdo (o aside tem z-30).
+            !auto && "w-full",
+            auto && peek && "shadow-xl",
             collapsible === "offcanvas" && "w-[var(--sidebar-width)]",
             variant === "sidebar" &&
               (side === "left" ? "border-border border-r" : "border-border border-l"),

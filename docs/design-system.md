@@ -195,7 +195,20 @@ para a mesma função.
   `text-muted-foreground`, `hover:bg-muted`). No demo esse botão fica fora da
   sidebar; aqui ficou dentro de propósito. O `AppSidebarTrigger` no cabeçalho
   dos módulos só aparece no celular, para abrir a gaveta. O trigger do beUI
-  não desenha nada sozinho. O estado fica no cookie `personos-sidebar` (`lib/sidebar.ts`),
+  não desenha nada sozinho.
+  **Dois modos** (Configurações › Aparência › Menu lateral, cookie
+  `personos-sidebar-modo`, só neste aparelho):
+  - **Fixo:** o descrito acima.
+  - **Automático:** a sidebar fica sempre recolhida no layout e expande **por
+    cima** do conteúdo ao passar o mouse (abre em 150 ms, fecha 300 ms depois
+    de sair) ou ao receber foco pelo teclado. Sem botão de recolher e sem
+    rail.
+
+  Sobrepor em vez de empurrar é de propósito: empurrar redimensionaria
+  gráficos e tabelas a cada passada do mouse. Isso exigiu a prop
+  `expandOnHover` no `animated-sidebar`, uma **extensão local** que o beUI
+  não tem (está comentada no arquivo); reaplicar se o componente for
+  atualizado pelo registry. O estado fica no cookie `personos-sidebar` (`lib/sidebar.ts`),
   lido no servidor pelo layout do módulo (`sidebarAbertaNoCookie`) para
   a página já nascer no estado certo. No `localStorage`, ela abriria e
   fecharia a cada carga. No celular, a sidebar vira gaveta e o mesmo botão
