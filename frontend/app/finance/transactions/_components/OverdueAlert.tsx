@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { MoneyValue } from '@/components/ui/money-value'
 import { categoryIcon } from '@/lib/category-icons'
 import { cn } from '@/lib/utils'
+import { hojeLocal } from '@/lib/dates'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -76,7 +77,7 @@ export function OverdueAlert({
   const [aberto, setAberto] = useState(false)
   const [salvando, setSalvando] = useState<number | null>(null)
 
-  const hoje = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const hoje = useMemo(() => hojeLocal(), [])
   const categoriaPorId = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
 
   const { aPagar, aReceber, todos } = useMemo(() => {

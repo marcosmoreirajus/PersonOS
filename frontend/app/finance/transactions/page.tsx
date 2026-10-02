@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Copy, FileUp, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, FileUp, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -10,9 +10,11 @@ import { Button } from '@/components/ui/button'
 import { MoneyValue } from '@/components/ui/money-value'
 import { ActionsMenu } from '@/components/ui/actions-menu'
 import { CategoryMultiPicker } from '../_components/CategoryPicker'
-import { Table, type TableColumn } from '@/components/motion/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, type SortState, type TableColumn } from '@/components/motion/table'
 import { categoryIcon } from '@/lib/category-icons'
 import { cn } from '@/lib/utils'
+import { hojeLocal } from '@/lib/dates'
 import TransactionDialog, { type Category, type DialogSeed } from './_components/TransactionDialog'
 import DeleteDialog from './_components/DeleteDialog'
 import OverdueAlert from './_components/OverdueAlert'
@@ -62,6 +64,9 @@ const TIPOS: { value: TipoFiltro; label: string }[] = [
   { value: 'expense', label: 'Saídas' },
 ]
 
+const TAMANHOS_PAGINA = [10, 50, 100, 200, 500]
+const TAMANHO_ITENS = TAMANHOS_PAGINA.map((n) => ({ value: String(n), label: String(n) }))
+
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -75,6 +80,16 @@ export default function TransactionsPage() {
   // `seed` preenche o formulario: com id = edicao, sem id = duplicacao.
   const [seed, setSeed] = useState<DialogSeed | null>(null)
   const [excluindo, setExcluindo] = useState<Transaction | null>(null)
+  // Ordenação controlada aqui (e não dentro da Table): com paginação, ordenar
+  // só a página visível daria uma ordem errada entre páginas.
+  const [ordem, setOrdem] = useState<SortState | null>({ key: 'due_date', direction: 'desc' })
+  const [porPagina, setPorPagina] = useState(10)
+  // A página fica guardada junto do filtro em que foi escolhida: mudou o
+  // filtro, ela volta pra 1 sem precisar de efeito.
+  const chaveFiltro = JSON.stringify([query, tipo, categorias])
+  const [paginaEscolhida, setPaginaEscolhida] = useState({ chave: chaveFiltro, pagina: 1 })
+  const pagina = paginaEscolhida.chave === chaveFiltro ? paginaEscolhida.pagina : 1
+  const setPagina = (p: number) => setPaginaEscolhida({ chave: chaveFiltro, pagina: p })
 
   function abrirNovo() {
     setSeed(null)
@@ -113,7 +128,7 @@ export default function TransactionsPage() {
   }, [fetchData])
 
   const categoriaPorId = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
-  const hoje = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const hoje = useMemo(() => hojeLocal(), [])
 
   const filtradas = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -249,15 +264,36 @@ export default function TransactionsPage() {
     [categoriaPorId, hoje]
   )
 
+  const ordenadas = useMemo(() => {
+    if (!ordem) return filtradas
+    const coluna = columns.find((c) => c.key === ordem.key)
+    if (!coluna) return filtradas
+    const valor = (t: Transaction) =>
+      coluna.sortValue ? coluna.sortValue(t) : (t as unknown as Record<string, string | number>)[coluna.key]
+    return [...filtradas].sort((a, b) => {
+      const av = valor(a)
+      const bv = valor(b)
+      const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av ?? '').localeCompare(String(bv ?? ''))
+      return ordem.direction === 'asc' ? cmp : -cmp
+    })
+  }, [filtradas, ordem, columns])
+
+  const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / porPagina))
+  // Filtro, exclusão ou troca do tamanho podem encolher a lista: nunca fica
+  // parado numa página que deixou de existir.
+  const paginaAtual = Math.min(pagina, totalPaginas)
+  const inicio = (paginaAtual - 1) * porPagina
+  const visiveis = useMemo(() => ordenadas.slice(inicio, inicio + porPagina), [ordenadas, inicio, porPagina])
+
   // A tabela acompanha o volume: com 3 linhas não sobra faixa vazia, e a
   // partir de ~10 ela para de crescer e passa a rolar (a virtualização
   // aguenta o resto).
   const alturaTabela = useMemo(() => {
     const CABECALHO = 44
     const LINHA = 52
-    const linhas = Math.max(filtradas.length, 1)
+    const linhas = Math.max(visiveis.length, 1)
     return Math.min(CABECALHO + linhas * LINHA, 560)
-  }, [filtradas.length])
+  }, [visiveis.length])
 
   // Tipos presentes na seleção: o lote só pode oferecer categorias que valham
   // para todos os lançamentos marcados.
@@ -355,11 +391,6 @@ export default function TransactionsPage() {
           onChange={setCategorias}
           className="shrink-0"
         />
-
-        <span className="shrink-0 whitespace-nowrap text-sm text-muted-foreground sm:ml-auto">
-          {filtradas.length} {filtradas.length === 1 ? 'transação' : 'transações'}
-          {selecionadas.length > 0 && ` · ${selecionadas.length} selecionada(s)`}
-        </span>
       </div>
 
       {chips.length > 0 && (
@@ -388,19 +419,76 @@ export default function TransactionsPage() {
       )}
 
       <Table
-        data={filtradas}
+        data={visiveis}
         columns={columns}
         getRowId={(t) => String(t.id)}
         selectable
         selectedRowIds={selecionadas}
         onSelectionChange={setSelecionadas}
         resizable
-        defaultSort={{ key: 'due_date', direction: 'desc' }}
+        sort={ordem}
+        onSortChange={(s) => {
+          setOrdem(s)
+          setPagina(1)
+        }}
         rowHeight={52}
         height={alturaTabela}
         loading={loading}
         emptyState={<p className="text-sm text-muted-foreground">Nenhuma transação encontrada.</p>}
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span className="tabular-nums">
+          {ordenadas.length === 0
+            ? 'Mostrando 0 de 0'
+            : `Mostrando ${inicio + 1}-${inicio + visiveis.length} de ${ordenadas.length}`}
+          {selecionadas.length > 0 && ` · ${selecionadas.length} selecionada(s)`}
+        </span>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span id="por-pagina-label">Linhas por página</span>
+            <Select
+              items={TAMANHO_ITENS}
+              value={String(porPagina)}
+              onValueChange={(v) => {
+                if (!v) return
+                setPorPagina(Number(v))
+                setPagina(1)
+              }}
+            >
+              <SelectTrigger size="sm" className="w-20" aria-labelledby="por-pagina-label">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TAMANHO_ITENS.map((i) => (
+                  <SelectItem key={i.value} value={i.value}>
+                    {i.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <nav aria-label="Paginação" className="flex items-center gap-1">
+            <Button variant="outline" size="icon-sm" onClick={() => setPagina(1)} disabled={paginaAtual <= 1} aria-label="Primeira página">
+              <ChevronsLeft className="size-4" strokeWidth={1.5} aria-hidden="true" />
+            </Button>
+            <Button variant="outline" size="icon-sm" onClick={() => setPagina(paginaAtual - 1)} disabled={paginaAtual <= 1} aria-label="Página anterior">
+              <ChevronLeft className="size-4" strokeWidth={1.5} aria-hidden="true" />
+            </Button>
+            <span className="px-2 tabular-nums">
+              Página {paginaAtual} de {totalPaginas}
+            </span>
+            <Button variant="outline" size="icon-sm" onClick={() => setPagina(paginaAtual + 1)} disabled={paginaAtual >= totalPaginas} aria-label="Próxima página">
+              <ChevronRight className="size-4" strokeWidth={1.5} aria-hidden="true" />
+            </Button>
+            <Button variant="outline" size="icon-sm" onClick={() => setPagina(totalPaginas)} disabled={paginaAtual >= totalPaginas} aria-label="Última página">
+              <ChevronsRight className="size-4" strokeWidth={1.5} aria-hidden="true" />
+            </Button>
+          </nav>
+        </div>
+      </div>
 
       <div className="flex flex-wrap items-center justify-end gap-6 rounded-xl border border-border bg-muted px-4 py-3 text-sm">
         <span className="text-muted-foreground">

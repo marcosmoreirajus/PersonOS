@@ -11,6 +11,7 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 // usa `motion/input`; campo de tela (busca, filtro) usa `ui/input`.
 import { Input } from '@/components/motion/input'
 import { cn } from '@/lib/utils'
+import { hojeLocal } from '@/lib/dates'
 import { CategoryPicker, categoriasDoTipo } from '../../_components/CategoryPicker'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -69,7 +70,7 @@ function moeda(v: number) {
 }
 
 function hoje() {
-  return new Date().toISOString().slice(0, 10)
+  return hojeLocal()
 }
 
 /**

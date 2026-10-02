@@ -9,6 +9,7 @@ import { MonthForecast } from './_components/MonthForecast'
 import { EMPTY_FILTERS, ScheduledFilters, type ScheduledFiltersValue } from './_components/ScheduledFilters'
 import { PendingAlert } from './_components/PendingAlert'
 import { UpcomingList } from './_components/UpcomingList'
+import { isoLocal } from '@/lib/dates'
 import {
   buildCategoryMeta,
   isInMonth,
@@ -86,8 +87,8 @@ export default function AgendadasPage() {
       return
     }
     let cancelado = false
-    const de = new Date(month.getFullYear(), month.getMonth(), 1).toISOString().slice(0, 10)
-    const ate = new Date(month.getFullYear(), month.getMonth() + 1, 0).toISOString().slice(0, 10)
+    const de = isoLocal(new Date(month.getFullYear(), month.getMonth(), 1))
+    const ate = isoLocal(new Date(month.getFullYear(), month.getMonth() + 1, 0))
 
     fetch(`${API_URL}/api/series/projection/${CURRENT_USER_ID}?de=${de}&ate=${ate}`)
       .then((r) => r.json())
