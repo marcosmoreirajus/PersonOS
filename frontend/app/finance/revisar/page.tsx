@@ -67,8 +67,11 @@ function Revisar() {
         fetch(`${API_URL}/api/review/user/${CURRENT_USER_ID}`),
         fetch(`${API_URL}/api/categories`),
       ])
+      // Sem essa checagem, um 404 (ex.: backend desatualizado) deixava a fila
+      // indefinida e a tela presa em "Carregando..." para sempre.
+      if (!filaRes.ok) throw new Error(`fila ${filaRes.status}`)
       setFila((await filaRes.json()).data)
-      setCategories((await catRes.json()).data || [])
+      setCategories(catRes.ok ? (await catRes.json()).data || [] : [])
       setError(null)
     } catch {
       setError('Não foi possível carregar a fila.')
