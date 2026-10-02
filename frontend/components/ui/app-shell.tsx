@@ -19,7 +19,6 @@ import {
   AnimatedSidebarRail,
   AnimatedSidebarTrigger,
 } from '@/components/motion/animated-sidebar'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { cn } from '@/lib/utils'
 
 type Modulo = {
@@ -94,7 +93,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <AnimatedSidebarFooter>
           {/* Configurações é global, não um módulo: fica no rodapé, separada
-              da lista de módulos. */}
+              da lista de módulos. O tema mora lá dentro (Aparência). */}
           <AnimatedSidebarMenu>
             <AnimatedSidebarMenuItem>
               <AnimatedSidebarMenuButton
@@ -106,9 +105,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               </AnimatedSidebarMenuButton>
             </AnimatedSidebarMenuItem>
           </AnimatedSidebarMenu>
-          <div className="px-2 py-1">
-            <ThemeToggle />
-          </div>
         </AnimatedSidebarFooter>
 
         <AnimatedSidebarRail />

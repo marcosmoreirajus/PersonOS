@@ -336,12 +336,22 @@ const actions: ActionsMenuAction[] = [
 
 Controle claro/escuro/sistema (3 botões ícone, `Sun`/`Moon`/`Monitor`),
 persiste em `localStorage` e alterna a classe `.dark` na raiz — é o único
-lugar do app que efetivamente toca essa classe. Vive no rodapé da sidebar
-global de módulos (`AppShell`, `components/ui/app-shell.tsx`), logo abaixo
-da entrada **Configurações** — que também fica no rodapé, e não na lista de
-módulos, porque é global e não um módulo (issue #2, 02/10). Tema e modo
-privacidade continuam no `localStorage` (são do aparelho); o que é da pessoa,
-como os avisos do sino, vai para as preferências no backend.
+lugar do app que efetivamente toca essa classe ao **trocar** o tema. Vive em
+**Configurações > Aparência** (`app/configuracoes/page.tsx`), com a nota
+"Vale só neste aparelho" (decisão do Marco, 02/10). Ficava solto no rodapé
+da sidebar; saiu de lá porque é ajuste de uma vez só, e também não foi para
+o cabeçalho, ao lado do sino e do olho, porque esses são de uso frequente e
+aquele cabeçalho existe só em Finanças, enquanto o tema vale para o app todo.
+
+Aplicar o tema salvo na carga **não** é deste componente: é o script inline
+no `<head>` do layout raiz (`THEME_INIT_SCRIPT`, em `lib/theme.ts`), que roda
+antes da primeira pintura (sem flash claro no tema escuro) e em toda página.
+Por isso o `<html>` tem `suppressHydrationWarning`.
+
+A entrada **Configurações** fica no rodapé da sidebar global (`AppShell`),
+fora da lista de módulos, porque é global e não um módulo (issue #2). Tema e
+modo privacidade continuam no `localStorage` (são do aparelho); o que é da
+pessoa, como os avisos do sino, vai para as preferências no backend.
 
 ### `EyeToggle` + `MoneyValue`/`ValuesVisibilityProvider` — `eye-toggle.tsx`, `money-value.tsx`
 

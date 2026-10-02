@@ -3,11 +3,8 @@
 import { useEffect, useState } from 'react'
 import { Sun, Moon, Monitor, type LucideIcon } from 'lucide-react'
 
+import { THEME_STORAGE_KEY as STORAGE_KEY, type ThemeChoice } from '@/lib/theme'
 import { cn } from '@/lib/utils'
-
-type ThemeChoice = 'light' | 'dark' | 'system'
-
-const STORAGE_KEY = 'personos-theme'
 
 function applyTheme(choice: ThemeChoice) {
   const isDark =
@@ -25,6 +22,10 @@ const OPTIONS: { value: ThemeChoice; icon: LucideIcon; label: string }[] = [
  * Controle de tema claro/escuro/sistema — decisão de 2026-09-14: o app
  * precisa de um controle explícito, não só seguir o SO. Alterna a classe
  * `.dark` na raiz (os tokens em `.dark` já existem no design-tokens.css).
+ *
+ * Mora em Configurações > Aparência (02/10). Aplicar o tema salvo na carga
+ * é do script inline do layout raiz (`lib/theme.ts`), não deste componente:
+ * ele só aparece numa tela.
  */
 function ThemeToggle() {
   const [choice, setChoice] = useState<ThemeChoice>('system')

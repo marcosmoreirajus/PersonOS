@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { JANELAS, opcaoJanela, type JanelaAVencer, type Preferencias } from '@/lib/avisos'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -16,7 +17,11 @@ type Mudanca = Partial<Pick<Preferencias, 'em_atraso' | 'a_vencer' | 'janela_a_v
 const OPCOES_JANELA = JANELAS.map((j) => ({ value: String(j), label: opcaoJanela(j) }))
 
 /**
- * Configurações — por enquanto só a seção Avisos (issue #2).
+ * Configurações — Avisos (issue #2) e Aparência.
+ *
+ * Avisos são da pessoa e ficam no backend; o tema é do aparelho e fica no
+ * navegador. A seção Aparência diz isso, para não parecer que o tema segue
+ * o usuário para outro aparelho.
  *
  * Cada mudança grava na hora, parcial: mexer na janela não apaga o "visto".
  * O sino recarrega as preferências ao trocar de tela, então volta já com a
@@ -131,11 +136,25 @@ export default function ConfiguracoesPage() {
                 <FieldDescription>Conta a partir de hoje, inclusive.</FieldDescription>
               </Field>
             </FieldGroup>
+            {salvo && (
+              <p className="mt-4 text-xs text-muted-foreground" role="status">
+                Salvo.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {salvo && <p className="text-xs text-muted-foreground" role="status">Salvo.</p>}
+      <Card>
+        <CardHeader>
+          <CardTitle>Aparência</CardTitle>
+          <CardDescription>Claro, escuro ou o que o sistema usar. Vale só neste aparelho.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ThemeToggle />
+        </CardContent>
+      </Card>
+
     </div>
   )
 }
