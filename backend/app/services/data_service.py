@@ -646,6 +646,38 @@ class DataService:
         all_data = DataService.load_json("investments")
         return next((i for i in all_data if i["user_id"] == user_id), {})
 
+    # ------------------------------------------------------------------ #
+    # Preferências do usuário (issue #2: avisos do sino)
+    #
+    # Ficam no backend, não no navegador: o "visto" num aparelho vale em
+    # todos. Tema e modo privacidade continuam no localStorage — são do
+    # aparelho, não da pessoa.
+    # ------------------------------------------------------------------ #
+
+    PREFERENCIAS_PADRAO: Dict[str, Any] = {
+        "em_atraso": True,
+        "a_vencer": True,
+        "janela_a_vencer": 7,
+        "visto": [],
+    }
+
+    @staticmethod
+    def get_preferences(user_id: int) -> Dict[str, Any]:
+        """Preferências gravadas, completadas pelos padrões. Ler não grava."""
+        gravada = next((p for p in DataService.load_json("preferences") if p["user_id"] == user_id), {})
+        # Lista nova a cada leitura: a do padrão não pode ser compartilhada.
+        return {"user_id": user_id, **DataService.PREFERENCIAS_PADRAO, "visto": [], **gravada}
+
+    @staticmethod
+    def update_preferences(user_id: int, mudancas: Dict[str, Any]) -> Dict[str, Any]:
+        """Grava só os campos enviados; o resto continua como estava."""
+        todas = DataService.load_json("preferences")
+        atual = DataService.get_preferences(user_id)
+        atual.update({k: v for k, v in mudancas.items() if k in DataService.PREFERENCIAS_PADRAO})
+        todas = [p for p in todas if p["user_id"] != user_id] + [atual]
+        DataService.save_json("preferences", todas)
+        return atual
+
     @staticmethod
     def get_review(user_id: int) -> Dict[str, Any]:
         """

@@ -337,8 +337,11 @@ const actions: ActionsMenuAction[] = [
 Controle claro/escuro/sistema (3 botões ícone, `Sun`/`Moon`/`Monitor`),
 persiste em `localStorage` e alterna a classe `.dark` na raiz — é o único
 lugar do app que efetivamente toca essa classe. Vive no rodapé da sidebar
-de cada módulo (`app/finance/layout.tsx`); ainda não existe uma sidebar
-global de módulos, então cada módulo tem sua própria instância por ora.
+global de módulos (`AppShell`, `components/ui/app-shell.tsx`), logo abaixo
+da entrada **Configurações** — que também fica no rodapé, e não na lista de
+módulos, porque é global e não um módulo (issue #2, 02/10). Tema e modo
+privacidade continuam no `localStorage` (são do aparelho); o que é da pessoa,
+como os avisos do sino, vai para as preferências no backend.
 
 ### `EyeToggle` + `MoneyValue`/`ValuesVisibilityProvider` — `eye-toggle.tsx`, `money-value.tsx`
 

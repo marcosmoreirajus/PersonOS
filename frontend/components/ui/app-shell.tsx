@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Briefcase, CalendarDays, Plane, Target, Wallet, type LucideIcon } from 'lucide-react'
+import { Briefcase, CalendarDays, Plane, Settings, Target, Wallet, type LucideIcon } from 'lucide-react'
 
 import {
   AnimatedSidebar,
@@ -93,6 +93,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         </AnimatedSidebarContent>
 
         <AnimatedSidebarFooter>
+          {/* Configurações é global, não um módulo: fica no rodapé, separada
+              da lista de módulos. */}
+          <AnimatedSidebarMenu>
+            <AnimatedSidebarMenuItem>
+              <AnimatedSidebarMenuButton
+                href="/configuracoes"
+                icon={<Settings className="size-4" strokeWidth={1.5} aria-hidden="true" />}
+                isActive={pathname.startsWith('/configuracoes')}
+              >
+                Configurações
+              </AnimatedSidebarMenuButton>
+            </AnimatedSidebarMenuItem>
+          </AnimatedSidebarMenu>
           <div className="px-2 py-1">
             <ThemeToggle />
           </div>

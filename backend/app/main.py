@@ -8,6 +8,7 @@ from app.schemas import (
     AccountUpdate,
     BulkAction,
     PostponePayload,
+    PreferencesUpdate,
     ReconcilePayload,
     SeriesExtend,
     SettlePayload,
@@ -261,6 +262,18 @@ async def reconcile(transaction_id: int, payload: ReconcilePayload):
 @app.get("/api/review/user/{user_id}")
 async def get_review(user_id: int):
     return {"data": DataService.get_review(user_id)}
+
+
+# Preferências do usuário (issue #2). Hoje só os avisos do sino; a derivação
+# dos avisos é do front, que sabe qual é o "hoje" local.
+@app.get("/api/preferences/user/{user_id}")
+async def get_preferences(user_id: int):
+    return {"data": DataService.get_preferences(user_id)}
+
+
+@app.patch("/api/preferences/user/{user_id}")
+async def update_preferences(user_id: int, payload: PreferencesUpdate):
+    return {"data": DataService.update_preferences(user_id, payload.model_dump(mode="json", exclude_none=True))}
 
 
 # Dashboard
