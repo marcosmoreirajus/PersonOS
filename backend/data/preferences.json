@@ -1,0 +1,50 @@
+[
+  {
+    "user_id": 1,
+    "em_atraso": true,
+    "a_vencer": true,
+    "janela_a_vencer": 7,
+    "visto": [
+      {
+        "aviso": "em_atraso",
+        "transaction_id": 40
+      },
+      {
+        "aviso": "em_atraso",
+        "transaction_id": 13
+      },
+      {
+        "aviso": "em_atraso",
+        "transaction_id": 41
+      },
+      {
+        "aviso": "em_atraso",
+        "transaction_id": 12
+      },
+      {
+        "aviso": "em_atraso",
+        "transaction_id": 8
+      },
+      {
+        "aviso": "em_atraso",
+        "transaction_id": 66
+      },
+      {
+        "aviso": "em_atraso",
+        "transaction_id": 15
+      },
+      {
+        "aviso": "em_atraso",
+        "transaction_id": 9
+      },
+      {
+        "aviso": "em_atraso",
+        "transaction_id": 10
+      },
+      {
+        "aviso": "em_atraso",
+        "transaction_id": 11
+      }
+    ]
+  }
+]
