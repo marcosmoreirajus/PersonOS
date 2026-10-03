@@ -1,5 +1,9 @@
 # PersonOS — instruções para agentes
 
+## Verificação
+
+Antes de dizer que algo está pronto, rode `bash scripts/check.sh`. Se o backend responder 404 numa rota nova, a causa provável é servidor velho. Ver `docs/agents/dev-server.md`.
+
 ## Agent skills
 
 ### Issue tracker
