@@ -140,11 +140,12 @@ export default function FinanceDashboardPage() {
       netByDay.set(key, (netByDay.get(key) ?? 0) + delta)
     }
     const days = [...netByDay.keys()].sort()
+    const resultPoints: { date: string; cumulative: number }[] = []
     let running = 0
-    const resultPoints = days.map((date) => {
+    for (const date of days) {
       running += netByDay.get(date) ?? 0
-      return { date, cumulative: running }
-    })
+      resultPoints.push({ date, cumulative: running })
+    }
 
     const transactionsByDay = new Map<string, HeatmapTransaction[]>()
     for (const t of somaveis) {

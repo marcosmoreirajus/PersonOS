@@ -81,6 +81,7 @@ export function NotificationsBell() {
   // Recarrega a cada troca de tela e ao abrir: dar baixa em outra tela, ou
   // mudar a configuração, precisa refletir no contador sem recarregar.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca de dados: o único setState síncrono é o indicador `carregando`; o resto vem depois do await
     carregar()
   }, [carregar, pathname])
 

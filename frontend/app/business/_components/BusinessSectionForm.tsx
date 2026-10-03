@@ -40,7 +40,7 @@ export default function BusinessSectionForm({
         if (!cancelled) {
           setValues(json.data || {})
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           setError('Não foi possível carregar os dados da seção.')
         }
@@ -75,7 +75,7 @@ export default function BusinessSectionForm({
       const json = await res.json()
       setValues(json.data || values)
       setSavedAt(new Date().toLocaleTimeString('pt-BR'))
-    } catch (err) {
+    } catch {
       setError('Não foi possível salvar os dados da seção.')
     } finally {
       setSaving(false)

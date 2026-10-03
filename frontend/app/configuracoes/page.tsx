@@ -155,12 +155,17 @@ export default function ConfiguracoesPage() {
           <FieldGroup>
             <Field>
               <FieldLabel>Tema</FieldLabel>
-              <ThemeToggle />
+              {/* O Field vertical estica os filhos (w-full); o div segura a pílula no tamanho dela. */}
+              <div>
+                <ThemeToggle />
+              </div>
               <FieldDescription>Claro, escuro ou o que o sistema usar.</FieldDescription>
             </Field>
             <Field>
               <FieldLabel>Menu lateral</FieldLabel>
-              <SidebarModeToggle />
+              <div>
+                <SidebarModeToggle />
+              </div>
               <FieldDescription>
                 Fixo: recolhe e expande pelo botão do menu (ou Ctrl+B). Automático: fica recolhido e expande por cima
                 da tela ao passar o mouse.

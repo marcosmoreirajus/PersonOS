@@ -156,14 +156,14 @@ function CategoryBreakdown({ data, kind = 'expense', onKindChange }: CategoryBre
     )
   }
 
+  // Cada fatia começa onde as anteriores somadas terminam.
+  const slices: (CategoryDatum & { dash: number; offset: number; pct: number })[] = []
   let cumulative = 0
-  const slices = data.map((d) => {
+  for (const d of data) {
     const fraction = d.value / total
-    const dash = fraction * CIRCUMFERENCE
-    const offset = -cumulative * CIRCUMFERENCE
+    slices.push({ ...d, dash: fraction * CIRCUMFERENCE, offset: -cumulative * CIRCUMFERENCE, pct: fraction * 100 })
     cumulative += fraction
-    return { ...d, dash, offset, pct: fraction * 100 }
-  })
+  }
 
   return (
     <div className="flex flex-col gap-4">

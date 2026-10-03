@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Sun, Moon, Monitor, type LucideIcon } from 'lucide-react'
 
 import { THEME_STORAGE_KEY as STORAGE_KEY, type ThemeChoice } from '@/lib/theme'
+import { criarPreferenciaDoNavegador } from '@/lib/hooks/use-preferencia-do-navegador'
 import { cn } from '@/lib/utils'
 
 function applyTheme(choice: ThemeChoice) {
@@ -11,6 +12,18 @@ function applyTheme(choice: ThemeChoice) {
     choice === 'dark' || (choice === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
   document.documentElement.classList.toggle('dark', isDark)
 }
+
+function lerTemaSalvo(): ThemeChoice {
+  const stored = localStorage.getItem(STORAGE_KEY)
+  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
+}
+
+// Sem localStorage (ou no servidor), "system".
+const useTema = criarPreferenciaDoNavegador<ThemeChoice>({
+  ler: lerTemaSalvo,
+  gravar: (tema) => localStorage.setItem(STORAGE_KEY, tema),
+  servidor: 'system',
+})
 
 const OPTIONS: { value: ThemeChoice; icon: LucideIcon; label: string }[] = [
   { value: 'light', icon: Sun, label: 'Tema claro' },
@@ -28,28 +41,21 @@ const OPTIONS: { value: ThemeChoice; icon: LucideIcon; label: string }[] = [
  * ele só aparece numa tela.
  */
 function ThemeToggle() {
-  const [choice, setChoice] = useState<ThemeChoice>('system')
+  const [choice, setChoice] = useTema()
 
+  // Reaplica o salvo ao montar. Lê o storage direto, e não `choice`: no render
+  // de hidratação `choice` ainda é o "system" do servidor.
   useEffect(() => {
-    let saved: ThemeChoice = 'system'
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored === 'light' || stored === 'dark' || stored === 'system') saved = stored
+      applyTheme(lerTemaSalvo())
     } catch {
-      // localStorage indisponível — mantém o default "system".
+      applyTheme('system')
     }
-    setChoice(saved)
-    applyTheme(saved)
   }, [])
 
   function choose(next: ThemeChoice) {
-    setChoice(next)
     applyTheme(next)
-    try {
-      localStorage.setItem(STORAGE_KEY, next)
-    } catch {
-      // ignora — a preferência só não persiste entre sessões.
-    }
+    setChoice(next)
   }
 
   return (

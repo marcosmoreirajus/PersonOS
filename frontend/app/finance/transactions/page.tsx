@@ -120,6 +120,7 @@ export default function TransactionsPage() {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca de dados: o único setState síncrono é o `loading`; o resto vem depois do await
     fetchData()
   }, [fetchData])
 

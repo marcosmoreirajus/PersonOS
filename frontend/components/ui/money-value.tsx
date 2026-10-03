@@ -1,6 +1,8 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
+
+import { criarPreferenciaDoNavegador } from '@/lib/hooks/use-preferencia-do-navegador'
 
 const STORAGE_KEY = 'personos-values-hidden'
 
@@ -8,6 +10,16 @@ interface ValuesVisibilityState {
   hidden: boolean
   toggle: () => void
 }
+
+// Oculto por padrão — inclusive no render do servidor, que não lê o localStorage.
+const useValoresOcultos = criarPreferenciaDoNavegador<boolean>({
+  ler: () => {
+    const salvo = localStorage.getItem(STORAGE_KEY)
+    return salvo === null ? true : salvo === 'true'
+  },
+  gravar: (oculto) => localStorage.setItem(STORAGE_KEY, String(oculto)),
+  servidor: true,
+})
 
 const ValuesVisibilityContext = createContext<ValuesVisibilityState | null>(null)
 
@@ -18,27 +30,10 @@ const ValuesVisibilityContext = createContext<ValuesVisibilityState | null>(null
  * abas. Oculto por padrão.
  */
 function ValuesVisibilityProvider({ children }: { children: ReactNode }) {
-  const [hidden, setHidden] = useState(true)
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved !== null) setHidden(saved === 'true')
-    } catch {
-      // localStorage indisponível — mantém o default oculto.
-    }
-  }, [])
+  const [hidden, setHidden] = useValoresOcultos()
 
   function toggle() {
-    setHidden((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem(STORAGE_KEY, String(next))
-      } catch {
-        // ignora — a preferência só não persiste entre sessões.
-      }
-      return next
-    })
+    setHidden(!hidden)
   }
 
   return <ValuesVisibilityContext.Provider value={{ hidden, toggle }}>{children}</ValuesVisibilityContext.Provider>

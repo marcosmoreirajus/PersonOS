@@ -35,6 +35,15 @@ export function lerCookie(nome: string): string | undefined {
     ?.slice(nome.length + 1)
 }
 
+/**
+ * Grava um cookie no navegador. Função à parte para os handlers não
+ * atribuírem direto a `document.cookie`, o que o React Compiler lê como
+ * mutação de global.
+ */
+export function escreverCookie(cookie: string): void {
+  document.cookie = cookie
+}
+
 /** Sem cookie, a sidebar começa expandida. */
 export function sidebarAberta(valor: string | undefined): boolean {
   return valor !== 'collapsed'

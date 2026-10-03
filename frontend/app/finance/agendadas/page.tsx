@@ -24,6 +24,8 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const CURRENT_USER_ID = 1
+// Referência estável: `projetados` entra em dependência de `useMemo`.
+const NENHUM_ITEM: ScheduledItem[] = []
 
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -37,7 +39,9 @@ export default function AgendadasPage() {
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [filters, setFilters] = useState<ScheduledFiltersValue>(EMPTY_FILTERS)
   const [series, setSeries] = useState<Series[]>([])
-  const [projetados, setProjetados] = useState<ScheduledItem[]>([])
+  // A projeção guarda de qual mês veio: trocar de mês não mostra a do mês
+  // anterior enquanto a nova não chega.
+  const [projecao, setProjecao] = useState<{ mes: string; itens: ScheduledItem[] }>({ mes: '', itens: [] })
 
   useEffect(() => {
     let cancelled = false
@@ -81,27 +85,29 @@ export default function AgendadasPage() {
   // Projeção só entra quando o mês não tem nada materializado — ou seja, além
   // do horizonte de geração. Dentro dele, o que vale é o registro de verdade;
   // somar os dois mostraria a mesma obrigação duas vezes.
+  const precisaProjecao = materializadosDoMes.length === 0 && series.length > 0
+  const mesAtual = isoLocal(month)
+  const projetados = precisaProjecao && projecao.mes === mesAtual ? projecao.itens : NENHUM_ITEM
+
   useEffect(() => {
-    if (materializadosDoMes.length > 0 || series.length === 0) {
-      setProjetados([])
-      return
-    }
+    if (!precisaProjecao) return
     let cancelado = false
+    const mes = isoLocal(month)
     const de = isoLocal(new Date(month.getFullYear(), month.getMonth(), 1))
     const ate = isoLocal(new Date(month.getFullYear(), month.getMonth() + 1, 0))
 
     fetch(`${API_URL}/api/series/projection/${CURRENT_USER_ID}?de=${de}&ate=${ate}`)
       .then((r) => r.json())
       .then((json) => {
-        if (!cancelado) setProjetados(projectedToScheduledItems(json.data || [], series))
+        if (!cancelado) setProjecao({ mes, itens: projectedToScheduledItems(json.data || [], series) })
       })
       .catch(() => {
-        if (!cancelado) setProjetados([])
+        if (!cancelado) setProjecao({ mes, itens: [] })
       })
     return () => {
       cancelado = true
     }
-  }, [month, materializadosDoMes.length, series])
+  }, [month, precisaProjecao, series])
 
   const monthItems = useMemo(
     () => (materializadosDoMes.length > 0 ? materializadosDoMes : projetados),

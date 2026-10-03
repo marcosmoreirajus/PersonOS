@@ -1,11 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PanelLeft, MousePointer2, type LucideIcon } from 'lucide-react'
 
-import { SIDEBAR_MODE_COOKIE, cookieDoModo, lerCookie, modoDaSidebar, type SidebarMode } from '@/lib/sidebar'
+import { criarPreferenciaDoNavegador } from '@/lib/hooks/use-preferencia-do-navegador'
+import { SIDEBAR_MODE_COOKIE, cookieDoModo, escreverCookie, lerCookie, modoDaSidebar, type SidebarMode } from '@/lib/sidebar'
 import { cn } from '@/lib/utils'
+
+const useModoDaSidebar = criarPreferenciaDoNavegador<SidebarMode>({
+  ler: () => modoDaSidebar(lerCookie(SIDEBAR_MODE_COOKIE)),
+  gravar: (modo) => escreverCookie(cookieDoModo(modo)),
+  servidor: 'fixo',
+})
 
 const OPTIONS: { value: SidebarMode; icon: LucideIcon; label: string; hint: string }[] = [
   { value: 'fixo', icon: PanelLeft, label: 'Fixo', hint: 'Recolhe e expande pelo botão, e fica como você deixou' },
@@ -19,15 +25,10 @@ const OPTIONS: { value: SidebarMode; icon: LucideIcon; label: string; hint: stri
  */
 export function SidebarModeToggle() {
   const router = useRouter()
-  const [modo, setModo] = useState<SidebarMode>('fixo')
-
-  useEffect(() => {
-    setModo(modoDaSidebar(lerCookie(SIDEBAR_MODE_COOKIE)))
-  }, [])
+  const [modo, setModo] = useModoDaSidebar()
 
   function escolher(next: SidebarMode) {
     setModo(next)
-    document.cookie = cookieDoModo(next)
     router.refresh()
   }
 

@@ -590,9 +590,13 @@ export const AnimatedSidebar = forwardRef<HTMLElement, AnimatedSidebarProps>(
           animate={{
             opacity: offcanvas ? 0 : 1,
             x: offcanvas ? (side === "left" ? "-100%" : "100%") : "0%",
-            ...(auto && {
-              width: peek ? "var(--sidebar-width)" : "var(--sidebar-width-icon)",
-            }),
+            // Fora do automático a largura volta explicitamente a 100%: se o
+            // `width` só saísse do animate, o motion manteria a última largura
+            // inline do modo automático, e o painel ficaria preso nela ao
+            // trocar para Fixo (os rótulos saíam cortados).
+            width: auto
+              ? peek ? "var(--sidebar-width)" : "var(--sidebar-width-icon)"
+              : "100%",
           }}
           transition={
             context.reduce ? REDUCED_TRANSITION : auto ? SIDEBAR_MORPH_TRANSITION : PANEL_TRANSITION

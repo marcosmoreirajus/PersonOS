@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -99,9 +99,15 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
   const [erros, setErros] = useState<{ amount?: string; description?: string; category?: string }>({})
 
   // Reidrata ao abrir: em edição e em duplicação o formulário parte do
-  // lançamento de origem; em criação, de um estado limpo.
-  useEffect(() => {
-    if (!open) return
+  // lançamento de origem; em criação, de um estado limpo. Feito durante o
+  // render (ajuste de estado por mudança de prop, como a doc do React indica)
+  // e não num efeito: assim o diálogo já abre com os valores certos.
+  const [hidratadoPara, setHidratadoPara] = useState<{ open: boolean; seed: Props['seed'] }>({
+    open: false,
+    seed: undefined,
+  })
+
+  function hidratar() {
     setErros({})
     if (seed) {
       setType(seed.type)
@@ -119,7 +125,12 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
     // Repetição não é herdada ao duplicar: duplicar copia o lançamento,
     // não o contrato que o gerou — senão um clique criaria 24 registros.
     setRepeticao('avista')
-  }, [open, seed])
+  }
+
+  if (hidratadoPara.open !== open || hidratadoPara.seed !== seed) {
+    setHidratadoPara({ open, seed })
+    if (open) hidratar()
+  }
 
   /**
    * Prévia da divisão.

@@ -79,6 +79,7 @@ function Revisar() {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca de dados: o setState vem depois do await (o lint não enxerga dentro do useCallback async)
     carregar()
   }, [carregar])
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { createElement } from 'react'
 import {
   Combobox,
   ComboboxContent,
@@ -44,11 +45,17 @@ export function categoriasDoTipo<T extends { type: 'expense' | 'income' | 'both'
 
 /** Ícone monocromático em círculo neutro — mesmo tratamento da lista. */
 function CategoryLabel({ category }: { category: PickerCategory }) {
-  const Icon = categoryIcon(category.icon)
   return (
     <span className="flex min-w-0 items-center gap-2">
       <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted">
-        <Icon className="size-3 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
+        {/* `createElement` e não `<Icon />`: o ícone vem de um mapa estático, mas
+            o React Compiler não sabe disso e lê a variável como componente
+            criado a cada render. */}
+        {createElement(categoryIcon(category.icon), {
+          className: 'size-3 text-muted-foreground',
+          strokeWidth: 1.5,
+          'aria-hidden': true,
+        })}
       </span>
       <span className="truncate">{category.name}</span>
     </span>
