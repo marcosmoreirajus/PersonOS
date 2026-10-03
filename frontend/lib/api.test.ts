@@ -8,7 +8,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { ApiError, RespostaInvalida, api, apiRaw, apiUrl } from './api.ts'
+import { API_URL, ApiError, RespostaInvalida, api, apiUrl } from './api.ts'
 
 type Chamada = { url: string; init: RequestInit }
 
@@ -63,14 +63,14 @@ test('a query sai montada, não colada na mão', async () => {
   const chamada = await comResposta(responde(200, { data: [] }), async () => {
     await api('/api/series/projection/1', { query: { de: '2026-10-01', ate: '2026-10-31' } })
   })
-  assert.equal(chamada.url, 'http://localhost:8000/api/series/projection/1?de=2026-10-01&ate=2026-10-31')
+  assert.equal(chamada.url, `${API_URL}/api/series/projection/1?de=2026-10-01&ate=2026-10-31`)
 })
 
 test('valores nulos e indefinidos da query não viram "?de=null"', async () => {
   const chamada = await comResposta(responde(200, { data: [] }), async () => {
     await api('/api/transactions/1', { query: { scope: 'only_this', extra: null, nada: undefined } })
   })
-  assert.equal(chamada.url, 'http://localhost:8000/api/transactions/1?scope=only_this')
+  assert.equal(chamada.url, `${API_URL}/api/transactions/1?scope=only_this`)
 })
 
 test('corpo objeto vira JSON com o Content-Type', async () => {
@@ -156,14 +156,44 @@ test('2xx sem a chave data é contrato quebrado, não sucesso vazio', async () =
   })
 })
 
-test('apiRaw devolve a Response e não lança em erro — a decisão é de quem chamou', async () => {
-  await comResposta(responde(404, { detail: 'Conta não encontrada.' }), async () => {
-    const res = await apiRaw('/api/contas/7')
-    assert.equal(res.ok, false)
-    assert.equal(res.status, 404)
+test('cancelar por signal não vira ApiError: o AbortError passa intacto', async () => {
+  const original = globalThis.fetch
+  globalThis.fetch = (async () => {
+    throw new DOMException('cancelado', 'AbortError')
+  }) as unknown as typeof fetch
+  try {
+    const erro = await rejeita(api('/api/transactions/user/1', { signal: new AbortController().signal }))
+    assert.ok(!(erro instanceof ApiError))
+    assert.equal(erro.name, 'AbortError')
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('2xx com corpo vazio (204) é contrato quebrado, não sucesso', async () => {
+  await comResposta(new Response(null, { status: 204 }), async () => {
+    const erro = await rejeita(api('/api/transactions/1', { method: 'DELETE' }))
+    assert.ok(erro instanceof RespostaInvalida)
+    assert.equal(erro.status, 204)
   })
 })
 
+test('erro sem corpo cai na mensagem do status (404 e 400)', async () => {
+  await comResposta(new Response(null, { status: 404 }), async () => {
+    assert.equal((await rejeita(api('/api/x'))).message, 'Não encontrado.')
+  })
+  await comResposta(new Response(null, { status: 400 }), async () => {
+    assert.equal((await rejeita(api('/api/x'))).message, 'Não foi possível completar a operação.')
+  })
+})
+
+test('query aceita boolean e number e ignora null/undefined', () => {
+  assert.equal(
+    apiUrl('/api/x', { ativo: true, limite: 10, vazio: null, ausente: undefined }),
+    `${API_URL}/api/x?ativo=true&limite=10`,
+  )
+})
+
 test('apiUrl monta a URL do link de download, que não é fetch', () => {
-  assert.equal(apiUrl('/api/import/template/csv'), 'http://localhost:8000/api/import/template/csv')
+  assert.equal(apiUrl('/api/import/template/csv'), `${API_URL}/api/import/template/csv`)
 })

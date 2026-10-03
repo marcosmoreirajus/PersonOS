@@ -23,5 +23,21 @@ export default defineConfig([
       '@typescript-eslint/no-empty-object-type': 'off',
     },
   },
+  {
+    // Um caminho só até a API: `fetch` direto reabre a duplicação de URL, de
+    // id de usuário e de tratamento de erro que `lib/api.ts` acabou. Se uma
+    // chamada realmente não couber em `api()`, estenda `lib/api.ts`.
+    files: ['**/*.{ts,tsx}'],
+    ignores: ['lib/api.ts', 'lib/api.test.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.name='fetch']",
+          message: 'Use api() de @/lib/api em vez de fetch direto.',
+        },
+      ],
+    },
+  },
   globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts']),
 ])

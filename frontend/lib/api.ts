@@ -1,7 +1,7 @@
 /**
  * O caminho único do frontend até a API.
  *
- * Antes desta módulo, cada tela repetia a URL, o id do usuário e o tratamento
+ * Antes deste módulo, cada tela repetia a URL, o id do usuário e o tratamento
  * de erro — 17 cópias e 6 padrões convivendo, um dos quais deixava uma exclusão
  * falhada "dar certo" na tela. Aqui a resposta é sempre uma: sucesso devolve o
  * conteúdo de `data`, erro vira `ApiError` com a frase que o backend mandou.
@@ -17,7 +17,7 @@ export const CURRENT_USER_ID = 1
 
 export class ApiError extends Error {
   /** Status HTTP. `0` significa que não houve resposta nenhuma — o servidor
-   *  está fora do ar, não respondeu dentro do tempo, ou a URL está errada. */
+   *  está fora do ar, a conexão caiu, ou a URL está errada. */
   readonly status: number
   /** Corpo cru da resposta, preservado como veio. Numa validação do Pydantic
    *  (422) é a lista de `loc/msg/type` — foi por isso que ela não vira
@@ -119,27 +119,22 @@ function extraiMensagem(corpo: unknown): string | null {
   return null
 }
 
-/** Requisição sem julgamento: devolve a `Response` e não lança em `!ok`.
- *
- *  Existe porque a tela "A revisar" devolve a resposta crua para um `resolver`
- *  que decide o que fazer — é o único lugar do app onde o tratamento de erro
- *  é uma decisão de quem chamou, e mexer nisso aqui seria tirar a decisão
- *  dela. */
-export async function apiRaw(caminho: string, init: Initiativa = {}): Promise<Response> {
-  const url = apiUrl(caminho, init.query)
-  let res: Response
+/** Faz o `fetch`. Falha de rede vira `ApiError` de status 0; cancelamento por
+ *  `signal` (`AbortError`) passa intacto, porque cancelar não é erro do
+ *  servidor e quem cancelou precisa reconhecê-lo. */
+async function buscar(url: string, init: Initiativa): Promise<Response> {
   try {
-    res = await fetch(url, requisicao(init))
+    return await fetch(url, requisicao(init))
   } catch (erro) {
+    if (erro instanceof DOMException && erro.name === 'AbortError') throw erro
     throw new ApiError('Não foi possível falar com o servidor.', 0, erro)
   }
-  return res
 }
 
 /** Requisição que dá `data` ou lança. */
 export async function api<T = unknown>(caminho: string, init: Initiativa = {}): Promise<T> {
   const url = apiUrl(caminho, init.query)
-  const res = await apiRaw(caminho, init)
+  const res = await buscar(url, init)
 
   const texto = await res.text().catch(() => '')
   let corpo: unknown = null
@@ -155,7 +150,7 @@ export async function api<T = unknown>(caminho: string, init: Initiativa = {}): 
 
   // Toda rota de dados do backend responde `{"data": ...}` — as 31, sem
   // exceção. Um 2xx sem essa chave é contrato quebrado, e devolver `undefined`
-  // como se fosse `T` é exatamente o "500 virou lista vazia" que esta módulo
+  // como se fosse `T` é exatamente o "500 virou lista vazia" que este módulo
   // existe para acabar com.
   if (!corpo || typeof corpo !== 'object' || !('data' in corpo)) {
     throw new RespostaInvalida(url, res.status, texto)
