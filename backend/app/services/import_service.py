@@ -495,7 +495,7 @@ def _registro_importado(
         "amount": l["amount"],
         "description": l["descricao"],
         # Nulo só nasce de importação: é o "o classificador não soube".
-        # A classificação automática é da Fatia 5.
+        # A classificação automática é da Fatia 6.
         "category_id": None,
         "due_date": l["data"],
         "settled_at": l["data"],
@@ -613,7 +613,7 @@ def importar(
         "ja_existiam": analise["contagem"]["ja_importada"],
         "aguardando_conciliacao": em_espera,
         "invalidas": analise["invalidas"],
-        # Todas as importadas entram sem categoria até a Fatia 5.
+        # Todas as importadas entram sem categoria até a Fatia 6.
         "sem_categoria": novas,
         "classificadas": {"memoria": 0, "ia": 0},
     }

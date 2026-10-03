@@ -21,3 +21,25 @@ _Avoid_: Pendências, ocorrências
 **Pendências**:
 Contas a pagar e receitas a receber do mês, mostradas em Agendadas.
 _Avoid_: Usar para a fila de "A revisar" ou para os avisos do sino
+
+### Cartões
+
+**Cartão**:
+Dívida rotativa com ciclo: tem limite, dia de fechamento, dia de vencimento e conta pagadora. Não é uma Conta, que é onde o dinheiro está.
+_Avoid_: Conta de cartão, conta crédito
+
+**Fatura**:
+Conjunto das compras de um ciclo do Cartão, com estado `aberta`, `fechada`, `parcialmente paga` ou `paga`. É a ponte entre a data da compra e a data do pagamento.
+_Avoid_: `card_invoice`, boleto do cartão
+
+**Pagamento da fatura**:
+Transferência da conta pagadora para o Cartão. Não é despesa: a despesa foi a compra.
+_Avoid_: Despesa de cartão
+
+**Saldo anterior**:
+Parte da fatura anterior que ficou sem pagar e volta como linha da fatura seguinte. É a mesma dívida, não uma despesa nova.
+_Avoid_: Rotativo, encargo
+
+**Estorno**:
+Devolução de uma compra: abate a despesa da categoria original e reduz a fatura. Não é receita.
+_Avoid_: Crédito, receita de estorno

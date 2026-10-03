@@ -62,7 +62,8 @@ Todo o conteúdo deste PRD vem de uma sabatina de duas sessões (21 e 22/09/2026
 
 **Fora do escopo / fase futura:**
 
-- **Módulo Contas e Cartões completo** (saldos, extrato por conta, exclusão, ícone do banco). Reaberto em 23/09 só na versão **mínima** (nome + tipo, uma conta por banco), porque a importação exige escolher a conta de destino. Fatura de cartão paga é uma saída comum na conta que pagou.
+- **Módulo Contas completo** (saldos, extrato por conta, exclusão, ícone do banco). Reaberto em 23/09 só na versão **mínima** (nome + tipo, uma conta por banco), porque a importação exige escolher a conta de destino.
+- ~~**Cartões** (fatura paga é uma saída comum na conta que pagou)~~ → **entra na Fatia 5** (03/10): Cartão e Fatura como entidades próprias, separadas de Conta. Ver a Fatia 5.
 - **Layouts por banco** (Bradesco, BTG, C6) e mapeamento de colunas: a importação usa OFX e um layout padrão do sistema (CSV/XLSX, modelo para download).
 - **Open Finance** e qualquer sincronização automática com banco.
 - **WhatsApp / OCR** como canais de entrada.
@@ -101,9 +102,15 @@ Tela nova com duas seções, contador na navegação, e os ajustes de relatório
 
 **Aceite:** um mês com metade do gasto sem categoria mostra o balde encabeçando a lista, em `--foreground`, com o aviso de percentual; clicar leva à fila filtrada.
 
-### Fatia 5 — Classificação automática
+### Fatia 5 — Cartões e faturas
 
-Memória determinística, IA em lote na importação, botão "Pedir para IA" no cadastro, resumo separando as duas origens.
+*(Reaberta em 03/10 por grilling; antes, o cartão estava fora de escopo.)* Cartão como entidade própria (nome, limite, dia de fechamento, dia de vencimento, conta pagadora), separada de Conta, com aba "Cartões" em Finanças. A **compra é a despesa**, na data da compra; o **pagamento da fatura é transferência** e não entra em relatório. Fatura agrupa as compras do ciclo e passa por `aberta` → `fechada` → `parcialmente paga` → `paga`. Importação do extrato do cartão. Parcelas contam no mês e no ciclo de cada uma. Estorno como lançamento próprio, que abate a despesa e reduz a fatura. Saldo anterior como linha da fatura, não como despesa; juros e multa como despesa na categoria "Juros e encargos". Limite disponível desconta faturas não pagas e parcelas futuras. O marcador `card_invoice` é removido.
+
+**Aceite:** importar o extrato de um cartão com uma compra de R$ 300 em 28/09 (fechamento dia 25) e depois o pagamento da fatura pela conta corrente resulta em R$ 300 de despesa em setembro, 0 de despesa de novembro, a fatura `paga` e o limite disponível de volta ao inicial. Importar o pagamento pelos dois extratos não duplica a transferência.
+
+### Fatia 6 — Classificação automática
+
+*(Era a Fatia 5; renumerada em 03/10.)* Memória determinística, IA em lote na importação, botão "Pedir para IA" no cadastro, resumo separando as duas origens. Cobre também as compras do extrato do cartão.
 
 **Aceite:** a segunda importação de um extrato do mesmo comerciante classifica pela memória, sem chamar a IA, e o resumo mostra isso.
 
