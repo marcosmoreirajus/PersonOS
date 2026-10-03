@@ -9,9 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SidebarModeToggle } from '@/components/ui/sidebar-mode-toggle'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { JANELAS, opcaoJanela, type JanelaAVencer, type Preferencias } from '@/lib/avisos'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const CURRENT_USER_ID = 1
+import { CURRENT_USER_ID, api } from '@/lib/api'
 
 type Mudanca = Partial<Pick<Preferencias, 'em_atraso' | 'a_vencer' | 'janela_a_vencer'>>
 
@@ -35,18 +33,19 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     let cancelled = false
-    fetch(`${API_URL}/api/preferences/user/${CURRENT_USER_ID}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((json) => !cancelled && setPrefs(json.data))
-      .catch(() => !cancelled && setErro('Não foi possível carregar as configurações.'))
+    api<Preferencias>(`/api/preferences/user/${CURRENT_USER_ID}`)
+      .then((p) => !cancelled && setPrefs(p))
+      .catch((e: unknown) => !cancelled && setErro(e instanceof Error ? e.message : 'Não foi possível carregar as configurações.'))
     return () => {
       cancelled = true
     }
   }, [])
 
+  // A recarga mostrada ao usuário não pode falhar em silêncio: ela existe para
+  // desfazer um retrato velho na tela depois de um erro no salvamento, e voltar
+  // a ficar calada deixaria o valor errado ali sem aviso.
   async function recarregar() {
-    const res = await fetch(`${API_URL}/api/preferences/user/${CURRENT_USER_ID}`)
-    if (res.ok) setPrefs((await res.json()).data)
+    setPrefs(await api<Preferencias>(`/api/preferences/user/${CURRENT_USER_ID}`))
   }
 
   async function salvar(mudanca: Mudanca) {
@@ -54,20 +53,16 @@ export default function ConfiguracoesPage() {
     setPrefs({ ...prefs, ...mudanca })
     setSalvo(false)
     try {
-      const res = await fetch(`${API_URL}/api/preferences/user/${CURRENT_USER_ID}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mudanca),
-      })
-      if (!res.ok) throw new Error(String(res.status))
-      setPrefs((await res.json()).data)
+      setPrefs(await api<Preferencias>(`/api/preferences/user/${CURRENT_USER_ID}`, { method: 'PATCH', body: mudanca }))
       setErro(null)
       setSalvo(true)
-    } catch {
+    } catch (e) {
       // Volta para o que o backend tem de fato — não para um retrato tirado
       // no clique, que pode já estar velho se houve outra mudança no meio.
-      setErro('Não foi possível salvar. A tela mostra o que está gravado.')
-      recarregar().catch(() => {})
+      setErro(e instanceof Error ? `${e.message} A tela mostra o que está gravado.` : 'Não foi possível salvar.')
+      recarregar().catch((re: unknown) =>
+        setErro(re instanceof Error ? re.message : 'Não foi possível recarregar as configurações.')
+      )
     }
   }
 

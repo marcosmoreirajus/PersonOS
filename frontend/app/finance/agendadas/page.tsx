@@ -9,6 +9,7 @@ import { MonthForecast } from './_components/MonthForecast'
 import { EMPTY_FILTERS, ScheduledFilters, type ScheduledFiltersValue } from './_components/ScheduledFilters'
 import { PendingAlert } from './_components/PendingAlert'
 import { UpcomingList } from './_components/UpcomingList'
+import { CURRENT_USER_ID, api } from '@/lib/api'
 import { isoLocal } from '@/lib/dates'
 import {
   buildCategoryMeta,
@@ -18,12 +19,12 @@ import {
   projectedToScheduledItems,
   toScheduledItems,
   type Category,
+  type ProjectedOccurrence,
   type ScheduledItem,
   type Series,
+  type Transaction,
 } from './_components/types'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const CURRENT_USER_ID = 1
 // Referência estável: `projetados` entra em dependência de `useMemo`.
 const NENHUM_ITEM: ScheduledItem[] = []
 
@@ -52,23 +53,18 @@ export default function AgendadasPage() {
       try {
         // Fonte única: Agendadas é uma visão de transações + séries.
         // `/api/scheduled` não existe mais.
-        const [transactionsRes, seriesRes, categoriesRes] = await Promise.all([
-          fetch(`${API_URL}/api/transactions/user/${CURRENT_USER_ID}`),
-          fetch(`${API_URL}/api/series/user/${CURRENT_USER_ID}`),
-          fetch(`${API_URL}/api/categories`),
-        ])
-        const [transactionsJson, seriesJson, categoriesJson] = await Promise.all([
-          transactionsRes.json(),
-          seriesRes.json(),
-          categoriesRes.json(),
+        const [transactions, listaSeries, listaCategorias] = await Promise.all([
+          api<Transaction[]>(`/api/transactions/user/${CURRENT_USER_ID}`),
+          api<Series[]>(`/api/series/user/${CURRENT_USER_ID}`),
+          api<Category[]>('/api/categories'),
         ])
         if (!cancelled) {
-          setItems(toScheduledItems(transactionsJson.data || [], seriesJson.data || []))
-          setSeries(seriesJson.data || [])
-          setCategories(categoriesJson.data || [])
+          setItems(toScheduledItems(transactions, listaSeries))
+          setSeries(listaSeries)
+          setCategories(listaCategorias)
         }
-      } catch {
-        if (!cancelled) setError('Não foi possível carregar as agendadas.')
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Não foi possível carregar as agendadas.')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -96,13 +92,14 @@ export default function AgendadasPage() {
     const de = isoLocal(new Date(month.getFullYear(), month.getMonth(), 1))
     const ate = isoLocal(new Date(month.getFullYear(), month.getMonth() + 1, 0))
 
-    fetch(`${API_URL}/api/series/projection/${CURRENT_USER_ID}?de=${de}&ate=${ate}`)
-      .then((r) => r.json())
-      .then((json) => {
-        if (!cancelado) setProjecao({ mes, itens: projectedToScheduledItems(json.data || [], series) })
+    api<ProjectedOccurrence[]>(`/api/series/projection/${CURRENT_USER_ID}`, { query: { de, ate } })
+      .then((itens) => {
+        if (!cancelado) setProjecao({ mes, itens: projectedToScheduledItems(itens, series) })
       })
-      .catch(() => {
-        if (!cancelado) setProjecao({ mes, itens: [] })
+      .catch((e: unknown) => {
+        // Antes a falha virava "este mês não tem nada" — o mês vazio é uma
+        // informação real, e esconder a falha atrás dele mentia sobre ela.
+        if (!cancelado) setError(e instanceof Error ? e.message : 'Não foi possível projetar o mês.')
       })
     return () => {
       cancelado = true

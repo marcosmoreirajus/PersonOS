@@ -2,8 +2,8 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const CURRENT_USER_ID = 1
+import { CURRENT_USER_ID, api } from '@/lib/api'
+
 const CHAVE = 'clari:ultima-extensao'
 
 function mesAtual() {
@@ -46,11 +46,11 @@ export function SeriesExtensionGate({ children }: { children: ReactNode }) {
       }
 
       try {
-        await fetch(`${API_URL}/api/series/extend`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: CURRENT_USER_ID }),
-        })
+        // O mês só é marcado depois que a extensão aconteceu de fato: marcar
+        // antes (o que acontecia quando a resposta do `fetch` era ignorada)
+        // fazia uma falha 500 deixar o mês como resolvido, e a janela das
+        // séries não era mais estendida até o mês virar.
+        await api('/api/series/extend', { method: 'POST', body: { user_id: CURRENT_USER_ID } })
         try {
           localStorage.setItem(CHAVE, mes)
         } catch {
@@ -58,7 +58,8 @@ export function SeriesExtensionGate({ children }: { children: ReactNode }) {
         }
       } catch {
         // Falhar a extensão não pode impedir o app de abrir: o usuário
-        // continua vendo o que já está materializado.
+        // continua vendo o que já está materializado. E o mês não fica
+        // marcado, então a próxima abertura tenta de novo.
       } finally {
         if (!cancelado) setPronto(true)
       }

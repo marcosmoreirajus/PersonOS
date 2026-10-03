@@ -7,9 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { MoneyValue } from '@/components/ui/money-value'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { EvolutionChart, formatMonth, type EvolutionPoint } from './_components/EvolutionChart'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const CURRENT_USER_ID = 1
+import { CURRENT_USER_ID, api } from '@/lib/api'
 
 // Patrimônio é P&B (peso por opacidade), nunca colorido — decisão de
 // 2026-09-14: "Despesas = colorido (atenção) vs. Patrimônio = P&B (sóbrio)".
@@ -64,11 +62,10 @@ export default function PatrimonioPage() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`${API_URL}/api/investments/${CURRENT_USER_ID}`)
-        const json = await res.json()
-        if (!cancelled) setData(json.data)
-      } catch {
-        if (!cancelled) setError('Não foi possível carregar o patrimônio.')
+        const investimentos = await api<Investments>(`/api/investments/${CURRENT_USER_ID}`)
+        if (!cancelled) setData(investimentos)
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Não foi possível carregar o patrimônio.')
       } finally {
         if (!cancelled) setLoading(false)
       }

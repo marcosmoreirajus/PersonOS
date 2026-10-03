@@ -10,10 +10,8 @@ import { MoneyValue } from '@/components/ui/money-value'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { CategoryPicker, categoriasDoTipo, type PickerCategory } from '../_components/CategoryPicker'
 import { REVIEW_CHANGED_EVENT } from '../_components/FinanceTabs'
+import { CURRENT_USER_ID, api } from '@/lib/api'
 import { formatDateBR } from '@/lib/dates'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const CURRENT_USER_ID = 1
 
 type Lancamento = {
   id: number
@@ -62,63 +60,43 @@ function Revisar() {
   const [ocupado, setOcupado] = useState<number | null>(null)
 
   const carregar = useCallback(async () => {
-    try {
-      const [filaRes, catRes] = await Promise.all([
-        fetch(`${API_URL}/api/review/user/${CURRENT_USER_ID}`),
-        fetch(`${API_URL}/api/categories`),
-      ])
-      // Sem essa checagem, um 404 (ex.: backend desatualizado) deixava a fila
-      // indefinida e a tela presa em "Carregando..." para sempre.
-      if (!filaRes.ok) throw new Error(`fila ${filaRes.status}`)
-      setFila((await filaRes.json()).data)
-      setCategories(catRes.ok ? (await catRes.json()).data || [] : [])
-      setError(null)
-    } catch {
-      setError('Não foi possível carregar a fila.')
-    }
+    const [fila, cats] = await Promise.all([
+      // A fila propaga o erro: sem isso, um 404 (ex.: backend desatualizado)
+      // deixava a fila indefinida e a tela presa em "Carregando..." para sempre.
+      api<Fila>(`/api/review/user/${CURRENT_USER_ID}`),
+      // As categorias degradam em vez de derrubar a tela — a fila é o que
+      // importa aqui, e ela carrega sozinha.
+      api<PickerCategory[]>('/api/categories').catch(() => []),
+    ])
+    setFila(fila)
+    setCategories(cats)
+    setError(null)
   }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- busca de dados: o setState vem depois do await (o lint não enxerga dentro do useCallback async)
-    carregar()
+    carregar().catch((e: unknown) => setError(e instanceof Error ? e.message : 'Não foi possível carregar a fila.'))
   }, [carregar])
 
-  async function resolver(id: number, req: () => Promise<Response>) {
+  async function resolver(id: number, req: () => Promise<unknown>) {
     setOcupado(id)
     try {
-      const res = await req()
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        setError(body?.detail || 'Não foi possível salvar.')
-        return
-      }
+      await req()
       setError(null)
       await carregar()
       window.dispatchEvent(new Event(REVIEW_CHANGED_EVENT))
-    } catch {
-      setError('Não foi possível salvar.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível salvar.')
     } finally {
       setOcupado(null)
     }
   }
 
   const conciliar = (id: number, action: 'merge' | 'not_duplicate') =>
-    resolver(id, () =>
-      fetch(`${API_URL}/api/reconcile/${id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      })
-    )
+    resolver(id, () => api(`/api/reconcile/${id}`, { method: 'POST', body: { action } }))
 
   const categorizar = (id: number, categoryId: string) =>
-    resolver(id, () =>
-      fetch(`${API_URL}/api/transactions/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category_id: Number(categoryId), scope: 'only_this' }),
-      })
-    )
+    resolver(id, () => api(`/api/transactions/${id}`, { method: 'PATCH', body: { category_id: Number(categoryId), scope: 'only_this' } }))
 
   if (!fila) {
     return error ? <Erro texto={error} /> : <p className="text-muted-foreground">Carregando...</p>

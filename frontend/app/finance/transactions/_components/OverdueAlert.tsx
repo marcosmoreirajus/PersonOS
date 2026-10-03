@@ -6,11 +6,10 @@ import { Check, ChevronDown, CircleAlert, LoaderCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { MoneyValue } from '@/components/ui/money-value'
+import { api } from '@/lib/api'
 import { categoryIcon } from '@/lib/category-icons'
 import { cn } from '@/lib/utils'
 import { hojeLocal, formatDateBR } from '@/lib/dates'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export type OverdueTransaction = {
   id: number
@@ -72,6 +71,7 @@ export function OverdueAlert({
 }) {
   const [aberto, setAberto] = useState(false)
   const [salvando, setSalvando] = useState<number | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
 
   const hoje = useMemo(() => hojeLocal(), [])
   const categoriaPorId = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
@@ -94,15 +94,19 @@ export function OverdueAlert({
 
   async function efetivar(t: OverdueTransaction) {
     setSalvando(t.id)
+    setErro(null)
     try {
-      await fetch(`${API_URL}/api/transactions/${t.id}`, {
+      await api(`/api/transactions/${t.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         // Efetiva na data de hoje, não na de vencimento: o dinheiro se moveu
         // agora, e é isso que `settled_at` registra.
-        body: JSON.stringify({ settled_at: hoje, scope: 'only_this' }),
+        body: { settled_at: hoje, scope: 'only_this' },
       })
       onChanged()
+    } catch (e) {
+      // Antes a linha sumia da lista mesmo sem ter sido efetivada — a tela
+      // afirmava um pagamento que o backend nunca registrou.
+      setErro(e instanceof Error ? e.message : 'Não foi possível confirmar.')
     } finally {
       setSalvando(null)
     }
@@ -153,6 +157,11 @@ export function OverdueAlert({
             <p className="px-4 py-2 text-xs text-muted-foreground">
               Conta todos os lançamentos vencidos, independente dos filtros aplicados na lista.
             </p>
+            {erro && (
+              <p className="px-4 pb-2 text-xs text-destructive" role="alert">
+                {erro}
+              </p>
+            )}
             <ul className="divide-y divide-border">
               {todos.map((t) => {
                 const cat = categoriaPorId.get(t.category_id ?? -1)

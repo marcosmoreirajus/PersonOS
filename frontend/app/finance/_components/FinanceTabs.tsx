@@ -5,9 +5,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeftRight, CalendarClock, ListChecks, LayoutDashboard, PieChart, PiggyBank } from 'lucide-react'
 
 import { SectionTabs, type TabItem } from '@/components/ui/app-shell'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const CURRENT_USER_ID = 1
+import { CURRENT_USER_ID, api } from '@/lib/api'
 
 /** Evento que a tela "A revisar" dispara ao resolver um item. */
 export const REVIEW_CHANGED_EVENT = 'finance:review-changed'
@@ -44,9 +42,8 @@ export default function FinanceTabs() {
     let cancelled = false
     async function carregar() {
       try {
-        const res = await fetch(`${API_URL}/api/review/user/${CURRENT_USER_ID}`)
-        const json = await res.json()
-        if (!cancelled) setARevisar(json.data?.total ?? 0)
+        const fila = await api<{ total?: number }>(`/api/review/user/${CURRENT_USER_ID}`)
+        if (!cancelled) setARevisar(fila.total ?? 0)
       } catch {
         // Sem dados a aba só fica sem contador; a tela mostra o erro de carga.
       }

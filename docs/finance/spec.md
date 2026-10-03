@@ -239,6 +239,36 @@ Existentes hoje: `GET /api/transactions`, `GET /api/transactions/user/{id}`, `PO
 | `GET` | `/api/review/user/{user_id}` | as duas seções da tela "A revisar" |
 | ~~`GET`~~ | ~~`/api/scheduled/user/{id}`~~ | **removida** na Fatia 1; Agendadas passa a usar `/api/transactions` |
 
+### Contrato de erro — duas chaves, e isso é conhecido
+
+Toda resposta de dados é `{"data": ...}` (31 rotas, sem exceção). A resposta de
+erro **não** é uniforme, e o frontend foi construído para tolerar as duas:
+
+| Forma | Quem produz | Quando |
+|---|---|---|
+| `{"detail": "frase"}` | `raise HTTPException(status_code, detail=...)` | erro de negócio (16 sites) |
+| `{"detail": [{loc, msg, type}]}` | FastAPI, validação do Pydantic | 422 (9 rotas com corpo) |
+| `{"error": "frase"}` | `return {"error": "..."}, 404` escrito à mão | "não encontrado" (6 sites) |
+
+A terceira é dívida conhecida: `GET /api/users/{id}`, `POST /api/transactions/bulk`,
+`PATCH` e `DELETE /api/transactions/{id}` e as duas rotas de negócio usam
+`error`, o resto usa `detail`. **Unificar é dívida de Fatia futura** — até lá,
+`lib/api.ts` resolve `detail` → `error` → frase genérica do status.
+
+## Caminho único até a API (`lib/api.ts`)
+
+O frontend não chama `fetch` diretamente: as 33 chamadas passam por
+`api(caminho, { method, body, query, signal })`, que desembrulha `data` e lança
+`ApiError` (com `status`, `detail` cru e `message` já em português) em `!ok`.
+`API_URL` e `CURRENT_USER_ID` moram no mesmo módulo, e `apiUrl()` monta a URL do
+link de download do modelo, que é navegação e não requisição.
+
+Duas regras que o módulo impõe e que valem para o backend:
+
+- **Upload é `FormData` e não leva `Content-Type`** — o boundary é do browser.
+- **Resposta sem `data` em 2xx é erro**, não sucesso vazio: foi o que permitia
+  que um 500 aparecesse na tela como lista vazia.
+
 ## Rotas de frontend (Next.js App Router)
 
 Existentes: `/finance`, `/finance/transactions`, `/finance/agendadas`, `/finance/relatorios`, `/finance/patrimonio`.

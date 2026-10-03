@@ -10,11 +10,10 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 // reservada). Ver a convenção em docs/design-system.md: campo de formulário
 // usa `motion/input`; campo de tela (busca, filtro) usa `ui/input`.
 import { Input } from '@/components/motion/input'
+import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { hojeLocal } from '@/lib/dates'
 import { CategoryPicker, categoriasDoTipo } from '../../_components/CategoryPicker'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export type Category = {
   id: number
@@ -185,30 +184,27 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
             ? { kind: 'recurring', frequency: frequencia, end_date: ate || null }
             : null
 
-      const res = editando
-        ? await fetch(`${API_URL}/api/transactions/${seed!.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            // Escopo amplo em edição depende de um passo a mais na interface;
-            // por ora a edição é sempre pontual.
-            body: JSON.stringify({ ...corpo, scope: 'only_this' }),
-          })
-        : await fetch(`${API_URL}/api/transactions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...corpo,
-              user_id: userId,
-              // Lançamento avulso é fato consumado: nasce efetivado na data
-              // escolhida. Série é compromisso futuro — as ocorrências nascem
-              // sem efetivação, e cada uma é marcada quando o dinheiro se move.
-              settled_at: series ? null : date,
-              source: 'manual',
-              ...(series ? { series } : {}),
-            }),
-          })
+      const editandoLancamento = Boolean(editando)
+      if (editandoLancamento) {
+        // Escopo amplo em edição depende de um passo a mais na interface;
+        // por ora a edição é sempre pontual.
+        await api(`/api/transactions/${seed!.id}`, { method: 'PATCH', body: { ...corpo, scope: 'only_this' } })
+      } else {
+        await api('/api/transactions', {
+          method: 'POST',
+          body: {
+            ...corpo,
+            user_id: userId,
+            // Lançamento avulso é fato consumado: nasce efetivado na data
+            // escolhida. Série é compromisso futuro — as ocorrências nascem
+            // sem efetivação, e cada uma é marcada quando o dinheiro se move.
+            settled_at: series ? null : date,
+            source: 'manual',
+            ...(series ? { series } : {}),
+          },
+        })
+      }
 
-      if (!res.ok) throw new Error()
       onSaved()
       if (addAnother) {
         // Tipo, data e categoria ficam: quem lança em sequência repete os três.
@@ -217,8 +213,10 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
       } else {
         onOpenChange(false)
       }
-    } catch {
-      setErros({ amount: 'Não foi possível salvar a transação.' })
+    } catch (e) {
+      // A frase do backend quando houver — "Transaction not found" diz mais do
+      // que "não foi possível salvar".
+      setErros({ amount: e instanceof Error ? e.message : 'Não foi possível salvar a transação.' })
     } finally {
       setSaving(false)
     }

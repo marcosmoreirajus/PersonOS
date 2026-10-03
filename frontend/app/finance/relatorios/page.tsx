@@ -7,10 +7,8 @@ import { CircleAlert } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { MoneyValue } from '@/components/ui/money-value'
 import { CategoryBreakdown, rankWithUncategorized, REVISAR_SEM_CATEGORIA } from '../_components/CategoryBreakdown'
+import { CURRENT_USER_ID, api } from '@/lib/api'
 import { categoryColorByRank } from '@/lib/category-colors'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const CURRENT_USER_ID = 1
 
 type DashboardSummary = {
   balance: number
@@ -33,13 +31,12 @@ export default function RelatoriosPage() {
       setLoading(true)
       setError(null)
       try {
-        const dashRes = await fetch(`${API_URL}/api/dashboard/${CURRENT_USER_ID}`)
-        const dashJson = await dashRes.json()
+        const dash = await api<DashboardSummary>(`/api/dashboard/${CURRENT_USER_ID}`)
         if (!cancelled) {
-          setSummary(dashJson.data)
+          setSummary(dash)
         }
-      } catch {
-        if (!cancelled) setError('Não foi possível carregar os relatórios.')
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Não foi possível carregar os relatórios.')
       } finally {
         if (!cancelled) setLoading(false)
       }

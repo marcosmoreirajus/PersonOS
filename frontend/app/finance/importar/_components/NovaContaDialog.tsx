@@ -6,9 +6,8 @@ import { ImagePlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/motion/input'
+import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export type ContaTipo = 'checking' | 'wallet' | 'savings' | 'investment' | 'card'
 
@@ -99,14 +98,11 @@ export function NovaContaDialog({
     setSalvando(true)
     setErro(null)
     try {
-      const res = await fetch(`${API_URL}/api/accounts`, {
+      const conta = await api<Conta>('/api/accounts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, name: nome, kind: tipo, initial_balance: valor, logo }),
+        body: { user_id: userId, name: nome, kind: tipo, initial_balance: valor, logo },
       })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(typeof json.detail === 'string' ? json.detail : 'Não foi possível criar a conta.')
-      onCreated(json.data)
+      onCreated(conta)
       setNome('')
       setTipo('checking')
       setSaldo('')

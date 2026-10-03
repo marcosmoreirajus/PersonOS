@@ -19,11 +19,9 @@ import {
   type Preferencias,
   type TipoAviso,
 } from '@/lib/avisos'
+import { CURRENT_USER_ID, api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { hojeLocal } from '@/lib/dates'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const CURRENT_USER_ID = 1
 
 /** O que cada aviso mostra; a regra de quem entra mora em `lib/avisos.ts`. */
 const APRESENTACAO: Record<
@@ -65,14 +63,15 @@ export function NotificationsBell() {
   const carregar = useCallback(async () => {
     setCarregando(true)
     try {
-      const [txRes, prefRes] = await Promise.all([
-        fetch(`${API_URL}/api/transactions/user/${CURRENT_USER_ID}`),
-        fetch(`${API_URL}/api/preferences/user/${CURRENT_USER_ID}`),
+      // Degrada em silêncio de propósito: sem estes dados o sino só fica sem
+      // contador, e o contador ausente não é informação — as telas mostram o
+      // erro de carga de verdade.
+      const [tx, prefs] = await Promise.all([
+        api<LancamentoAviso[]>(`/api/transactions/user/${CURRENT_USER_ID}`).catch(() => []),
+        api<Preferencias>(`/api/preferences/user/${CURRENT_USER_ID}`).catch(() => null),
       ])
-      if (txRes.ok) setLancamentos((await txRes.json()).data || [])
-      if (prefRes.ok) setPrefs((await prefRes.json()).data)
-    } catch {
-      // Sem dados o sino só fica sem contador; as telas mostram o erro de carga.
+      setLancamentos(tx)
+      if (prefs) setPrefs(prefs)
     } finally {
       setCarregando(false)
     }
@@ -92,13 +91,9 @@ export function NotificationsBell() {
     const visto = paresDe(avisos)
     setPrefs((p) => ({ ...p, visto }))
     try {
-      const res = await fetch(`${API_URL}/api/preferences/user/${CURRENT_USER_ID}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ visto }),
-      })
-      if (!res.ok) throw new Error(String(res.status))
-      setPrefs((await res.json()).data)
+      setPrefs(
+        await api<Preferencias>(`/api/preferences/user/${CURRENT_USER_ID}`, { method: 'PATCH', body: { visto } })
+      )
     } catch {
       // Não gravou: recarregar devolve o número — melhor que fingir que foi
       // salvo e ver o número voltar no próximo aparelho.

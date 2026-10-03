@@ -10,9 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { api } from '@/lib/api'
 import { CategoryPicker, categoriasDoTipo, type PickerCategory } from '../../_components/CategoryPicker'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 type Pendente = {
   category_id?: number
@@ -48,6 +47,7 @@ export function BulkActionsBar({
   const [pendente, setPendente] = useState<Pendente>({})
   const [saving, setSaving] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
 
   // Seleção de um tipo só oferece as categorias dele; seleção mista oferece
   // apenas as que servem aos dois lados, senão o lote gravaria "Salário" numa
@@ -85,16 +85,19 @@ export function BulkActionsBar({
 
   async function enviar(body: Record<string, unknown>) {
     setSaving(true)
+    setErro(null)
     try {
-      await fetch(`${API_URL}/api/transactions/bulk`, {
+      await api('/api/transactions/bulk', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: ids.map(Number), ...body }),
+        body: { ids: ids.map(Number), ...body },
       })
       onDone()
       onClear()
       setPendente({})
       setConfirmando(false)
+    } catch (e) {
+      // Não limpar a seleção: some com o que a pessoa escolheu resolver.
+      setErro(e instanceof Error ? e.message : 'Não foi possível aplicar a mudança.')
     } finally {
       setSaving(false)
     }
@@ -183,6 +186,12 @@ export function BulkActionsBar({
           )}
         </div>
       </div>
+
+      {erro && (
+        <p className="px-1 text-xs text-destructive" role="alert">
+          {erro}
+        </p>
+      )}
 
       {mudancas.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">

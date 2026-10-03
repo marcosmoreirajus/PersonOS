@@ -13,15 +13,13 @@ import { CategoryMultiPicker } from '../_components/CategoryPicker'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, type SortState, type TableColumn } from '@/components/motion/table'
 import { categoryIcon } from '@/lib/category-icons'
+import { CURRENT_USER_ID, api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { hojeLocal, formatDateBR } from '@/lib/dates'
 import TransactionDialog, { type Category, type DialogSeed } from './_components/TransactionDialog'
 import DeleteDialog from './_components/DeleteDialog'
 import OverdueAlert from './_components/OverdueAlert'
 import BulkActionsBar from './_components/BulkActionsBar'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const CURRENT_USER_ID = 1
 
 type Transaction = {
   id: number
@@ -67,6 +65,9 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  // Antes não havia: a falha de carga virava lista vazia, e uma lista vazia sem
+  // aviso se confunde com "não tem lançamento nenhum".
+  const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [tipo, setTipo] = useState<TipoFiltro>('all')
   // Várias categorias ao mesmo tempo: lista vazia = todas.
@@ -105,15 +106,16 @@ export default function TransactionsPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
-      const [txRes, catRes] = await Promise.all([
-        fetch(`${API_URL}/api/transactions/user/${CURRENT_USER_ID}`),
-        fetch(`${API_URL}/api/categories`),
+      const [tx, cats] = await Promise.all([
+        api<Transaction[]>(`/api/transactions/user/${CURRENT_USER_ID}`),
+        api<Category[]>('/api/categories'),
       ])
-      const txJson = await txRes.json()
-      const catJson = await catRes.json()
-      setTransactions(txJson.data || [])
-      setCategories(catJson.data || [])
+      setTransactions(tx)
+      setCategories(cats)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível carregar as transações.')
     } finally {
       setLoading(false)
     }
@@ -314,6 +316,12 @@ export default function TransactionsPage() {
   return (
     <div className="flex flex-col gap-4">
       <OverdueAlert transactions={transactions} categories={categories} onChanged={fetchData} />
+
+      {error && (
+        <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-foreground">Transações</h1>

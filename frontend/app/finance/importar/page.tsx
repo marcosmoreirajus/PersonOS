@@ -8,14 +8,13 @@ import { Button } from '@/components/ui/button'
 import { MoneyValue } from '@/components/ui/money-value'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { CURRENT_USER_ID, api, apiUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { FileDropzone } from './_components/FileDropzone'
 import { NovaContaDialog, TIPOS_CONTA, type Conta } from './_components/NovaContaDialog'
 import { Steps } from './_components/Steps'
 import { formatDateBR } from '@/lib/dates'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const CURRENT_USER_ID = 1
 const PASSOS = ['Origem', 'Revisar', 'Confirmar']
 
 type Situacao = 'nova' | 'ja_importada' | 'suspeita'
@@ -85,11 +84,9 @@ export default function ImportarPage() {
 
   const carregarContas = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/accounts/user/${CURRENT_USER_ID}`)
-      const json = await res.json()
-      setContas(json.data ?? [])
-    } catch {
-      setErro('Não foi possível carregar as contas.')
+      setContas(await api<Conta[]>(`/api/accounts/user/${CURRENT_USER_ID}`))
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível carregar as contas.')
     }
   }, [])
 
@@ -100,25 +97,25 @@ export default function ImportarPage() {
 
   const conta = contas.find((c) => c.id === contaId) ?? null
 
-  async function enviar(rota: 'preview' | 'commit') {
+  async function enviar<T>(rota: 'preview' | 'commit') {
     if (!arquivo || contaId === null) return null
     const form = new FormData()
     form.append('file', arquivo)
     form.append('user_id', String(CURRENT_USER_ID))
     form.append('account_id', String(contaId))
     if (rota === 'commit') form.append('decisoes', JSON.stringify(decisoes))
-    // Sem Content-Type manual: o navegador precisa definir o boundary do multipart.
-    const res = await fetch(`${API_URL}/api/import/${rota}`, { method: 'POST', body: form })
-    const json = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(typeof json.detail === 'string' ? json.detail : 'Não foi possível ler o arquivo.')
-    return json.data
+    // Sem Content-Type manual: o navegador precisa definir o boundary do
+    // multipart. `api()` respeita isso — passar FormData é a única forma de ele
+    // não declarar o header.
+    return api<T>(`/api/import/${rota}`, { method: 'POST', body: form })
   }
 
   async function analisar() {
     setCarregando(true)
     setErro(null)
     try {
-      const p: Previa = await enviar('preview')
+      const p = await enviar<Previa>('preview')
+      if (!p) return
       setPrevia(p)
       // Padrão conservador: suspeita vai para a fila até o usuário decidir.
       setDecisoes(
@@ -138,7 +135,9 @@ export default function ImportarPage() {
     setCarregando(true)
     setErro(null)
     try {
-      setResumo(await enviar('commit'))
+      const gravado = await enviar<Resumo>('commit')
+      if (!gravado) return
+      setResumo(gravado)
       setPasso(2)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível importar.')
@@ -234,7 +233,7 @@ export default function ImportarPage() {
                   key={f}
                   variant="outline"
                   size="sm"
-                  render={<a href={`${API_URL}/api/import/template/${f}`} download />}
+                  render={<a href={apiUrl(`/api/import/template/${f}`)} download />}
                   nativeButton={false}
                 >
                   <Download className="size-4" strokeWidth={1.5} aria-hidden="true" />

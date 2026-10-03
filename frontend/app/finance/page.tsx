@@ -23,11 +23,9 @@ import {
   type ScheduledItem,
   type Series,
 } from './agendadas/_components/types'
+import { CURRENT_USER_ID, api } from '@/lib/api'
 import { categoryColorByRank, incomeColorByRank } from '@/lib/category-colors'
 import { formatDateBR } from '@/lib/dates'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const CURRENT_USER_ID = 1
 
 type Transaction = {
   id: number
@@ -82,28 +80,24 @@ export default function FinanceDashboardPage() {
       setLoading(true)
       setError(null)
       try {
-        const [txRes, catRes, seriesRes] = await Promise.all([
-          fetch(`${API_URL}/api/transactions/user/${CURRENT_USER_ID}`),
-          fetch(`${API_URL}/api/categories`),
-          fetch(`${API_URL}/api/series/user/${CURRENT_USER_ID}`),
+        const [tx, cats, series] = await Promise.all([
+          api<Transaction[]>(`/api/transactions/user/${CURRENT_USER_ID}`),
+          api<Category[]>('/api/categories'),
+          api<Series[]>(`/api/series/user/${CURRENT_USER_ID}`),
         ])
-        const txJson = await txRes.json()
-        const catJson = await catRes.json()
-        const seriesJson = await seriesRes.json()
         if (!cancelled) {
-          const all: Transaction[] = [...(txJson.data || [])]
           // Saldo, cards e relatórios só olham o efetivado; o previsto existe
           // na mesma base desde a fonte única, mas não soma.
           setTransactions(
-            all
+            [...tx]
               .filter((t) => t.settled_at)
               .sort((a, b) => new Date(a.settled_at!).getTime() - new Date(b.settled_at!).getTime())
           )
-          setCategories(catJson.data || [])
-          setScheduled(toScheduledItems(all, (seriesJson.data || []) as Series[]))
+          setCategories(cats)
+          setScheduled(toScheduledItems(tx, series))
         }
-      } catch {
-        if (!cancelled) setError('Não foi possível carregar o dashboard.')
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Não foi possível carregar o dashboard.')
       } finally {
         if (!cancelled) setLoading(false)
       }

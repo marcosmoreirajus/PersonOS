@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { api } from '@/lib/api'
 
 export type FieldConfig = {
   key: string
@@ -35,14 +35,13 @@ export default function BusinessSectionForm({
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`${API_URL}/api/business/${section}`)
-        const json = await res.json()
+        const conteudo = await api<Record<string, string>>(`/api/business/${section}`)
         if (!cancelled) {
-          setValues(json.data || {})
+          setValues(conteudo)
         }
-      } catch {
+      } catch (e) {
         if (!cancelled) {
-          setError('Não foi possível carregar os dados da seção.')
+          setError(e instanceof Error ? e.message : 'Não foi possível carregar os dados da seção.')
         }
       } finally {
         if (!cancelled) {
@@ -67,16 +66,12 @@ export default function BusinessSectionForm({
     setError(null)
     setSavedAt(null)
     try {
-      const res = await fetch(`${API_URL}/api/business/${section}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      })
-      const json = await res.json()
-      setValues(json.data || values)
+      // O backend devolve o que gravou: se normalizou algo, é isso que a tela
+      // passa a mostrar.
+      setValues(await api<Record<string, string>>(`/api/business/${section}`, { method: 'PUT', body: values }))
       setSavedAt(new Date().toLocaleTimeString('pt-BR'))
-    } catch {
-      setError('Não foi possível salvar os dados da seção.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível salvar os dados da seção.')
     } finally {
       setSaving(false)
     }

@@ -4,9 +4,8 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export type Scope = 'only_this' | 'this_and_future' | 'all'
 
@@ -42,18 +41,25 @@ export function DeleteDialog({
 }) {
   const [scope, setScope] = useState<Scope>('only_this')
   const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
   const temSerie = Boolean(transaction?.series_id)
 
   async function confirmar() {
     if (!transaction) return
     setSaving(true)
+    setErro(null)
     try {
-      await fetch(`${API_URL}/api/transactions/${transaction.id}?scope=${temSerie ? scope : 'only_this'}`, {
+      await api(`/api/transactions/${transaction.id}`, {
         method: 'DELETE',
+        query: { scope: temSerie ? scope : 'only_this' },
       })
       onDeleted()
       onOpenChange(false)
       setScope('only_this')
+    } catch (e) {
+      // Não fechar o diálogo: sem isto, uma exclusão que falhou deixava a tela
+      // mostrando o lançamento como se tivesse sumido.
+      setErro(e instanceof Error ? e.message : 'Não foi possível excluir.')
     } finally {
       setSaving(false)
     }
@@ -90,6 +96,12 @@ export function DeleteDialog({
               </button>
             ))}
           </div>
+        )}
+
+        {erro && (
+          <p className="text-sm text-destructive" role="alert">
+            {erro}
+          </p>
         )}
 
         <DialogFooter className="gap-2">
