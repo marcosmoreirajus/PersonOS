@@ -78,15 +78,15 @@ export default function BusinessSectionForm({
   }
 
   if (loading) {
-    return <p className="text-gray-500">Carregando...</p>
+    return <p className="text-muted-foreground">Carregando...</p>
   }
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">{title}</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">{title}</h1>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -94,13 +94,13 @@ export default function BusinessSectionForm({
       <div className="flex flex-col gap-4">
         {fields.map((field) => (
           <div key={field.key} className="flex flex-col gap-1">
-            <label htmlFor={field.key} className="text-sm font-medium text-gray-700">
+            <label htmlFor={field.key} className="text-sm font-medium text-muted-foreground">
               {field.label}
             </label>
             <textarea
               id={field.key}
               rows={4}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               value={values[field.key] ?? ''}
               onChange={(e) => handleChange(field.key, e.target.value)}
             />
@@ -113,12 +113,12 @@ export default function BusinessSectionForm({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition disabled:opacity-50"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition disabled:opacity-50"
         >
           {saving ? 'Salvando...' : 'Salvar'}
         </button>
         {savedAt && (
-          <span className="text-sm text-gray-500">Salvo às {savedAt}</span>
+          <span className="text-sm text-muted-foreground">Salvo às {savedAt}</span>
         )}
       </div>
     </div>
