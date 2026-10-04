@@ -43,3 +43,44 @@ _Avoid_: Rotativo, encargo
 **Estorno**:
 Devolução de uma compra: abate a despesa da categoria original e reduz a fatura. Não é receita.
 _Avoid_: Crédito, receita de estorno
+
+### Visão Geral
+
+**Conta**:
+Lugar onde o dinheiro está (banco, carteira, investimento). Tem saldo inicial; o saldo dela é o saldo inicial mais as entradas e menos as saídas efetivadas naquela conta. Cartão não é Conta.
+_Avoid_: Conta de cartão
+
+**Saldo**:
+Soma dos saldos das Contas menos a dívida dos Cartões. Pagar a fatura não o altera, porque a conta cai o mesmo tanto que a dívida.
+_Avoid_: Receitas menos despesas (era a definição antiga)
+
+**Sem conta**:
+Linha do quadro que reúne os lançamentos efetivados sem Conta, para a soma das contas bater com o Saldo. Só aparece se houver algum.
+_Avoid_: Conta padrão
+
+**Contas e cartões**:
+Quadro da Visão Geral com o saldo de cada Conta e, por Cartão, a fatura atual, o vencimento e o limite livre. Mostra o total nas contas, o total nos cartões e o Saldo. Não é um filtro da página.
+_Avoid_: Seletor de conta
+
+**Próximos vencimentos**:
+Bloco da Visão Geral com as 5 obrigações a pagar e as 5 a receber mais próximas, atrasadas primeiro. Não é um aviso: o aviso é o sino.
+_Avoid_: Pendências, avisos
+
+### Relatórios
+
+**Período**:
+Janela de datas da tela de Relatórios. Todo gráfico dela usa o mesmo, e compara com o mesmo trecho do período anterior.
+_Avoid_: Mês corrente (o período não é só o mês)
+
+**Previsto**:
+Lançamento ainda não efetivado (recorrência, parcela ou fatura fechada). Não entra em saldo nem em relatório de realizado.
+_Avoid_: Pendente
+
+**Projeção**:
+Saldo líquido futuro calculado só com o que já está lançado como Previsto. Não estima gasto avulso; por isso é um piso.
+_Avoid_: Previsão, estimativa
+
+**Parcelado**:
+Compra dividida em parcelas, com total, parcelas realizadas e parcelas restantes. O cartão é opcional (carnê e crediário também são).
+_Avoid_: Compra parcelada no cartão
+
