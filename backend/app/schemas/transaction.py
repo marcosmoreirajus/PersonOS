@@ -41,6 +41,8 @@ class TransactionCreate(BaseModel):
     # previsto / atrasado / realizado — elas não são gravadas.
     settled_at: date | None = None
     account_id: int | None = None
+    # Compra no cartão (issue #26): pede o Cartão no lugar da Conta.
+    card_id: int | None = None
     is_internal_transfer: bool = False
     source: TransactionSource = TransactionSource.MANUAL
     series: SeriesCreate | None = None

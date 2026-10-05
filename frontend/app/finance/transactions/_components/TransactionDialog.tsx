@@ -14,6 +14,7 @@ import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { hojeLocal } from '@/lib/dates'
 import { contaInicial, guardarUltimaConta, lerUltimaConta } from '@/lib/conta-lancamento'
+import { cartaoInicial, corpoDoDestino, erroDoDestino, type Destino } from '@/lib/lancamento-destino'
 import { CategoryPicker, categoriasDoTipo } from '../../_components/CategoryPicker'
 import { NovaContaDialog, type Conta } from '../../importar/_components/NovaContaDialog'
 
@@ -34,6 +35,8 @@ export type DialogSeed = {
   category_id: number | null
   /** Conta do lançamento de origem; nula nos antigos, que nasceram sem conta. */
   account_id?: number | null
+  /** Compra no cartão (issue #26): em edição o destino é mostrado, não trocado. */
+  card_id?: number | null
   due_date: string
 }
 
@@ -106,6 +109,11 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
   const [contas, setContas] = useState<Conta[] | null>(null)
   const [accountId, setAccountId] = useState('')
   const [novaContaAberta, setNovaContaAberta] = useState(false)
+  // Cartão (issue #26): a compra pede o Cartão no lugar da Conta. Só despesa
+  // cabe no cartão; os cartões vêm da API ao abrir, como as contas.
+  const [destino, setDestino] = useState<Destino>('conta')
+  const [cartoes, setCartoes] = useState<{ id: number; name: string }[] | null>(null)
+  const [cardId, setCardId] = useState('')
 
   // Reidrata ao abrir: em edição e em duplicação o formulário parte do
   // lançamento de origem; em criação, de um estado limpo. Feito durante o
@@ -118,6 +126,8 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
 
   function hidratar() {
     setErros({})
+    setDestino('conta')
+    setCardId('')
     if (seed) {
       setType(seed.type)
       setAmount(String(seed.amount).replace('.', ','))
@@ -164,6 +174,17 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
       .catch(() => {
         if (!cancelled) setContas([])
       })
+    // Os cartões só alimentam a escolha "Cartão": falhar aqui não derruba o lançamento de conta.
+    api<{ id: number; name: string }[]>(`/api/cards/user/${userId}`)
+      .then((lista) => {
+        if (cancelled) return
+        setCartoes(lista)
+        const unico = cartaoInicial(lista)
+        setCardId((atual) => (atual && lista.some((c) => String(c.id) === atual) ? atual : unico != null ? String(unico) : ''))
+      })
+      .catch(() => {
+        if (!cancelled) setCartoes([])
+      })
     return () => {
       cancelled = true
     }
@@ -200,7 +221,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
       description: !description.trim() ? 'A descrição é obrigatória.' : undefined,
       category: !categoryId ? 'Escolha uma categoria.' : undefined,
       // Só a criação exige conta; editar um lançamento antigo sem conta não.
-      account: !editando && !accountId ? 'Escolha a conta do lançamento.' : undefined,
+      account: !editando ? erroDoDestino(destino, accountId, cardId) : undefined,
     }
     setErros(novos)
     if (novos.amount || novos.description || novos.category || novos.account) return
@@ -242,7 +263,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
           body: {
             ...corpo,
             user_id: userId,
-            account_id: Number(accountId),
+            ...corpoDoDestino(destino, accountId, cardId),
             // Lançamento avulso é fato consumado: nasce efetivado na data
             // escolhida. Série é compromisso futuro — as ocorrências nascem
             // sem efetivação, e cada uma é marcada quando o dinheiro se move.
@@ -251,7 +272,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
             ...(series ? { series } : {}),
           },
         })
-        guardarUltimaConta(window.localStorage, userId, Number(accountId))
+        if (destino === 'conta') guardarUltimaConta(window.localStorage, userId, Number(accountId))
       }
 
       onSaved()
@@ -286,6 +307,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
               <button
                 key={t}
                 type="button"
+                disabled={destino === 'cartao' && t === 'income'}
                 onClick={() => {
                   setType(t)
                   // Trocar entrada/saída pode invalidar a categoria escolhida:
@@ -295,7 +317,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
                   if (cat && cat.type !== 'both' && cat.type !== t) setCategoryId('')
                 }}
                 className={cn(
-                  'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40',
                   type === t
                     ? t === 'income'
                       ? 'bg-background text-positive shadow-sm'
@@ -332,7 +354,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
             reserveErrorLine
           />
 
-          {!editando && (
+          {!editando && destino === 'conta' && (
             <Field>
               <FieldLabel>Repetição</FieldLabel>
               <div className="flex gap-1 rounded-xl bg-muted p-1">
@@ -418,8 +440,68 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
               lista. Sem nenhuma, o campo vira o convite para cadastrar a
               primeira — o mesmo "+ Conta" do quadro da Visão Geral. */}
           <Field>
-            <FieldLabel>{editando ? 'Conta' : 'Conta *'}</FieldLabel>
-            {contas === null ? (
+            {/* Conta | Cartão (issue #26): a compra no cartão cai na fatura e
+                não mexe no saldo da conta. Só em criação; em edição o destino
+                é mostrado, não trocado. */}
+            {!editando && (
+              <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Destino do lançamento">
+                {(['conta', 'cartao'] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    role="radio"
+                    aria-checked={destino === d}
+                    onClick={() => {
+                      setDestino(d)
+                      if (d === 'cartao') {
+                        // Cartão só recebe compra: despesa, à vista.
+                        setType('expense')
+                        setRepeticao('avista')
+                        const cat = categories.find((c) => String(c.id) === categoryId)
+                        if (cat && cat.type === 'income') setCategoryId('')
+                      }
+                      setErros((e) => ({ ...e, account: undefined }))
+                    }}
+                    className={cn(
+                      'rounded-lg px-3 py-1.5 text-sm transition-colors',
+                      destino === d ? 'bg-background font-medium text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {d === 'conta' ? 'Conta' : 'Cartão'}
+                  </button>
+                ))}
+              </div>
+            )}
+            <FieldLabel>{editando ? (seed?.card_id ? 'Cartão' : 'Conta') : destino === 'cartao' ? 'Cartão *' : 'Conta *'}</FieldLabel>
+            {editando && seed?.card_id ? (
+              <p className="text-xs text-muted-foreground">Compra no cartão: o cartão não muda por aqui.</p>
+            ) : destino === 'cartao' ? (
+              cartoes === null ? (
+                <p className="text-xs text-muted-foreground">Carregando cartões...</p>
+              ) : cartoes.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Cadastre um cartão em Cartões para lançar compras.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Cartão da compra">
+                  {cartoes.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={cardId === String(c.id)}
+                      onClick={() => setCardId(String(c.id))}
+                      className={cn(
+                        'rounded-lg border px-3 py-1.5 text-sm transition-colors',
+                        cardId === String(c.id)
+                          ? 'border-foreground bg-background font-medium text-foreground shadow-sm'
+                          : 'border-border text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )
+            ) : contas === null ? (
               <p className="text-xs text-muted-foreground">Carregando contas...</p>
             ) : contas.length === 0 ? (
               <div className="flex flex-wrap items-center gap-3">

@@ -3,7 +3,7 @@ import json
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.models.transaction import TransactionSource
+from app.models.transaction import TransactionSource, TransactionType
 from app.schemas import (
     AccountCreate,
     AccountUpdate,
@@ -20,8 +20,9 @@ from app.schemas import (
 )
 from app.services import DataService, BusinessService
 from app.services import import_service as ImportService
-from app.services import cartoes, relatorios, relatorios_parcelados, relatorios_tendencia, ultimas, vencimentos
+from app.services import cartoes, faturas, relatorios, relatorios_parcelados, relatorios_tendencia, ultimas, vencimentos
 from app.services.import_service import ArquivoInvalido
+from app.services.store import store_ativo
 
 app = FastAPI(
     title=settings.api_title,
@@ -100,13 +101,28 @@ async def create_transaction(payload: TransactionCreate):
     # Conta obrigatória só no lançamento manual (issue #22): é o que a pessoa
     # digita neste formulário. Importação, IA e os criadores internos não passam
     # por aqui (ou não são `manual`) e seguem como estavam.
+    # Compra no cartão (issue #26) pede o Cartão no lugar da Conta: exatamente
+    # um dos dois no lançamento manual.
+    dados = payload.model_dump(mode="json")
     try:
-        DataService.validar_conta_do_usuario(
-            payload.user_id, payload.account_id, obrigatoria=payload.source == TransactionSource.MANUAL
-        )
+        if payload.card_id is not None:
+            if payload.account_id is not None:
+                raise ValueError("Escolha a conta ou o cartão, não os dois.")
+            if not any(c["id"] == payload.card_id for c in cartoes.listar(payload.user_id)):
+                raise ValueError("Cartão não encontrado. Escolha um dos seus cartões.")
+            if payload.type != TransactionType.EXPENSE:
+                raise ValueError("No cartão só cabe compra (despesa).")
+            if payload.series is not None:
+                raise ValueError("Compra parcelada ou recorrente no cartão ainda não está disponível.")
+            # A compra é despesa na data dela: nasce efetivada nesse dia.
+            dados["settled_at"] = dados["settled_at"] or dados["due_date"]
+        else:
+            DataService.validar_conta_do_usuario(
+                payload.user_id, payload.account_id, obrigatoria=payload.source == TransactionSource.MANUAL
+            )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    new_transaction = DataService.create_transaction(**payload.model_dump(mode="json"))
+    new_transaction = DataService.create_transaction(**dados)
     return {"data": new_transaction}
 
 
@@ -136,6 +152,8 @@ async def update_transaction(transaction_id: int, payload: TransactionUpdate):
     if "account_id" in dados:
         dono = next((t for t in DataService.get_transactions(include_unconfirmed=True) if t["id"] == transaction_id), None)
         if dono is not None:
+            if dono.get("card_id"):
+                raise HTTPException(status_code=400, detail="Compra no cartão não tem conta.")
             try:
                 DataService.validar_conta_do_usuario(dono["user_id"], dados["account_id"])
             except ValueError as e:
@@ -213,6 +231,36 @@ async def create_card(payload: CardCreate):
         )}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+def _cartao_ou_404(card_id: int) -> dict:
+    cartao = next((c for c in store_ativo().load(cartoes.COLECAO) if c["id"] == card_id), None)
+    if cartao is None:
+        raise HTTPException(status_code=404, detail="Cartão não encontrado.")
+    return cartao
+
+
+# Faturas do cartão (issue #26): derivadas das compras, nada é gravado. `hoje`
+# é AAAA-MM-DD do relógio do cliente (define aberta/fechada).
+@app.get("/api/cards/{card_id}/invoices")
+async def get_card_invoices(card_id: int, hoje: str):
+    cartao = _cartao_ou_404(card_id)
+    try:
+        return {"data": faturas.listar(cartao, hoje)}
+    except ValueError:
+        raise HTTPException(status_code=400, detail="hoje inválido: use AAAA-MM-DD")
+
+
+@app.get("/api/cards/{card_id}/invoices/{ciclo}")
+async def get_card_invoice(card_id: int, ciclo: str, hoje: str):
+    cartao = _cartao_ou_404(card_id)
+    try:
+        fatura = faturas.detalhe(cartao, ciclo, hoje)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if fatura is None:
+        raise HTTPException(status_code=404, detail="Esse cartão não tem fatura nesse ciclo.")
+    return {"data": fatura}
 
 
 @app.patch("/api/cards/{card_id}")
