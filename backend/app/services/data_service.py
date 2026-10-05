@@ -1,12 +1,16 @@
-import json
-from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Dict, Any
 
 from app.services import series_engine
+from app.services.store import PASTA_DE_DADOS, JsonStore, store_ativo, usar_store
 
 # Caminho dos dados
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
+DATA_DIR = PASTA_DE_DADOS
+
+# O store padrão aponta para DATA_DIR, lido a cada uso: os scripts de aceite
+# ainda trocam essa variável para isolar os dados. Isso sai quando eles migrarem
+# para o MemoriaStore.
+usar_store(JsonStore(lambda: DATA_DIR))
 
 
 class DataService:
@@ -14,24 +18,15 @@ class DataService:
 
     @staticmethod
     def load_json(filename: str) -> List[Dict[str, Any]]:
-        """Carrega dados de um arquivo JSON."""
-        filepath = DATA_DIR / f"{filename}.json"
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except FileNotFoundError:
-            return []
+        """Carrega uma coleção do store ativo."""
+        return store_ativo().load(filename)
 
     @staticmethod
     def save_json(filename: str, data: List[Dict[str, Any]]) -> None:
-        """Salva dados num arquivo JSON (gera a string antes de truncar o
-        arquivo, para não perder o conteúdo original se a serialização
-        falhar — ver nota do Módulo Negócio sobre esse mesmo cuidado)."""
-        content = json.dumps(data, ensure_ascii=False, indent=2)
-        filepath = DATA_DIR / f"{filename}.json"
-        filepath.parent.mkdir(parents=True, exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
+        """Grava uma coleção no store ativo (o JsonStore gera o conteúdo antes
+        de tocar o arquivo, para não perder o original se a serialização falhar
+        — ver nota do Módulo Negócio sobre esse mesmo cuidado)."""
+        store_ativo().save(filename, data)
 
     @staticmethod
     def get_users() -> List[Dict[str, Any]]:
