@@ -381,19 +381,23 @@ function TransactionsContent() {
     return transactions.filter((t) => ids.has(String(t.id))).map((t) => t.type)
   }, [selecionadas, transactions])
 
+  // Chave própria por chip (não o texto): com categorias vindas da URL, antes de
+  // elas carregarem dois chips teriam o mesmo texto, e o React deixaria um para trás.
+  // Categoria sem nome ainda (carregando) não vira chip.
   const chips = [
     tipo !== 'all' && {
+      key: 'tipo',
       label: `Tipo: ${tipo === 'income' ? 'Entradas' : 'Saídas'}`,
       clear: () => setTipo('all'),
     },
-    ...categoriasAtivas.map((id) => ({
-      label: `Categoria: ${categoriaPorId.get(Number(id))?.name ?? ''}`,
-      clear: () => setCategorias((atual) => atual.filter((c) => c !== id)),
-    })),
-    de && { label: `A partir de ${formatDateBR(de)}`, clear: () => setDe(null) },
-    ate && { label: `Até ${formatDateBR(ate)}`, clear: () => setAte(null) },
-    query.trim() && { label: `Busca: "${query.trim()}"`, clear: () => setQuery('') },
-  ].filter(Boolean) as { label: string; clear: () => void }[]
+    ...categoriasAtivas.flatMap((id) => {
+      const nome = categoriaPorId.get(Number(id))?.name
+      return nome ? [{ key: `categoria-${id}`, label: `Categoria: ${nome}`, clear: () => setCategorias((atual) => atual.filter((c) => c !== id)) }] : []
+    }),
+    de && { key: 'de', label: `A partir de ${formatDateBR(de)}`, clear: () => setDe(null) },
+    ate && { key: 'ate', label: `Até ${formatDateBR(ate)}`, clear: () => setAte(null) },
+    query.trim() && { key: 'busca', label: `Busca: "${query.trim()}"`, clear: () => setQuery('') },
+  ].filter(Boolean) as { key: string; label: string; clear: () => void }[]
 
   return (
     <div className="flex flex-col gap-4">
@@ -531,7 +535,7 @@ function TransactionsContent() {
         <div className="flex flex-wrap items-center gap-2">
           {chips.map((c) => (
             <button
-              key={c.label}
+              key={c.key}
               onClick={c.clear}
               className="flex items-center gap-1 rounded-full border border-border bg-muted px-3 py-1 text-xs text-secondary-foreground transition-colors hover:bg-accent"
             >
