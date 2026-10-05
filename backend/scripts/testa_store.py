@@ -240,6 +240,177 @@ def servico_usa_o_store():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+class FalhaNaGravacao(MemoriaStore):
+    """MemoriaStore que levanta erro na n-ésima chamada de `save` (injeção de falha)."""
+
+    def __init__(self, n):
+        super().__init__()
+        self._n = n
+        self._chamadas = 0
+        self._armado = False
+
+    def save(self, nome, linhas):
+        if self._armado:
+            self._chamadas += 1
+            if self._chamadas == self._n:
+                raise OSError("falha injetada na gravação %d (%s)" % (self._n, nome))
+        super().save(nome, linhas)
+
+    def armar(self):
+        """Só as gravações depois daqui entram na conta (a montagem do cenário não falha)."""
+        self._chamadas = 0
+        self._armado = True
+
+
+def _linha_tx(id, serie, vence, valor=100.0):
+    return {
+        "id": id, "user_id": 1, "type": "expense", "amount": valor, "description": "Academia",
+        "category_id": 1, "due_date": vence, "settled_at": None, "account_id": 1,
+        "series_id": serie, "series_index": id if serie else None, "ingest_state": "confirmed",
+        "history": [],
+    }
+
+
+def _com_serie(n):
+    store = FalhaNaGravacao(n)
+    store.save("series", [{
+        "id": 1, "user_id": 1, "kind": "recurring", "description": "Academia", "type": "expense",
+        "category_id": 1, "account_id": 1, "amount": 100.0, "frequency": "monthly", "anchor_day": 10,
+        "start_date": "2026-01-10", "total_count": None, "end_date": None, "ended_at": None,
+    }])
+    store.save("transactions", [
+        _linha_tx(1, 1, "2026-01-10"), _linha_tx(2, 1, "2026-02-10"), _linha_tx(3, 1, "2026-03-10"),
+    ])
+    store.armar()
+    return store
+
+
+def operacoes_atomicas():
+    """Cada operação que grava duas coleções: falha na segunda gravação não deixa a primeira."""
+    print("Operações de negócio são tudo ou nada (MemoriaStore com falha injetada)")
+
+    def roda(rotulo, n, preparar, operacao, colecoes):
+        """Sem falha a operação muda as coleções; com falha na gravação n, nenhuma muda."""
+        controle = preparar(0)
+        antes = {c: controle.load(c) for c in colecoes}
+        anterior = usar_store(controle)
+        try:
+            operacao()
+        finally:
+            usar_store(anterior)
+        checa(
+            rotulo + ": sem falha, grava as coleções (controle)",
+            all(controle.load(c) != antes[c] for c in colecoes),
+        )
+
+        store = preparar(n)
+        anterior = usar_store(store)
+        try:
+            try:
+                operacao()
+                levantou = False
+            except OSError:
+                levantou = True
+        finally:
+            usar_store(anterior)
+        checa(rotulo + ": falha na gravação %d propaga o erro" % n, levantou)
+        checa(
+            rotulo + ": e nenhuma coleção ficou alterada",
+            all(store.load(c) == antes[c] for c in colecoes),
+        )
+
+    roda(
+        "editar com escopo de série", 2, _com_serie,
+        lambda: DataService.update_transaction(2, {"amount": 55.0}, "all"),
+        ("transactions", "series"),
+    )
+    roda(
+        "excluir com escopo de série", 2, _com_serie,
+        lambda: DataService.delete_transaction(2, "this_and_future"),
+        ("transactions", "series"),
+    )
+
+    # Criar série parcelada com as ocorrências: série, parcelas e ajuste da primeira.
+    def sem_nada(n):
+        store = FalhaNaGravacao(n)
+        store.armar()
+        return store
+
+    def cria_parcelado():
+        DataService.create_transaction(
+            1, 1, "expense", 100.0, "2026-01-10", "Geladeira", account_id=1,
+            series={"kind": "installment", "frequency": "monthly", "total_count": 3},
+        )
+
+    roda("criar série parcelada", 2, sem_nada, cria_parcelado, ("series", "transactions"))
+    # A terceira gravação é o ajuste de centavos da primeira parcela (100 / 3).
+    store = sem_nada(3)
+    anterior = usar_store(store)
+    try:
+        try:
+            cria_parcelado()
+            levantou = False
+        except OSError:
+            levantou = True
+    finally:
+        usar_store(anterior)
+    checa("criar série parcelada: falha na gravação 3 propaga o erro", levantou)
+    checa(
+        "criar série parcelada: e nem a série nem as parcelas ficaram",
+        store.load("series") == [] and store.load("transactions") == [],
+    )
+
+    # Importar: lançamentos e o identificador do banco na conta.
+    ofx = (
+        "<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKACCTFROM><ACCTID>777</ACCTID></BANKACCTFROM>"
+        "<BANKTRANLIST><STMTTRN><DTPOSTED>20260910<TRNAMT>-12.50<FITID>A1<NAME>Mercado</STMTTRN>"
+        "</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>"
+    ).encode("utf-8")
+
+    def com_conta(n):
+        store = FalhaNaGravacao(n)
+        store.save("accounts", [{"id": 1, "user_id": 1, "name": "Bradesco", "kind": "checking", "file_ref": None}])
+        store.armar()
+        return store
+
+    roda(
+        "importar (lançamentos e conta)", 2, com_conta,
+        lambda: imp.importar(1, "extrato.ofx", ofx, 1),
+        ("transactions", "accounts"),
+    )
+
+    # Operações que hoje gravam uma coleção só: passam pela transação (o contrato
+    # do ticket), e uma falha na gravação não altera nada.
+    def uma_gravacao(rotulo, preparar, operacao):
+        store = preparar(1)
+        antes = store.load("transactions")
+        anterior = usar_store(store)
+        try:
+            try:
+                operacao()
+                levantou = False
+            except OSError:
+                levantou = True
+        finally:
+            usar_store(anterior)
+        checa(rotulo + ": falha na gravação propaga o erro e nada muda", levantou and store.load("transactions") == antes)
+
+    uma_gravacao("exclusão em lote", _com_serie, lambda: DataService.bulk_delete([1, 2]))
+    uma_gravacao("adiar", _com_serie, lambda: DataService.postpone_transaction(2, "this_and_future"))
+    uma_gravacao("estender séries", _com_serie, lambda: DataService.estender_series(1))
+
+    def em_espera(n):
+        store = _com_serie(n)
+        store._armado = False  # a montagem do cenário não falha
+        linhas = store.load("transactions")
+        linhas[2]["ingest_state"] = "awaiting_reconciliation"
+        store.save("transactions", linhas)
+        store.armar()
+        return store
+
+    uma_gravacao("conciliar", em_espera, lambda: imp.conciliar(3, "not_duplicate"))
+
+
 def main():
     contrato("MemoriaStore", MemoriaStore)
     print()
@@ -256,6 +427,8 @@ def main():
     memoria_sem_disco()
     print()
     servico_usa_o_store()
+    print()
+    operacoes_atomicas()
 
     print()
     if falhas:

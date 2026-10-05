@@ -52,7 +52,7 @@ import unicodedata
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.services.data_service import DataService
+from app.services.data_service import DataService, em_transacao
 
 # Distância máxima entre a data do extrato e a do lançamento existente.
 JANELA_DIAS = 3
@@ -537,6 +537,7 @@ def _validar_decisoes(analise: Dict[str, Any], decisoes: Optional[Dict[str, Any]
     return limpas
 
 
+@em_transacao
 def importar(
     user_id: int,
     nome: str,
@@ -659,6 +660,7 @@ def _aplicar_fusao(alvo: Dict[str, Any], linha: Dict[str, Any], agora: str) -> N
         alvo["history"].append({"at": agora, "event": "settled", "on": alvo["settled_at"]})
 
 
+@em_transacao
 def conciliar(transaction_id: int, action: str, with_id: Optional[int] = None) -> Dict[str, Any]:
     """
     Resolve uma linha em espera.
