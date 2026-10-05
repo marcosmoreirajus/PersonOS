@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, FileUp, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -16,6 +17,7 @@ import { categoryIcon } from '@/lib/category-icons'
 import { CURRENT_USER_ID, api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { hojeLocal, formatDateBR } from '@/lib/dates'
+import { categoriasConhecidas, dentroDoIntervalo, lerUrl, montarBusca, type TipoFiltro } from '@/lib/transacoes-url'
 import TransactionDialog, { type Category, type DialogSeed } from './_components/TransactionDialog'
 import DeleteDialog from './_components/DeleteDialog'
 import OverdueAlert from './_components/OverdueAlert'
@@ -50,8 +52,6 @@ const SITUACAO_META: Record<Situacao, { label: string; className: string }> = {
   atrasado: { label: 'Em atraso', className: 'text-destructive' },
 }
 
-type TipoFiltro = 'all' | 'income' | 'expense'
-
 const TIPOS: { value: TipoFiltro; label: string }[] = [
   { value: 'all', label: 'Todos' },
   { value: 'income', label: 'Entradas' },
@@ -61,17 +61,35 @@ const TIPOS: { value: TipoFiltro; label: string }[] = [
 const TAMANHOS_PAGINA = [10, 50, 100, 200, 500]
 const TAMANHO_ITENS = TAMANHOS_PAGINA.map((n) => ({ value: String(n), label: String(n) }))
 
-export default function TransactionsPage() {
+/** O que o formulário recebe para editar este lançamento. */
+function seedDeEdicao(t: Transaction): DialogSeed {
+  return { id: t.id, type: t.type, amount: t.amount, description: t.description, category_id: t.category_id, due_date: t.settled_at ?? t.due_date }
+}
+
+function TransactionsContent() {
+  // O que a tela mostra (filtros e lançamento em edição) nasce da URL e volta
+  // para ela (issue #6): qualquer link do app leva a uma lista já filtrada ou a
+  // um lançamento aberto. Só o estado inicial vem daqui; depois a tela manda.
+  const queryString = useSearchParams().toString()
+  const [inicial] = useState(() => lerUrl(queryString))
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   // Antes não havia: a falha de carga virava lista vazia, e uma lista vazia sem
   // aviso se confunde com "não tem lançamento nenhum".
   const [error, setError] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
-  const [tipo, setTipo] = useState<TipoFiltro>('all')
+  const [query, setQuery] = useState(inicial.q)
+  const [tipo, setTipo] = useState<TipoFiltro>(inicial.tipo)
   // Várias categorias ao mesmo tempo: lista vazia = todas.
-  const [categorias, setCategorias] = useState<string[]>([])
+  const [categorias, setCategorias] = useState<string[]>(inicial.categorias)
+  // Intervalo de datas (inclusivo) sobre a data que a tabela mostra.
+  const [de, setDe] = useState<string | null>(inicial.de)
+  const [ate, setAte] = useState<string | null>(inicial.ate)
+  // Lançamento em edição: vai para a URL. O pedido que veio na URL só pode ser
+  // atendido quando os lançamentos chegarem; até lá fica guardado aqui.
+  const [editarId, setEditarId] = useState<number | null>(inicial.editar)
+  const [editarPendente, setEditarPendente] = useState<number | null>(inicial.editar)
+  const [avisoEdicao, setAvisoEdicao] = useState<string | null>(null)
   const [selecionadas, setSelecionadas] = useState<string[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   // `seed` preenche o formulario: com id = edicao, sem id = duplicacao.
@@ -81,26 +99,36 @@ export default function TransactionsPage() {
   // só a página visível daria uma ordem errada entre páginas.
   const [ordem, setOrdem] = useState<SortState | null>({ key: 'due_date', direction: 'desc' })
   const [porPagina, setPorPagina] = useState(10)
+  // Categorias da URL que não existem (apagadas, erradas) são ignoradas em
+  // silêncio. Enquanto as categorias não chegaram, vale o que foi pedido.
+  const categoriasAtivas = useMemo(
+    () => (categories.length === 0 ? categorias : categoriasConhecidas(categorias, categories.map((c) => c.id))),
+    [categories, categorias]
+  )
   // A página fica guardada junto do filtro em que foi escolhida: mudou o
   // filtro, ela volta pra 1 sem precisar de efeito.
-  const chaveFiltro = JSON.stringify([query, tipo, categorias])
+  const chaveFiltro = JSON.stringify([query, tipo, categoriasAtivas, de, ate])
   const [paginaEscolhida, setPaginaEscolhida] = useState({ chave: chaveFiltro, pagina: 1 })
   const pagina = paginaEscolhida.chave === chaveFiltro ? paginaEscolhida.pagina : 1
   const setPagina = (p: number) => setPaginaEscolhida({ chave: chaveFiltro, pagina: p })
 
   function abrirNovo() {
     setSeed(null)
+    setEditarId(null)
     setDialogOpen(true)
   }
 
   function abrirEdicao(t: Transaction) {
-    setSeed({ id: t.id, type: t.type, amount: t.amount, description: t.description, category_id: t.category_id, due_date: t.settled_at ?? t.due_date })
+    setAvisoEdicao(null)
+    setSeed(seedDeEdicao(t))
+    setEditarId(t.id)
     setDialogOpen(true)
   }
 
   function abrirDuplicacao(t: Transaction) {
     // Sem `id`: duplicar cria um lancamento novo a partir deste.
-    setSeed({ type: t.type, amount: t.amount, description: t.description, category_id: t.category_id, due_date: t.settled_at ?? t.due_date })
+    setSeed({ ...seedDeEdicao(t), id: undefined })
+    setEditarId(null)
     setDialogOpen(true)
   }
 
@@ -126,6 +154,57 @@ export default function TransactionsPage() {
     fetchData()
   }, [fetchData])
 
+  // Atende o `editar` pedido pela URL assim que os lançamentos chegam: abre a
+  // edição, ou avisa que o lançamento não existe (apagado, de outro usuário).
+  // Se a carga falhou, o aviso de erro já fala por si: não afirma "não existe".
+  // Ajusta o estado durante a renderização (e não num efeito): o pedido some
+  // na mesma passada, então não repete.
+  if (editarPendente !== null && !loading) {
+    setEditarPendente(null)
+    const t = transactions.find((x) => x.id === editarPendente)
+    if (t) {
+      setAvisoEdicao(null)
+      setSeed(seedDeEdicao(t))
+      setDialogOpen(true)
+    } else {
+      setEditarId(null)
+      if (!error) setAvisoEdicao(`Não encontramos o lançamento ${editarPendente}. Ele pode ter sido apagado.`)
+    }
+  }
+
+  // Quando a URL muda por um link do app (e não porque a tela a escreveu), a
+  // tela a segue: um link para `?editar=5` abre o lançamento mesmo com a página
+  // já montada. Ajusta o estado durante a renderização, como o diálogo faz com
+  // `hidratadoPara`. A URL que a própria tela escreveu coincide com o que ela
+  // montaria do seu estado, então não conta como link.
+  const [urlVista, setUrlVista] = useState(queryString)
+  if (queryString !== urlVista) {
+    setUrlVista(queryString)
+    const pedido = lerUrl(queryString)
+    const daTela = montarBusca({ editar: editarId, q: query, tipo, categorias: categoriasAtivas, de, ate })
+    if (montarBusca(pedido) !== daTela) {
+      setQuery(pedido.q)
+      setTipo(pedido.tipo)
+      setCategorias(pedido.categorias)
+      setDe(pedido.de)
+      setAte(pedido.ate)
+      setEditarId(pedido.editar)
+      setEditarPendente(pedido.editar)
+      setAvisoEdicao(null)
+      if (pedido.editar === null) setDialogOpen(false)
+    }
+  }
+
+  // A URL acompanha a tela. `replaceState` (e não `push`) para digitar na
+  // busca não criar uma entrada de histórico por tecla, e para o botão voltar
+  // não reabrir um lançamento já fechado. O Next integra a chamada ao roteador.
+  useEffect(() => {
+    const novaBusca = montarBusca({ editar: editarId, q: query, tipo, categorias: categoriasAtivas, de, ate })
+    if (novaBusca !== window.location.search) {
+      window.history.replaceState(null, '', window.location.pathname + novaBusca)
+    }
+  }, [editarId, query, tipo, categoriasAtivas, de, ate])
+
   const categoriaPorId = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
   const hoje = useMemo(() => hojeLocal(), [])
 
@@ -133,11 +212,12 @@ export default function TransactionsPage() {
     const q = query.trim().toLowerCase()
     return transactions.filter((t) => {
       if (tipo !== 'all' && t.type !== tipo) return false
-      if (categorias.length > 0 && !categorias.includes(String(t.category_id))) return false
+      if (categoriasAtivas.length > 0 && !categoriasAtivas.includes(String(t.category_id))) return false
       if (q && !(t.description ?? '').toLowerCase().includes(q)) return false
+      if (!dentroDoIntervalo(t.settled_at ?? t.due_date, de, ate)) return false
       return true
     })
-  }, [transactions, query, tipo, categorias])
+  }, [transactions, query, tipo, categoriasAtivas, de, ate])
 
   /** Totais do rodapé: só o que foi efetivado — previsto não soma em resultado. */
   const totais = useMemo(() => {
@@ -306,10 +386,12 @@ export default function TransactionsPage() {
       label: `Tipo: ${tipo === 'income' ? 'Entradas' : 'Saídas'}`,
       clear: () => setTipo('all'),
     },
-    ...categorias.map((id) => ({
+    ...categoriasAtivas.map((id) => ({
       label: `Categoria: ${categoriaPorId.get(Number(id))?.name ?? ''}`,
       clear: () => setCategorias((atual) => atual.filter((c) => c !== id)),
     })),
+    de && { label: `A partir de ${formatDateBR(de)}`, clear: () => setDe(null) },
+    ate && { label: `Até ${formatDateBR(ate)}`, clear: () => setAte(null) },
     query.trim() && { label: `Busca: "${query.trim()}"`, clear: () => setQuery('') },
   ].filter(Boolean) as { label: string; clear: () => void }[]
 
@@ -321,6 +403,23 @@ export default function TransactionsPage() {
         <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-destructive" role="alert">
           {error}
         </p>
+      )}
+
+      {avisoEdicao && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground"
+        >
+          <span>{avisoEdicao}</span>
+          <button
+            type="button"
+            onClick={() => setAvisoEdicao(null)}
+            aria-label="Fechar aviso"
+            className="flex size-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <X className="size-3.5" strokeWidth={2} aria-hidden="true" />
+          </button>
+        </div>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -392,10 +491,40 @@ export default function TransactionsPage() {
 
         <CategoryMultiPicker
           categories={categories}
-          value={categorias}
+          value={categoriasAtivas}
           onChange={setCategorias}
           className="shrink-0"
         />
+
+        {/* Ao sair do campo, se uma ponta passou da outra, a outra acompanha:
+            um intervalo invertido não existe (a URL o ignoraria por inteiro).
+            Corrigir a cada tecla apagaria a outra data enquanto o ano é digitado. */}
+        <label className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
+          De
+          <Input
+            type="date"
+            value={de ?? ''}
+            onChange={(e) => setDe(e.target.value || null)}
+            onBlur={() => {
+              if (de && ate && de > ate) setAte(de)
+            }}
+            aria-label="Data inicial"
+            className="w-40"
+          />
+        </label>
+        <label className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
+          Até
+          <Input
+            type="date"
+            value={ate ?? ''}
+            onChange={(e) => setAte(e.target.value || null)}
+            onBlur={() => {
+              if (de && ate && ate < de) setDe(ate)
+            }}
+            aria-label="Data final"
+            className="w-40"
+          />
+        </label>
       </div>
 
       {chips.length > 0 && (
@@ -414,6 +543,8 @@ export default function TransactionsPage() {
             onClick={() => {
               setTipo('all')
               setCategorias([])
+              setDe(null)
+              setAte(null)
               setQuery('')
             }}
             className="text-xs text-muted-foreground underline-offset-4 hover:underline"
@@ -517,7 +648,10 @@ export default function TransactionsPage() {
 
       <TransactionDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(aberto) => {
+          setDialogOpen(aberto)
+          if (!aberto) setEditarId(null)
+        }}
         categories={categories}
         userId={CURRENT_USER_ID}
         onSaved={fetchData}
@@ -531,5 +665,15 @@ export default function TransactionsPage() {
         onDeleted={fetchData}
       />
     </div>
+  )
+}
+
+// `useSearchParams` precisa de um limite de Suspense para a página poder ser
+// gerada estaticamente (o mesmo cuidado de "A revisar").
+export default function TransactionsPage() {
+  return (
+    <Suspense fallback={<p className="text-muted-foreground">Carregando...</p>}>
+      <TransactionsContent />
+    </Suspense>
   )
 }

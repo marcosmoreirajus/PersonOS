@@ -277,6 +277,20 @@ Existentes: `/finance`, `/finance/transactions`, `/finance/agendadas`, `/finance
 - `/finance/transactions` ganha importação e filtro por série.
 - `/finance/relatorios`: balde "Sem categoria" em `--foreground`, fora da escala de ranking das categorias reais, encabeçando a lista quando for o maior, clicável para `/finance/revisar`, e aviso de percentual quando > 0.
 
+### Transações pela URL (issue #6)
+
+A tela `/finance/transactions` é **endereçável**: o que ela mostra (um lançamento em edição, uma lista filtrada) é descrito por parâmetros da URL, e abrir o link reproduz exatamente isso. Visão Geral e Relatórios geram esses links, então **os nomes são estáveis**:
+
+| Parâmetro | Valor | Efeito |
+|---|---|---|
+| `editar` | id inteiro positivo | abre a edição do lançamento; se não existe (apagado, de outro usuário), a tela abre normal com um aviso curto |
+| `q` | texto | busca por descrição |
+| `tipo` | `entrada` ou `saida` | só entradas ou só saídas |
+| `categoria` | id (repetível) | uma ou mais categorias; id que não existe é ignorado |
+| `de`, `ate` | `AAAA-MM-DD` | intervalo **inclusivo** sobre a data que a tabela mostra (efetivação, ou vencimento se previsto) |
+
+Regras: valor inválido é ignorado em silêncio, e um intervalo invertido (`de` depois de `ate`) é ignorado por inteiro. A tela escreve a URL de volta com `replaceState`, sem criar entrada de histórico por tecla digitada; fechar a edição tira o `editar`, para o botão voltar não reabri-la. A lógica de ler e montar os parâmetros é pura e tem teste próprio (`transacoes-url.test.ts`).
+
 ## Migração (Fatia 1)
 
 1. **Backup** de `backend/data/` antes de qualquer escrita — o projeto tem git, mas o `data/` é dado, não código.
