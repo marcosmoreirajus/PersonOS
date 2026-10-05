@@ -365,6 +365,14 @@ Tela: `DespesasPorCategoria` (em `relatorios/_components/`) segue o período da 
 - Item: `{id, description, amount, type, day, category_id, account_name, is_internal_transfer, imported}`. `day` é `AAAA-MM-DD` de `settled_at`; `account_name` é nulo sem conta; `imported` é verdadeiro com `import_hash` ou `external_id`. O nome da categoria o cliente resolve por `/api/categories`.
 - Tela: agrupada por dia (Hoje, Ontem, depois `DD/MM/AAAA`); valor com sinal (`+`/`-`), entrada em `foreground`, saída em `destructive`, transferência neutra; "Sem categoria" leva a `/finance/revisar?secao=sem-categoria`; a linha abre `/finance/transactions?editar=<id>` (issue #6); "Ver todas" leva a `/finance/transactions`; vazio mostra "Nenhuma transação ainda" e o botão de novo lançamento (abre o dialog da página). Valores em `MoneyValue` (privacidade). Componente: `finance/_components/UltimasTransacoes.tsx`. Testes: `backend/scripts/testa_ultimas.py` e `frontend/lib/ultimas.test.ts`.
 
+### Tendência (issue #18)
+
+`GET /api/reports/trend/{user_id}`, com os mesmos parâmetros e o mesmo 422 do resumo. A conta é `relatorios_tendencia.tendencia` (módulo próprio; reusa `relatorios.resolver_periodo`). Recorte de `_somas`: efetivado, pela data do lançamento, sem transferência interna nem ingestão pendente. **Estorno ainda não existe** (Fatia 5): quando existir, abate a despesa do ponto, e esta seção e o módulo precisam ser atualizados.
+
+Resposta: `periodo`, `granularidade` (`dia` se o período tem até 31 dias, senão `mes`) e `pontos`, lista de `{chave, rotulo, de, ate, receita, despesa, resultado}`. `chave` é o dia (`AAAA-MM-DD`) ou o mês (`AAAA-MM`); `rotulo` vem pronto (`07/10` ou `out/26`). Todo dia/mês do período aparece, com zero quando não há lançamento. Por mês, o primeiro e o último ponto são parciais (`de`/`ate` mostram o trecho que entrou). Soma em centavos inteiros. A Projeção (futuro) estende esta mesma lista de pontos.
+
+Tela: `Tendencia` (em `relatorios/_components/`), SVG feito à mão: barras de receita (`--positive`) e despesa (`--terracotta`) e a linha do resultado (`--foreground`). Eixo e passo redondo em `lib/relatorios-tendencia.ts`. Valores só em `MoneyValue` (linha de detalhe ao passar o mouse ou focar uma faixa); os rótulos do eixo viram `••••` com a privacidade ligada. Sem lançamento no período: "Sem lançamentos neste período"; carregando e erro tratados no bloco.
+
 ## Cartão (Fatia 5, ticket #21)
 
 Entidade própria, separada de Conta (coleção `cards`). Cartão não é Conta: o valor `card` saiu de `AccountKind` e a API de contas o recusa (422).

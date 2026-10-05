@@ -19,7 +19,7 @@ from app.schemas import (
 )
 from app.services import DataService, BusinessService
 from app.services import import_service as ImportService
-from app.services import cartoes, relatorios, ultimas, vencimentos
+from app.services import cartoes, relatorios, relatorios_tendencia, ultimas, vencimentos
 from app.services.import_service import ArquivoInvalido
 
 app = FastAPI(
@@ -373,6 +373,17 @@ async def get_report_top_expenses(
 ):
     try:
         return {"data": relatorios.maiores_gastos(user_id, periodo, hoje, de, ate)}
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro))
+
+
+# Tendência do período, só o passado (issue #18).
+@app.get("/api/reports/trend/{user_id}")
+async def get_report_trend(
+    user_id: int, hoje: str, periodo: str = relatorios.PADRAO, de: str | None = None, ate: str | None = None
+):
+    try:
+        return {"data": relatorios_tendencia.tendencia(user_id, periodo, hoje, de, ate)}
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro))
 
