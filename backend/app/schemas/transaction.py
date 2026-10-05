@@ -60,6 +60,9 @@ class TransactionUpdate(BaseModel):
     category_id: int | None = None
     due_date: date | None = None
     settled_at: date | None = None
+    # Trocar a conta é permitido; remover (voltar a "sem conta") não: nulo
+    # significa "não mexa", como nos outros campos.
+    account_id: int | None = None
     is_internal_transfer: bool | None = None
 
 

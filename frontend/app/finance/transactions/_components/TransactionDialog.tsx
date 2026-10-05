@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,9 @@ import { Input } from '@/components/motion/input'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { hojeLocal } from '@/lib/dates'
+import { contaInicial, guardarUltimaConta, lerUltimaConta } from '@/lib/conta-lancamento'
 import { CategoryPicker, categoriasDoTipo } from '../../_components/CategoryPicker'
+import { NovaContaDialog, type Conta } from '../../importar/_components/NovaContaDialog'
 
 export type Category = {
   id: number
@@ -30,6 +32,8 @@ export type DialogSeed = {
   amount: number
   description: string | null
   category_id: number | null
+  /** Conta do lançamento de origem; nula nos antigos, que nasceram sem conta. */
+  account_id?: number | null
   due_date: string
 }
 
@@ -95,7 +99,13 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
   const [frequencia, setFrequencia] = useState<Frequencia>('monthly')
   const [ate, setAte] = useState('')
   const [saving, setSaving] = useState(false)
-  const [erros, setErros] = useState<{ amount?: string; description?: string; category?: string }>({})
+  const [erros, setErros] = useState<{ amount?: string; description?: string; category?: string; account?: string }>({})
+  // Conta (issue #22): obrigatória ao criar. As contas vêm da API ao abrir; a
+  // preseleção (última usada) só entra depois delas, para não apontar uma conta
+  // que já foi apagada.
+  const [contas, setContas] = useState<Conta[] | null>(null)
+  const [accountId, setAccountId] = useState('')
+  const [novaContaAberta, setNovaContaAberta] = useState(false)
 
   // Reidrata ao abrir: em edição e em duplicação o formulário parte do
   // lançamento de origem; em criação, de um estado limpo. Feito durante o
@@ -114,7 +124,9 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
       setDescription(seed.description ?? '')
       setCategoryId(seed.category_id != null ? String(seed.category_id) : '')
       setDate(seed.due_date)
+      setAccountId(seed.account_id != null ? String(seed.account_id) : '')
     } else {
+      setAccountId('')
       setAmount('')
       setDescription('')
       // Sem seed, o tipo cabe a quem abriu: os botões rápidos da Visão Geral
@@ -130,6 +142,32 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
     setHidratadoPara({ open, seed })
     if (open) hidratar()
   }
+
+  // Carrega as contas a cada abertura (uma conta recém-criada em outra tela
+  // precisa aparecer) e preseleciona a última usada. Em edição de lançamento
+  // antigo sem conta o campo fica vazio: editar não obriga a escolher uma.
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    api<Conta[]>(`/api/accounts/user/${userId}`)
+      .then((lista) => {
+        if (cancelled) return
+        setContas(lista)
+        if (!editando) {
+          setAccountId((atual) => {
+            if (atual && lista.some((c) => String(c.id) === atual)) return atual
+            const inicial = contaInicial(lista, lerUltimaConta(window.localStorage, userId))
+            return inicial != null ? String(inicial) : ''
+          })
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setContas([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, userId, editando])
 
   /**
    * Prévia da divisão.
@@ -161,9 +199,11 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
       amount: !valor || valor <= 0 ? 'Informe um valor maior que zero.' : undefined,
       description: !description.trim() ? 'A descrição é obrigatória.' : undefined,
       category: !categoryId ? 'Escolha uma categoria.' : undefined,
+      // Só a criação exige conta; editar um lançamento antigo sem conta não.
+      account: !editando && !accountId ? 'Escolha a conta do lançamento.' : undefined,
     }
     setErros(novos)
-    if (novos.amount || novos.description || novos.category) return
+    if (novos.amount || novos.description || novos.category || novos.account) return
 
     setSaving(true)
     try {
@@ -188,13 +228,21 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
       if (editandoLancamento) {
         // Escopo amplo em edição depende de um passo a mais na interface;
         // por ora a edição é sempre pontual.
-        await api(`/api/transactions/${seed!.id}`, { method: 'PATCH', body: { ...corpo, scope: 'only_this' } })
+        // A conta só vai se mudou: reenviar a antiga não tem efeito, e um
+        // lançamento antigo sem conta segue sem ela se ninguém escolher.
+        const trocouConta = accountId && accountId !== String(seed?.account_id ?? '')
+        await api(`/api/transactions/${seed!.id}`, {
+          method: 'PATCH',
+          body: { ...corpo, ...(trocouConta ? { account_id: Number(accountId) } : {}), scope: 'only_this' },
+        })
+        if (trocouConta) guardarUltimaConta(window.localStorage, userId, Number(accountId))
       } else {
         await api('/api/transactions', {
           method: 'POST',
           body: {
             ...corpo,
             user_id: userId,
+            account_id: Number(accountId),
             // Lançamento avulso é fato consumado: nasce efetivado na data
             // escolhida. Série é compromisso futuro — as ocorrências nascem
             // sem efetivação, e cada uma é marcada quando o dinheiro se move.
@@ -203,6 +251,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
             ...(series ? { series } : {}),
           },
         })
+        guardarUltimaConta(window.localStorage, userId, Number(accountId))
       }
 
       onSaved()
@@ -223,6 +272,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -363,6 +413,49 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
             />
             {erros.category && <FieldError>{erros.category}</FieldError>}
           </Field>
+
+          {/* Conta (issue #22): poucas por usuário, então botões em vez de
+              lista. Sem nenhuma, o campo vira o convite para cadastrar a
+              primeira — o mesmo "+ Conta" do quadro da Visão Geral. */}
+          <Field>
+            <FieldLabel>{editando ? 'Conta' : 'Conta *'}</FieldLabel>
+            {contas === null ? (
+              <p className="text-xs text-muted-foreground">Carregando contas...</p>
+            ) : contas.length === 0 ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-xs text-muted-foreground">Cadastre uma conta para lançar.</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => setNovaContaAberta(true)}>
+                  <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                  Conta
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Conta do lançamento">
+                {contas.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={accountId === String(c.id)}
+                    onClick={() => setAccountId(String(c.id))}
+                    className={cn(
+                      'rounded-lg border px-3 py-1.5 text-sm transition-colors',
+                      accountId === String(c.id)
+                        ? 'border-foreground bg-background font-medium text-foreground shadow-sm'
+                        : 'border-border text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+                <Button type="button" variant="ghost" size="sm" onClick={() => setNovaContaAberta(true)}>
+                  <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                  Conta
+                </Button>
+              </div>
+            )}
+            {erros.account && <FieldError>{erros.account}</FieldError>}
+          </Field>
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">
@@ -383,6 +476,19 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Cadastro da primeira conta (ou de outra) sem sair do lançamento. */}
+    <NovaContaDialog
+      open={novaContaAberta}
+      onOpenChange={setNovaContaAberta}
+      userId={userId}
+      onCreated={(c) => {
+        setContas((cs) => [...(cs ?? []), c])
+        setAccountId(String(c.id))
+        setErros((e) => ({ ...e, account: undefined }))
+      }}
+    />
+    </>
   )
 }
 

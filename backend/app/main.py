@@ -3,6 +3,7 @@ import json
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.models.transaction import TransactionSource
 from app.schemas import (
     AccountCreate,
     AccountUpdate,
@@ -96,6 +97,15 @@ async def create_transaction(payload: TransactionCreate):
     """Cria uma transação e persiste em backend/data/transactions.json."""
     # mode="json" converte date/Enum em string: o JSON de dados guarda
     # datas de calendário como "YYYY-MM-DD", sem hora e sem fuso.
+    # Conta obrigatória só no lançamento manual (issue #22): é o que a pessoa
+    # digita neste formulário. Importação, IA e os criadores internos não passam
+    # por aqui (ou não são `manual`) e seguem como estavam.
+    try:
+        DataService.validar_conta_do_usuario(
+            payload.user_id, payload.account_id, obrigatoria=payload.source == TransactionSource.MANUAL
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     new_transaction = DataService.create_transaction(**payload.model_dump(mode="json"))
     return {"data": new_transaction}
 
@@ -121,6 +131,15 @@ async def update_transaction(transaction_id: int, payload: TransactionUpdate):
     """Edita uma transação. `scope` decide se a série toda acompanha."""
     dados = payload.model_dump(mode="json", exclude_none=True)
     scope = dados.pop("scope", "only_this")
+    # Editar não exige conta (o lançamento antigo pode não ter): só a conta
+    # NOVA, quando vem, precisa ser do dono do lançamento.
+    if "account_id" in dados:
+        dono = next((t for t in DataService.get_transactions(include_unconfirmed=True) if t["id"] == transaction_id), None)
+        if dono is not None:
+            try:
+                DataService.validar_conta_do_usuario(dono["user_id"], dados["account_id"])
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
     atualizada = DataService.update_transaction(transaction_id, dados, scope)
     if atualizada is None:
         return {"error": "Transaction not found"}, 404

@@ -431,3 +431,16 @@ Lógica em `backend/app/services/cartoes.py`; aceite em `backend/scripts/testa_f
 4. **Lápide para registro excluído?** Não. Proposta e **recusada**: previsibilidade acima de proteção.
 5. **Excluir a série preserva parcelas já pagas?** Não. Proposta e **recusada**: as três opções de escopo já são a resposta, e quem decide é o usuário.
 6. **Materializar todo o intervalo ao navegar longe?** Não. Proposta e **recusada**: o app não tem soma de faixa longa, então a consistência defendida não servia a nenhuma consulta real.
+
+### Conta obrigatória (issue #22)
+
+O formulário de lançamento (`TransactionDialog`) passa a pedir a conta, e a API recusa lançamento manual sem ela. Aceite: `backend/scripts/testa_conta_obrigatoria.py`; a lógica pura da preseleção está em `frontend/lib/conta-lancamento.ts` (testada).
+
+**O que é "manual".** Lançamento com `source == "manual"` que chega por `POST /api/transactions` (o padrão do corpo, e o que o formulário envia). A regra mora na **rota**, não em `DataService.create_transaction`: série materializada, transferência, importação, "Pagar" de Agendadas e os scripts de aceite chamam o serviço direto (ou usam outra origem) e continuam podendo nascer sem conta. Origens `ai`/`import`/`open_finance` na rota não são barradas.
+
+- **Criação**: sem `account_id` (ausente ou `null`) responde **400** `{"detail": "Escolha a conta do lançamento."}`. Conta inexistente ou de outro usuário responde **400** `{"detail": "Conta não encontrada. Escolha uma das suas contas."}` (a mesma frase nos dois casos, para não revelar contas alheias). Vale também para série/parcelado manual. 400 e `detail` seguem as rotas de conta e de importação. Se `account_id` vier em lançamento não manual, a existência também é conferida.
+- **Edição (`PATCH`)**: `TransactionUpdate` ganhou `account_id`. **Editar nunca exige conta**: lançamento antigo sem conta pode ter valor, descrição ou categoria corrigidos sem que o usuário seja empurrado a escolher uma. Só a conta **nova**, quando enviada, é validada (mesma frase, 400). Não há como voltar a "sem conta" (nulo significa "não mexa"). O formulário só envia `account_id` se o usuário o trocou.
+- **Importação**: inalterada; `account_id` segue obrigatório nos dois `POST /api/import/*` (422 do FastAPI sem ele).
+- **Dados antigos**: nada é migrado. Lançamento sem conta continua listado e o saldo efetivado dele aparece em "Sem conta" no quadro de contas (issue #12/#15).
+- **Formulário**: campo "Conta *" com uma opção por conta. Ao abrir, preseleciona a última conta usada (`localStorage` `personos:ultima-conta:<userId>`, lido e gravado com try/catch; guarda ao salvar com sucesso); se ela foi apagada ou não há registro, preseleciona a conta só se o usuário tiver **uma** única. "Salvar e adicionar outra" mantém a conta. Em edição o campo mostra a conta atual (vazio nos antigos).
+- **Sem nenhuma conta**: o campo vira "Cadastre uma conta para lançar" com o botão "+ Conta", que abre o `NovaContaDialog` ali mesmo (o mesmo do quadro e da importação) sem sair do lançamento; a conta criada já fica selecionada. Escolhido em vez de linkar para a Visão Geral por manter o lançamento em andamento.

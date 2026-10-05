@@ -377,6 +377,22 @@ class DataService:
         return sorted(contas, key=lambda a: a["name"].lower())
 
     @staticmethod
+    def validar_conta_do_usuario(user_id: int, account_id: int | None, obrigatoria: bool = False) -> None:
+        """
+        Confere a conta que a rota de transações recebeu; `ValueError` com frase
+        quando não serve. É da ROTA, não de `create_transaction`: séries,
+        transferência, importação e "Pagar" criam lançamento por dentro, e
+        alguns nascem legitimamente sem conta.
+        """
+        if account_id is None:
+            if obrigatoria:
+                raise ValueError("Escolha a conta do lançamento.")
+            return
+        # Conta de outro usuário não vale nem pode vazar que existe.
+        if not any(a["id"] == account_id for a in DataService.get_accounts(user_id)):
+            raise ValueError("Conta não encontrada. Escolha uma das suas contas.")
+
+    @staticmethod
     def _nome_em_uso(contas: List[Dict[str, Any]], user_id: int, nome: str, ignorar_id: int | None = None) -> bool:
         alvo = " ".join(nome.lower().split())
         return any(
