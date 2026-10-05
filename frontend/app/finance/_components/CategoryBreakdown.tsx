@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
 
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,8 @@ export interface CategoryDatum {
   color: string
   /** Torna o rótulo um link — ex.: o balde "Sem categoria" leva à fila. */
   href?: string
+  /** Texto opcional sob o rótulo (ex.: a variação contra o período anterior). */
+  detail?: ReactNode
 }
 
 /** A fila "A revisar" filtrada só nos lançamentos sem categoria. */
@@ -28,9 +30,10 @@ export const REVISAR_SEM_CATEGORIA = '/finance/revisar?secao=sem-categoria'
  * escolha deliberada.
  */
 export function rankWithUncategorized(
-  real: { name: string; value: number }[],
+  real: Omit<CategoryDatum, 'color'>[],
   uncategorized: number,
-  colorByRank: (rank: number) => string
+  colorByRank: (rank: number) => string,
+  uncategorizedDetail?: ReactNode
 ): CategoryDatum[] {
   const ranked: CategoryDatum[] = [...real]
     .sort((a, b) => b.value - a.value)
@@ -38,18 +41,32 @@ export function rankWithUncategorized(
   if (uncategorized <= 0) return ranked
   return [
     ...ranked,
-    { name: 'Sem categoria', value: uncategorized, color: 'var(--foreground)', href: REVISAR_SEM_CATEGORIA },
+    {
+      name: 'Sem categoria',
+      value: uncategorized,
+      color: 'var(--foreground)',
+      href: REVISAR_SEM_CATEGORIA,
+      detail: uncategorizedDetail,
+    },
   ].sort((a, b) => b.value - a.value)
 }
 
 /** Rótulo da categoria; vira link quando o dado aponta para algum lugar. */
-function CategoryLabel({ d }: { d: Pick<CategoryDatum, 'name' | 'color' | 'href'> }) {
+function CategoryLabel({ d }: { d: Pick<CategoryDatum, 'name' | 'color' | 'href' | 'detail'> }) {
   const badge = <Badge color={d.color}>{d.name}</Badge>
-  if (!d.href) return badge
-  return (
+  const rotulo = d.href ? (
     <Link href={d.href} className="rounded-full underline-offset-4 hover:underline focus-visible:outline-2">
       {badge}
     </Link>
+  ) : (
+    badge
+  )
+  if (!d.detail) return rotulo
+  return (
+    <div className="flex flex-col items-start gap-0.5">
+      {rotulo}
+      <span className="text-xs text-muted-foreground">{d.detail}</span>
+    </div>
   )
 }
 

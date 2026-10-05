@@ -199,10 +199,108 @@ def cards():
         usar_store(anterior_store)
 
 
+def lista(r):
+    """As categorias reais como (id, nome, valor, anterior, inteiro, diferença, %)."""
+    return [
+        (c["category_id"], c["nome"], c["valor"], c["anterior"], c["anterior_inteiro"], c["diferenca"], c["percentual"])
+        for c in r["categorias"]
+    ]
+
+
+def categorias():
+    print("despesas por categoria (issue #17; hoje = 03/10/2026)")
+    H = "2026-10-03"
+    store = MemoriaStore()
+    store.save("categories", [
+        {"id": 1, "name": "Alimentação"}, {"id": 2, "name": "Transporte"}, {"id": 6, "name": "Outros"},
+    ])
+    store.save("transactions", [
+        # Outubro, até o dia 3: Alimentação 150, Transporte 30, sem categoria 7.
+        lanc(valor=100, data="2026-10-01", category_id=1),
+        lanc(valor=50, data="2026-10-02", category_id=1),
+        lanc(valor=30, data="2026-10-02", category_id=2),
+        lanc(valor=7, data="2026-10-03"),
+        lanc(valor=999, data="2026-10-04", category_id=1),  # depois de hoje
+        # Receita (com ou sem categoria): fora do gráfico de despesas e do balde.
+        lanc(tipo="income", valor=500, data="2026-10-02"),
+        lanc(tipo="income", valor=300, data="2026-10-02", category_id=1),
+        # Setembro, trecho 1 a 3: Alimentação 100, Outros 60, sem categoria 40.
+        lanc(valor=100, data="2026-09-01", category_id=1),
+        lanc(valor=60, data="2026-09-02", category_id=6),
+        lanc(valor=40, data="2026-09-03"),
+        # Setembro, resto: Alimentação 70, sem categoria 10.
+        lanc(valor=70, data="2026-09-20", category_id=1),
+        lanc(valor=10, data="2026-09-21"),
+        # Não entram em número nenhum:
+        lanc(valor=5000, data="2026-10-02", category_id=1, is_internal_transfer=True),
+        lanc(valor=5000, data="2026-10-02", is_internal_transfer=True),
+        lanc(valor=7000, data="2026-10-02", category_id=2, ingest_state="pending_reconciliation"),
+        lanc(valor=7000, data="2026-10-02", ingest_state="pending_reconciliation"),
+        lanc(valor=3000, data="2026-10-02", category_id=2, settled_at=None),  # previsto
+        lanc(user_id=2, valor=9999, data="2026-10-02", category_id=1),
+        # Usuário 4: tudo categorizado, sem balde.
+        lanc(user_id=4, valor=80, data="2026-10-02", category_id=1),
+        # Usuário 5: só gasto sem categoria, nenhum no anterior.
+        lanc(user_id=5, valor=25, data="2026-10-02"),
+    ])
+    anterior_store = usar_store(store)
+    try:
+        r = relatorios.categorias(1, "mes", H)
+        # Alimentação 150 contra 100 (+50, +50,0%), inteiro 170; Transporte 30
+        # contra 0 (sem percentual). Outros só existe no anterior: não aparece.
+        checa("este mês: categorias reais por valor, com anterior e variação",
+              lista(r) == [(1, "Alimentação", 150, 100, 170, 50, 50.0), (2, "Transporte", 30, 0, 0, 30, None)], str(lista(r)))
+        sc = r["sem_categoria"]
+        checa("este mês: balde Sem categoria 7 contra 40 (-33, -82,5%), inteiro 50, fora da lista das reais",
+              sc is not None and (sc["valor"], sc["anterior"], sc["anterior_inteiro"], sc["diferenca"], sc["percentual"]) == (7, 40, 50, -33, -82.5), str(sc))
+        checa("total do gráfico é 187 (150 + 30 + 7): receita, transferência, ingestão pendente e previsto ficam de fora", r["total"] == 187, str(r["total"]))
+        checa("percentual do balde: 7/187 = 3,74% arredondado para cima = 4", r["percentual_sem_categoria"] == 4, str(r["percentual_sem_categoria"]))
+        checa("devolve o intervalo e a janela anterior (para o link e o rótulo)",
+              r["periodo"]["de"] == "2026-10-01" and r["periodo"]["ate"] == "2026-10-03"
+              and r["anterior"] == {"de": "2026-09-01", "ate": "2026-09-03"}
+              and r["anterior_inteiro"] == {"de": "2026-09-01", "ate": "2026-09-30"}, str(r["periodo"]))
+
+        r = relatorios.categorias(1, "hoje", H)
+        checa("hoje: só o balde (7), contra 0 de ontem, sem percentual de variação",
+              lista(r) == [] and r["sem_categoria"]["valor"] == 7 and r["sem_categoria"]["percentual"] is None and r["total"] == 7, str(r))
+        checa("hoje: o balde é 100% do gráfico", r["percentual_sem_categoria"] == 100, str(r["percentual_sem_categoria"]))
+
+        r = relatorios.categorias(1, "mes_anterior", H)
+        checa("mês anterior: Alimentação 170, Outros 60 (agosto vazio: sem percentual)",
+              lista(r) == [(1, "Alimentação", 170, 0, 0, 170, None), (6, "Outros", 60, 0, 0, 60, None)], str(lista(r)))
+        checa("mês anterior: balde 50 de 280 = 17,86% -> 18", r["sem_categoria"]["valor"] == 50 and r["total"] == 280 and r["percentual_sem_categoria"] == 18, str(r["total"]))
+
+        r = relatorios.categorias(1, "personalizado", H, "2026-09-02", "2026-09-03")
+        checa("personalizado: Outros 60 contra 0, sem Alimentação; balde 40 contra 0",
+              lista(r) == [(6, "Outros", 60, 0, 0, 60, None)] and r["sem_categoria"]["valor"] == 40, str(lista(r)))
+
+        r = relatorios.categorias(4, "mes", H)
+        checa("sem lançamento sem categoria o balde não existe", r["sem_categoria"] is None and r["percentual_sem_categoria"] == 0 and r["total"] == 80, str(r["sem_categoria"]))
+
+        r = relatorios.categorias(5, "mes", H)
+        checa("só balde: lista de reais vazia e o balde é 100%", lista(r) == [] and r["sem_categoria"]["valor"] == 25 and r["percentual_sem_categoria"] == 100)
+
+        r = relatorios.categorias(3, "mes", H)
+        checa("período vazio: sem categorias, sem balde, total 0 e sem erro",
+              lista(r) == [] and r["sem_categoria"] is None and r["total"] == 0 and r["percentual_sem_categoria"] == 0)
+
+        cli = TestClient(app)
+        resp = cli.get("/api/reports/categories/1", params={"periodo": "mes", "hoje": H})
+        corpo = resp.json().get("data", {})
+        checa("GET /api/reports/categories/{id} devolve as categorias do período",
+              resp.status_code == 200 and corpo.get("total") == 187 and len(corpo.get("categorias", [])) == 2, str(resp.status_code))
+        resp = cli.get("/api/reports/categories/1", params={"periodo": "personalizado", "hoje": H, "de": "2026-09-10", "ate": "2026-09-01"})
+        checa("pedido inválido responde 422 com a frase", resp.status_code == 422 and isinstance(resp.json().get("detail"), str))
+    finally:
+        usar_store(anterior_store)
+
+
 def main():
     atalhos()
     print()
     cards()
+    print()
+    categorias()
     print()
     if falhas:
         print("FALHARAM: %d" % len(falhas))

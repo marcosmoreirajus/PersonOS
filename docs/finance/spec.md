@@ -340,7 +340,18 @@ Regras:
 - Conta só lançamento **efetivado** (`settled_at`), pela **data do lançamento** (`settled_at`, a que Transações mostra), sem transferência interna e sem ingestão pendente. Estorno e pagamento de fatura entram com a Fatia 5.
 - A URL da tela leva `periodo` (ausente = este mês) e, no personalizado, `de` e `ate`; a leitura e a montagem são puras e testadas em `frontend/lib/relatorios-periodo.ts`.
 
-O bloco "Despesas por categoria" ainda lê `/api/dashboard` (tudo o que está efetivado, sem período): é do ticket #17.
+### Despesas por categoria do período (issue #17)
+
+`GET /api/reports/categories/{user_id}`, com os mesmos parâmetros e o mesmo 422 do resumo. A conta é `relatorios.categorias` e reaproveita `resolver_periodo` e `_cartao`. Mesmo recorte do resumo, só **despesa**: efetivado, pela data do lançamento, sem transferência interna nem ingestão pendente. Estorno entra com a Fatia 5 (não existe ainda).
+
+Resposta (`data`): `periodo`, `anterior`, `anterior_inteiro` (como no resumo) e:
+
+- `categorias`: só as reais com despesa **no período**, da maior para a menor. Cada uma é `{category_id, nome, valor, anterior, anterior_inteiro, diferenca, percentual}` (o cartão do resumo; `percentual` é `null` quando o anterior é zero e a tela escreve "—"). Categoria que só tem despesa no anterior não aparece. Categoria apagada vira "Outro".
+- `sem_categoria`: o balde virtual, **fora** de `categorias`, com o mesmo cartão sem `category_id`/`nome`; `null` se não há despesa sem categoria no período. Receita sem categoria não entra (Fatia 4, item 2).
+- `total`: categorias reais + balde, a base do gráfico.
+- `percentual_sem_categoria`: inteiro sobre o `total`, arredondado **para cima** (regra da Fatia 4); 0 sem balde.
+
+Tela: `DespesasPorCategoria` (em `relatorios/_components/`) segue o período da página, mostra variação e anterior sob cada rótulo e mantém pizza, barras e segmentada. O balde continua em `--foreground`, fora da escala das reais, e (como antes) encabeça a lista quando é o maior. Clique: categoria real vai a `/finance/transactions?tipo=saida&categoria=<id>&de=&ate=` (`hrefCategoria` em `lib/relatorios-categorias.ts`, sobre `montarBusca`); o balde vai a `/finance/revisar?secao=sem-categoria`. Sem despesa no período: "Sem lançamentos neste período" (o bloco não some). `/api/dashboard` segue servindo só a Visão Geral.
 
 ## Cartão (Fatia 5, ticket #21)
 
