@@ -10,6 +10,7 @@ import { MonthPicker } from '@/components/ui/month-picker'
 import { MoneyValue } from '@/components/ui/money-value'
 import { StatCard } from './_components/StatCard'
 import { ProximosVencimentos } from './_components/ProximosVencimentos'
+import { UltimasTransacoes } from './_components/UltimasTransacoes'
 import {
   CategoryBreakdown,
   rankWithUncategorized,
@@ -26,7 +27,6 @@ import {
 } from './agendadas/_components/types'
 import { CURRENT_USER_ID, api } from '@/lib/api'
 import { categoryColorByRank, incomeColorByRank } from '@/lib/category-colors'
-import { formatDateBR } from '@/lib/dates'
 
 type Transaction = {
   id: number
@@ -401,34 +401,13 @@ export default function FinanceDashboardPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Últimas transações</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {transactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma transação ainda.</p>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {[...transactions]
-                .sort((a, b) => new Date(b.settled_at!).getTime() - new Date(a.settled_at!).getTime())
-                .slice(0, 5)
-                .map((t) => (
-                  <li key={t.id} className="flex items-center justify-between text-sm">
-                    <div className="flex flex-col">
-                      <span className="text-foreground">{t.description || 'Sem descrição'}</span>
-                      <span className="text-xs text-muted-foreground">{formatDateBR(t.settled_at!)}</span>
-                    </div>
-                    <span className={t.type === 'income' ? 'font-medium text-foreground' : 'font-medium text-muted-foreground'}>
-                      {t.type === 'income' ? '+' : '-'}
-                      <MoneyValue value={t.amount} />
-                    </span>
-                  </li>
-                ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <UltimasTransacoes
+        refreshKey={refreshKey}
+        onNovo={() => {
+          setDialogKind('expense')
+          setDialogOpen(true)
+        }}
+      />
 
       <TransactionDialog
         open={dialogOpen}

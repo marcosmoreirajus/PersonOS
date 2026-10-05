@@ -19,7 +19,7 @@ from app.schemas import (
 )
 from app.services import DataService, BusinessService
 from app.services import import_service as ImportService
-from app.services import cartoes, relatorios, vencimentos
+from app.services import cartoes, relatorios, ultimas, vencimentos
 from app.services.import_service import ArquivoInvalido
 
 app = FastAPI(
@@ -347,6 +347,12 @@ async def get_upcoming(user_id: int, hoje: str):
         return {"data": vencimentos.proximos(user_id, hoje)}
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro))
+
+
+# Últimas transações da Visão Geral (issue #16). O dia vem pronto em cada item.
+@app.get("/api/dashboard/{user_id}/recent")
+async def get_recent(user_id: int):
+    return {"data": ultimas.recentes(user_id)}
 
 
 # Despesas por categoria do período, com comparação (issue #17).

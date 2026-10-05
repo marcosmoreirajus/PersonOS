@@ -357,6 +357,14 @@ Tela: `DespesasPorCategoria` (em `relatorios/_components/`) segue o período da 
 
 `GET /api/reports/top-expenses/{user_id}`, com os mesmos parâmetros e o mesmo 422 do resumo. A conta é `relatorios.maiores_gastos`. Mesmo recorte de despesas por categoria (efetivado, pela data do lançamento, sem transferência interna nem ingestão pendente). Devolve `gastos`: no máximo 10 (`LIMITE_MAIORES_GASTOS`), do maior valor para o menor; no empate, o mais recente e depois o maior `id`. Cada gasto: `id`, `description`, `amount`, `settled_at`, `category_id` e `category_name` (nulos se sem categoria). Tela: `MaioresGastos`; cada linha vai a `/finance/transactions?editar=<id>` (`hrefLancamento` em `lib/relatorios-gastos.ts`). Sem despesa: "Sem despesas neste período". O limite de 10 é decisão do ticket (o spec #7 só pede "ordem e limite corretos"). Por comerciante fica para a Fatia 6.
 
+### Últimas transações (issue #16)
+
+`GET /api/dashboard/{user_id}/recent`, sem parâmetros: o dia de cada item vem pronto, então não há `hoje`. "Hoje" e "Ontem" são do cliente (relógio local, `lib/ultimas.ts`). A conta mora em `app/services/ultimas.py`; nada é gravado.
+
+- Os 8 lançamentos **efetivados** mais recentes (`settled_at` desc, `id` desc desempata). Previsto e ingestão pendente ficam fora. A transferência interna **continua na lista** (é lista, não soma), com marca.
+- Item: `{id, description, amount, type, day, category_id, account_name, is_internal_transfer, imported}`. `day` é `AAAA-MM-DD` de `settled_at`; `account_name` é nulo sem conta; `imported` é verdadeiro com `import_hash` ou `external_id`. O nome da categoria o cliente resolve por `/api/categories`.
+- Tela: agrupada por dia (Hoje, Ontem, depois `DD/MM/AAAA`); valor com sinal (`+`/`-`), entrada em `foreground`, saída em `destructive`, transferência neutra; "Sem categoria" leva a `/finance/revisar?secao=sem-categoria`; a linha abre `/finance/transactions?editar=<id>` (issue #6); "Ver todas" leva a `/finance/transactions`; vazio mostra "Nenhuma transação ainda" e o botão de novo lançamento (abre o dialog da página). Valores em `MoneyValue` (privacidade). Componente: `finance/_components/UltimasTransacoes.tsx`. Testes: `backend/scripts/testa_ultimas.py` e `frontend/lib/ultimas.test.ts`.
+
 ## Cartão (Fatia 5, ticket #21)
 
 Entidade própria, separada de Conta (coleção `cards`). Cartão não é Conta: o valor `card` saiu de `AccountKind` e a API de contas o recusa (422).
