@@ -17,6 +17,7 @@ from app.schemas import (
 )
 from app.services import DataService, BusinessService
 from app.services import import_service as ImportService
+from app.services import relatorios
 from app.services.import_service import ArquivoInvalido
 
 app = FastAPI(
@@ -281,6 +282,18 @@ async def update_preferences(user_id: int, payload: PreferencesUpdate):
 async def get_dashboard(user_id: int):
     summary = DataService.get_dashboard_summary(user_id)
     return {"data": summary}
+
+
+# Relatórios por período (issue #14). `hoje` vem do cliente: é o relógio local
+# dele que decide o dia, e é o que deixa o teste determinístico.
+@app.get("/api/reports/summary/{user_id}")
+async def get_report_summary(
+    user_id: int, hoje: str, periodo: str = relatorios.PADRAO, de: str | None = None, ate: str | None = None
+):
+    try:
+        return {"data": relatorios.resumo(user_id, periodo, hoje, de, ate)}
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro))
 
 
 # Rotas de Patrimônio (investimentos)
