@@ -12,7 +12,7 @@ anterior; "mês anterior" e o personalizado são fechados.
 
 import calendar
 from datetime import date, timedelta
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.services.data_service import DataService
 
@@ -173,6 +173,15 @@ def resumo(
     }
 
 
+def _despesas_do_periodo(user_id: int, de: str, ate: str) -> List[Dict[str, Any]]:
+    """Despesas efetivadas entre `de` e `ate`: o recorte de categorias e de maiores gastos."""
+    return [
+        t
+        for t in DataService.get_settled_by_user(user_id)
+        if t["type"] == "expense" and not t.get("is_internal_transfer") and de <= t["settled_at"][:10] <= ate
+    ]
+
+
 def _despesas_por_categoria(user_id: int, de: str, ate: str) -> Dict[Optional[int], float]:
     """Despesa efetivada entre `de` e `ate` por `category_id` (`None` = sem categoria).
 
@@ -181,11 +190,7 @@ def _despesas_por_categoria(user_id: int, de: str, ate: str) -> Dict[Optional[in
     categoria não entra no balde (spec, Fatia 4, item 2).
     """
     por_categoria: Dict[Optional[int], float] = {}
-    for t in DataService.get_settled_by_user(user_id):
-        if t.get("is_internal_transfer") or t["type"] != "expense":
-            continue
-        if not de <= t["settled_at"][:10] <= ate:
-            continue
+    for t in _despesas_do_periodo(user_id, de, ate):
         chave = t.get("category_id")
         por_categoria[chave] = por_categoria.get(chave, 0.0) + t["amount"]
     return por_categoria
@@ -264,12 +269,8 @@ def maiores_gastos(
     para a tela abrir o lançamento (issue #6). Por comerciante só na Fatia 6.
     """
     p = resolver_periodo(periodo, hoje, de, ate)
-    despesas = [
-        t
-        for t in DataService.get_settled_by_user(user_id)
-        if t["type"] == "expense" and not t.get("is_internal_transfer") and p["de"] <= t["settled_at"][:10] <= p["ate"]
-    ]
-    despesas.sort(key=lambda t: (-t["amount"], _negativa(t["settled_at"][:10]), -t["id"]))
+    despesas = _despesas_do_periodo(user_id, p["de"], p["ate"])
+    despesas.sort(key=lambda t: (t["amount"], t["settled_at"][:10], t["id"]), reverse=True)
 
     gastos = []
     for t in despesas[:LIMITE_MAIORES_GASTOS]:
@@ -284,7 +285,3 @@ def maiores_gastos(
         })
     return {"periodo": {"atalho": p["atalho"], "de": p["de"], "ate": p["ate"], "aberto": p["aberto"]}, "gastos": gastos}
 
-
-def _negativa(dia: str) -> int:
-    """`AAAA-MM-DD` como número negativo, para ordenar do mais recente ao mais antigo."""
-    return -int(dia.replace("-", ""))
