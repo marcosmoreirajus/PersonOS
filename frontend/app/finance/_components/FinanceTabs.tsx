@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ArrowLeftRight, CalendarClock, ListChecks, LayoutDashboard, PieChart, PiggyBank } from 'lucide-react'
+import { ArrowLeftRight, CalendarClock, CreditCard, ListChecks, LayoutDashboard, PieChart, PiggyBank } from 'lucide-react'
 
 import { SectionTabs, type TabItem } from '@/components/ui/app-shell'
 import { CURRENT_USER_ID, api } from '@/lib/api'
@@ -28,6 +28,7 @@ const SECOES: TabItem[] = [
   { href: '/finance/transactions', label: 'Transações', icon: ArrowLeftRight },
   { href: '/finance/agendadas', label: 'Agendadas', icon: CalendarClock },
   { href: '/finance/relatorios', label: 'Relatórios', icon: PieChart },
+  { href: '/finance/cartoes', label: 'Cartões', icon: CreditCard },
   { href: '/finance/patrimonio', label: 'Patrimônio', icon: PiggyBank },
   { href: '/finance/revisar', label: 'A revisar', icon: ListChecks },
 ]

@@ -134,6 +134,10 @@ class TransactionResponse(BaseModel):
     due_date: date
     settled_at: date | None
     account_id: int | None
+    # Vínculo com Cartão e Fatura (Fatia 5). Nulos até a compra no cartão existir;
+    # lançamento antigo, sem o campo gravado, vale nulo.
+    card_id: int | None = None
+    invoice_id: int | None = None
     is_internal_transfer: bool
     needs_transfer_review: bool
     series_id: int | None

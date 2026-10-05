@@ -529,10 +529,10 @@ def main():
     checa("modelo em formato desconhecido devolve 404", r.status_code == 404)
 
     # contas
-    r = cli.post("/api/accounts", json={"user_id": 1, "name": "Conta API", "kind": "card"})
+    r = cli.post("/api/accounts", json={"user_id": 1, "name": "Conta API", "kind": "wallet"})
     conta_api = r.json()["data"] if r.status_code == 200 else {}
-    checa("POST /api/accounts cria a conta", r.status_code == 200 and conta_api.get("kind") == "card", r.text[:80])
-    r = cli.post("/api/accounts", json={"user_id": 1, "name": "conta  api", "kind": "card"})
+    checa("POST /api/accounts cria a conta", r.status_code == 200 and conta_api.get("kind") == "wallet", r.text[:80])
+    r = cli.post("/api/accounts", json={"user_id": 1, "name": "conta  api", "kind": "wallet"})
     checa("nome repetido devolve 400 com mensagem", r.status_code == 400 and "nome" in r.json()["detail"], r.text[:80])
     r = cli.post("/api/accounts", json={"user_id": 1, "name": "X", "kind": "poupanca"})
     checa("tipo de conta inválido é rejeitado na validação (422)", r.status_code == 422, str(r.status_code))

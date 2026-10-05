@@ -81,6 +81,5 @@ class AccountKind(str, Enum):
     CHECKING = "checking"
     SAVINGS = "savings"
     INVESTMENT = "investment"
-    CARD = "card"
     WALLET = "wallet"
 
