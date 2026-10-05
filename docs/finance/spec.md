@@ -357,6 +357,16 @@ Tela: `DespesasPorCategoria` (em `relatorios/_components/`) segue o período da 
 
 `GET /api/reports/top-expenses/{user_id}`, com os mesmos parâmetros e o mesmo 422 do resumo. A conta é `relatorios.maiores_gastos`. Mesmo recorte de despesas por categoria (efetivado, pela data do lançamento, sem transferência interna nem ingestão pendente). Devolve `gastos`: no máximo 10 (`LIMITE_MAIORES_GASTOS`), do maior valor para o menor; no empate, o mais recente e depois o maior `id`. Cada gasto: `id`, `description`, `amount`, `settled_at`, `category_id` e `category_name` (nulos se sem categoria). Tela: `MaioresGastos`; cada linha vai a `/finance/transactions?editar=<id>` (`hrefLancamento` em `lib/relatorios-gastos.ts`). Sem despesa: "Sem despesas neste período". O limite de 10 é decisão do ticket (o spec #7 só pede "ordem e limite corretos"). Por comerciante fica para a Fatia 6.
 
+### Quadro de contas (issue #15)
+
+Quadro "Contas e cartões" na Visão Geral (`finance/_components/QuadroContas.tsx`); a parte de cartões é da etapa 2. Não há rota nova: o saldo vem de `accounts_balance` (issue #12) e o cadastro e a edição usam `POST /api/accounts` e `PATCH /api/accounts/{id}`, que já existiam. Aceite: `backend/scripts/testa_contas_quadro.py`.
+
+- Lista cada conta (nome, tipo, saldo) com o botão de editar, a linha "Sem conta" quando `no_account` existe e o "Total nas contas" (`accounts_balance.total`). "+ Conta" abre o `NovaContaDialog`, o mesmo da importação.
+- **Edição**: o diálogo ganhou o prop `conta`; com ele faz `PATCH` (nome, tipo, saldo inicial e logo) e o rótulo do campo é "Saldo inicial" nos dois modos, porque é o que a conta guarda (o saldo do quadro é esse valor mais os lançamentos efetivados). O logo só vai no `PATCH` se mudou; `""` o remove. A leitura do saldo digitado ("1.250,00") é pura e testada em `lib/contas-quadro.ts`.
+- **Nome único** por usuário, sem diferenciar caixa nem espaços repetidos, vale na criação e na edição (renomear para o próprio nome é permitido). Conflito e nome em branco respondem **400 com frase** ("Já existe uma conta com esse nome."), a convenção das rotas de conta e cartão; a frase aparece no diálogo.
+- Sem nenhuma conta: o quadro mostra "Cadastre suas contas para ver os saldos" e o botão "+ Conta" (o "Sem conta" some junto: o convite basta).
+- O quadro **não filtra nada** na página, carrega e falha sozinho (como os Próximos vencimentos) e usa `MoneyValue` (modo privacidade). Ao salvar, avisa a página (`onChange`) para o card Saldo recarregar.
+
 ## Cartão (Fatia 5, ticket #21)
 
 Entidade própria, separada de Conta (coleção `cards`). Cartão não é Conta: o valor `card` saiu de `AccountKind` e a API de contas o recusa (422).

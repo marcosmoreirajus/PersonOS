@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/motion/input'
 import { api } from '@/lib/api'
+import { lerSaldo, saldoParaCampo } from '@/lib/contas-quadro'
 import { cn } from '@/lib/utils'
 
 export type ContaTipo = 'checking' | 'wallet' | 'savings' | 'investment'
@@ -58,22 +59,29 @@ function reduzirLogo(file: File): Promise<string> {
   })
 }
 
-/** Cria uma conta sem sair do fluxo de importação. */
+/**
+ * Cria uma conta sem sair de onde o usuário está (importação, Visão Geral).
+ * Com `conta`, edita essa conta: o pai monta o diálogo com `key` diferente por
+ * conta, para os campos nascerem preenchidos.
+ */
 export function NovaContaDialog({
   open,
   onOpenChange,
   userId,
   onCreated,
+  conta: editando,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   userId: number
+  /** Chamado com a conta criada ou, na edição, a conta atualizada. */
   onCreated: (c: Conta) => void
+  conta?: Conta
 }) {
-  const [nome, setNome] = useState('')
-  const [tipo, setTipo] = useState<ContaTipo>('checking')
-  const [saldo, setSaldo] = useState('')
-  const [logo, setLogo] = useState<string | null>(null)
+  const [nome, setNome] = useState(editando?.name ?? '')
+  const [tipo, setTipo] = useState<ContaTipo>(editando?.kind ?? 'checking')
+  const [saldo, setSaldo] = useState(saldoParaCampo(editando?.initial_balance))
+  const [logo, setLogo] = useState<string | null>(editando?.logo ?? null)
   const inputLogo = useRef<HTMLInputElement>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
@@ -89,23 +97,33 @@ export function NovaContaDialog({
   }
 
   async function salvar() {
-    const valor = saldo.trim() === '' ? 0 : Number(saldo.replace(/\./g, '').replace(',', '.'))
-    if (Number.isNaN(valor)) {
+    const valor = lerSaldo(saldo)
+    if (valor === null) {
       setErro('Informe o saldo como número, por exemplo 1.250,00.')
       return
     }
     setSalvando(true)
     setErro(null)
     try {
-      const conta = await api<Conta>('/api/accounts', {
-        method: 'POST',
-        body: { user_id: userId, name: nome, kind: tipo, initial_balance: valor, logo },
-      })
+      let conta: Conta
+      if (editando) {
+        // No PATCH, logo ausente = não mexe; "" = remove.
+        const logoAntes = editando.logo ?? null
+        conta = await api<Conta>(`/api/accounts/${editando.id}`, {
+          method: 'PATCH',
+          body: { name: nome, kind: tipo, initial_balance: valor, ...(logo !== logoAntes && { logo: logo ?? '' }) },
+        })
+      } else {
+        conta = await api<Conta>('/api/accounts', {
+          method: 'POST',
+          body: { user_id: userId, name: nome, kind: tipo, initial_balance: valor, logo },
+        })
+        setNome('')
+        setTipo('checking')
+        setSaldo('')
+        setLogo(null)
+      }
       onCreated(conta)
-      setNome('')
-      setTipo('checking')
-      setSaldo('')
-      setLogo(null)
       onOpenChange(false)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível criar a conta.')
@@ -118,7 +136,7 @@ export function NovaContaDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Nova conta</DialogTitle>
+          <DialogTitle>{editando ? 'Editar conta' : 'Nova conta'}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <div className="flex items-start gap-3">
@@ -161,7 +179,7 @@ export function NovaContaDialog({
               )}
             </div>
           </div>
-          <Input id="conta-saldo" label="Saldo atual" inputMode="decimal" placeholder="0,00" value={saldo} onChange={setSaldo} />
+          <Input id="conta-saldo" label="Saldo inicial" inputMode="decimal" placeholder="0,00" value={saldo} onChange={setSaldo} />
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Tipo de conta">
             {TIPOS_CONTA.map((t) => (
               <button
@@ -185,7 +203,7 @@ export function NovaContaDialog({
             Cancelar
           </Button>
           <Button onClick={salvar} disabled={salvando || !nome.trim()}>
-            {salvando ? 'Criando...' : 'Criar conta'}
+            {editando ? (salvando ? 'Salvando...' : 'Salvar') : salvando ? 'Criando...' : 'Criar conta'}
           </Button>
         </DialogFooter>
       </DialogContent>

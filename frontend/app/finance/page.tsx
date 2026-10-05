@@ -10,6 +10,7 @@ import { MonthPicker } from '@/components/ui/month-picker'
 import { MoneyValue } from '@/components/ui/money-value'
 import { StatCard } from './_components/StatCard'
 import { ProximosVencimentos } from './_components/ProximosVencimentos'
+import { QuadroContas } from './_components/QuadroContas'
 import {
   CategoryBreakdown,
   rankWithUncategorized,
@@ -367,6 +368,7 @@ export default function FinanceDashboardPage() {
 
       {/* Posição provisória: o layout final é o ticket #23. */}
       <ProximosVencimentos refreshKey={refreshKey} />
+      <QuadroContas onChange={() => setRefreshKey((k) => k + 1)} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         <Card>
