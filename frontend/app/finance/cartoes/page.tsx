@@ -8,10 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { MoneyValue } from '@/components/ui/money-value'
 import { CURRENT_USER_ID, api } from '@/lib/api'
 import { CartaoDialog, type Cartao, type ContaPagadora } from './_components/CartaoDialog'
+import { FaturasDoCartao } from './_components/FaturasDoCartao'
 
 /**
- * Cartões (Fatia 5, ticket #21). Só o cadastro: fatura, compras e limite
- * disponível chegam nos tickets seguintes. Cartão é dívida com ciclo, não
+ * Cartões (Fatia 5, tickets #21 e #26): cadastro e, em cada cartão, as faturas
+ * com o detalhe das compras. Pagamento e limite disponível chegam nos tickets
+ * seguintes. Cartão é dívida com ciclo, não
  * Conta — ver GLOSSARY.md.
  */
 export default function CartoesPage() {
@@ -100,6 +102,10 @@ export default function CartoesPage() {
                 <span>Fecha no dia {c.closing_day}</span>
                 <span>Vence no dia {c.due_day}</span>
                 {nomeDaConta(c.default_payer_account_id) && <span>Paga por {nomeDaConta(c.default_payer_account_id)}</span>}
+                <div className="mt-3 border-t border-border pt-3">
+                  <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Faturas</span>
+                  <FaturasDoCartao cardId={c.id} />
+                </div>
               </CardContent>
             </Card>
           ))}

@@ -444,3 +444,24 @@ O formulário de lançamento (`TransactionDialog`) passa a pedir a conta, e a AP
 - **Dados antigos**: nada é migrado. Lançamento sem conta continua listado e o saldo efetivado dele aparece em "Sem conta" no quadro de contas (issue #12/#15).
 - **Formulário**: campo "Conta *" com uma opção por conta. Ao abrir, preseleciona a última conta usada (`localStorage` `personos:ultima-conta:<userId>`, lido e gravado com try/catch; guarda ao salvar com sucesso); se ela foi apagada ou não há registro, preseleciona a conta só se o usuário tiver **uma** única. "Salvar e adicionar outra" mantém a conta. Em edição o campo mostra a conta atual (vazio nos antigos).
 - **Sem nenhuma conta**: o campo vira "Cadastre uma conta para lançar" com o botão "+ Conta", que abre o `NovaContaDialog` ali mesmo (o mesmo do quadro e da importação) sem sair do lançamento; a conta criada já fica selecionada. Escolhido em vez de linkar para a Visão Geral por manter o lançamento em andamento.
+
+## Fatura e compra no cartão (issue #26)
+
+A **compra** é um lançamento com `card_id` e sem conta; a **Fatura** não é gravada: nasce com a primeira compra do ciclo e total e estado são derivados em `backend/app/services/faturas.py`. Aceite: `backend/scripts/testa_faturas.py`.
+
+**Ciclo.** Identificado pelo mês de fechamento (`AAAA-MM`). Compra com data até o dia de fechamento, **inclusive**, entra no ciclo do próprio mês; depois, no seguinte (R$ 300 em 28/09, fechamento 25: fatura de outubro, e despesa de setembro). Virada de ano segue o mesmo cálculo (28/12 fecha em 01 do ano seguinte).
+
+**Dia maior que o mês.** Fechamento ou vencimento 29 a 31 num mês mais curto vale o **último dia do mês** (31 em fevereiro = 28, ou 29 em ano bissexto); o ciclo da compra usa o dia efetivo daquele mês. Vencimento com dia até o de fechamento cai no mês **seguinte** ao do fechamento; com dia maior, no mesmo mês.
+
+**Derivado.** `total` = soma das compras do ciclo, em centavos inteiros (hoje só compras; saldo anterior, encargos, estorno e pagamento entram nos tickets #33, #31 e #29). `state` = `open` até o dia de fechamento, inclusive (ainda aceita compra); `closed` a partir do dia seguinte, comparando com `hoje` enviado pelo cliente. Só lançamentos confirmados contam (ingestão pendente fica fora). `invoice_id` do lançamento segue nulo: não há registro de fatura para apontar. `parcialmente paga` e `paga` chegam com o pagamento (#29).
+
+| Método | Rota | Observação |
+|---|---|---|
+| `GET` | `/api/cards/{id}/invoices?hoje=AAAA-MM-DD` | faturas com compra, a mais recente primeiro: `{card_id, cycle, closing_date, due_date, total, state, purchases_count}`; 404 cartão inexistente, 400 `hoje` inválido |
+| `GET` | `/api/cards/{id}/invoices/{ciclo}?hoje=...` | o resumo mais `purchases: [{id, description, amount, date, category_id}]`; 404 se o ciclo não tem compras, 400 se `ciclo` malformado |
+
+**Lançamento manual: Conta ou Cartão.** `POST /api/transactions` ganhou `card_id`. Com `card_id`: não aceita `account_id` (400 "Escolha a conta ou o cartão, não os dois."), o cartão precisa ser do usuário (400), só `expense` (400) e sem série (parcelado/recorrente no cartão fica para #30; 400). `settled_at` ausente vale `due_date`: a compra é efetivada e é despesa na data dela, com categoria obrigatória como em qualquer lançamento. Sem `card_id`, vale a regra da #22 (conta obrigatória). Editar (`PATCH`) uma compra de cartão com `account_id` é recusado (400). O `card_id` não é editável.
+
+**Fora do saldo da conta.** `saldos_por_conta` ignora lançamento com `card_id`: a compra não sai da conta (é dívida do Cartão) e também não vira "Sem conta". O Saldo como "contas menos dívida dos cartões" é da Visão Geral etapa 2. Em Relatórios e no dashboard a compra é despesa em `settled_at` (a data da compra), sem lançamento futuro, portanto sem dupla contagem.
+
+**Tela.** Formulário de lançamento: escolha "Conta | Cartão" (Cartão trava em Saída e à vista; preseleciona o único cartão). Aba Cartões: cada cartão lista suas faturas (ciclo, estado, fechamento, vencimento, total) e o detalhe abre as compras e o total (`cartoes/_components/FaturasDoCartao.tsx`); valores em `MoneyValue`, com carregamento, vazio e erro. Lógica pura testada em `frontend/lib/faturas.ts` e `frontend/lib/lancamento-destino.ts`.

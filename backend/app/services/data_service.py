@@ -109,6 +109,7 @@ class DataService:
         is_internal_transfer: bool = False,
         source: str = "manual",
         series: Dict[str, Any] | None = None,
+        card_id: int | None = None,
     ) -> Dict[str, Any]:
         """
         Cria uma transação nova e persiste em transactions.json.
@@ -180,6 +181,10 @@ class DataService:
             "due_date": due_date,
             "settled_at": settled_at,
             "account_id": account_id,
+            # Compra no cartão: aponta o Cartão, sem Conta. A Fatura é derivada
+            # (faturas.py), então `invoice_id` segue nulo.
+            "card_id": card_id,
+            "invoice_id": None,
             "is_internal_transfer": is_internal_transfer,
             "needs_transfer_review": False,
             "series_id": series_id,

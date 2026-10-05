@@ -4,7 +4,8 @@ Saldo por conta e Saldo da página (Visão Geral, issues #5 e #12).
 Tudo aqui é derivado: nada é gravado. Saldo de uma conta = saldo inicial mais
 as entradas menos as saídas EFETIVADAS dela. Diferente de receita, despesa e
 relatórios, as pontas de transferência interna contam: o saldo da conta tem que
-bater com o extrato dela. O previsto e o que tem ingestão pendente ficam fora.
+bater com o extrato dela. O previsto, o que tem ingestão pendente e a compra no
+cartão (dívida do Cartão, não saída da conta) ficam fora.
 """
 
 from typing import Any, Dict, List
@@ -26,6 +27,10 @@ def saldos_por_conta(user_id: int) -> Dict[str, Any]:
 
     # `get_settled_by_user` já deixa de fora o previsto e a ingestão pendente.
     for t in DataService.get_settled_by_user(user_id):
+        # Compra no cartão não sai da conta: é dívida do Cartão, que só vira
+        # saída da conta no pagamento da fatura (ticket próprio).
+        if t.get("card_id"):
+            continue
         delta = t["amount"] if t["type"] == "income" else -t["amount"]
         conta_id = t.get("account_id")
         # Conta apagada ou de outro usuário não some com o dinheiro: cai em

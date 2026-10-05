@@ -1,0 +1,20 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+
+import { rotuloDoCiclo, rotuloDoEstado } from './faturas.ts'
+
+test('o ciclo vira mês e ano por extenso', () => {
+  assert.equal(rotuloDoCiclo('2026-10'), 'Outubro de 2026')
+  assert.equal(rotuloDoCiclo('2027-01'), 'Janeiro de 2027')
+  assert.equal(rotuloDoCiclo('2026-03'), 'Março de 2026')
+})
+
+test('ciclo malformado volta como veio', () => {
+  assert.equal(rotuloDoCiclo('2026-13'), '2026-13')
+  assert.equal(rotuloDoCiclo('xx'), 'xx')
+})
+
+test('os dois estados têm rótulo', () => {
+  assert.equal(rotuloDoEstado('open'), 'Aberta')
+  assert.equal(rotuloDoEstado('closed'), 'Fechada')
+})
