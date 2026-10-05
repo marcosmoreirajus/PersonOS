@@ -58,6 +58,40 @@ def contrato(rotulo, fabrica):
     checa("gravar lista vazia substitui o conteúdo", store.load("itens") == [])
     checa("as coleções são independentes entre si", store.load("outra") == [{"id": 3}])
 
+    # transacao(): grava várias coleções de uma vez, tudo ou nada.
+    store.save("a", [{"v": "antes"}])
+    store.save("b", [{"v": "antes"}])
+    with store.transacao():
+        store.save("a", [{"v": "depois"}])
+        store.save("b", [{"v": "depois"}])
+        dentro = (store.load("a"), store.load("b"))
+    checa(
+        "transacao(): ao terminar, todas as coleções gravadas ficam",
+        store.load("a") == [{"v": "depois"}] and store.load("b") == [{"v": "depois"}],
+    )
+    checa("transacao(): dentro dela, ler enxerga as gravações da própria transação", dentro == ([{"v": "depois"}], [{"v": "depois"}]))
+
+    try:
+        with store.transacao():
+            store.save("a", [{"v": "perdido"}])
+            store.save("novo", [{"v": "perdido"}])
+            raise RuntimeError("falha no meio")
+    except RuntimeError:
+        pass
+    checa(
+        "transacao(): se o código dentro lança erro, nenhuma coleção muda (nem a que já existia, nem a nova)",
+        store.load("a") == [{"v": "depois"}] and store.load("novo") == [],
+    )
+
+    with store.transacao():
+        store.save("a", [{"v": "externa"}])
+        with store.transacao():
+            store.save("b", [{"v": "interna"}])
+    checa(
+        "transacao(): uma dentro da outra vale como uma só",
+        store.load("a") == [{"v": "externa"}] and store.load("b") == [{"v": "interna"}],
+    )
+
 
 def json_store():
     """O que só o JsonStore promete: formato, gravação segura, pasta."""
@@ -94,6 +128,28 @@ def json_store():
         )
         checa("e nenhum temporário sobra", sorted(p.name for p in tmp.iterdir()) == ["antigo.json", "itens.json"])
 
+        # transacao(): o conteúdo de todas as coleções é preparado antes de tocar
+        # o disco. Se a segunda não serializa, a primeira não é gravada.
+        store.save("par", [{"v": "antes"}])
+        antes_do_par = (tmp / "par.json").read_bytes()
+        try:
+            with store.transacao():
+                store.save("par", [{"v": "perdido"}])
+                store.save("itens", [{"id": 9, "invalido": object()}])
+            levantou = False
+        except TypeError:
+            levantou = True
+        checa("transacao(): gravar algo que não vira JSON levanta erro ao concluir", levantou)
+        checa(
+            "e nenhum arquivo muda, nem o da coleção anterior",
+            (tmp / "par.json").read_bytes() == antes_do_par
+            and (tmp / "itens.json").read_bytes().decode("utf-8") == esperado,
+        )
+        checa(
+            "e nenhum temporário sobra",
+            sorted(p.name for p in tmp.iterdir()) == ["antigo.json", "itens.json", "par.json"],
+        )
+
         # Falha na hora de trocar o arquivo (aqui, o destino é uma pasta): o erro
         # sobe, nada fica pela metade e nenhum temporário sobra.
         (tmp / "bloqueado.json").mkdir()
@@ -105,7 +161,7 @@ def json_store():
         checa("falha ao trocar o arquivo levanta erro", levantou)
         checa(
             "e nenhum temporário sobra",
-            sorted(p.name for p in tmp.iterdir()) == ["antigo.json", "bloqueado.json", "itens.json"],
+            sorted(p.name for p in tmp.iterdir()) == ["antigo.json", "bloqueado.json", "itens.json", "par.json"],
         )
         (tmp / "bloqueado.json").rmdir()
 
