@@ -63,7 +63,7 @@ const TAMANHO_ITENS = TAMANHOS_PAGINA.map((n) => ({ value: String(n), label: Str
 
 /** O que o formulário recebe para editar este lançamento. */
 function seedDeEdicao(t: Transaction): DialogSeed {
-  return { id: t.id, type: t.type, amount: t.amount, description: t.description, category_id: t.category_id, due_date: t.settled_at ?? t.due_date }
+  return { id: t.id, type: t.type, amount: t.amount, description: t.description, category_id: t.category_id, account_id: t.account_id, due_date: t.settled_at ?? t.due_date }
 }
 
 function TransactionsContent() {
