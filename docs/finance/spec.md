@@ -357,6 +357,22 @@ Tela: `DespesasPorCategoria` (em `relatorios/_components/`) segue o período da 
 
 `GET /api/reports/top-expenses/{user_id}`, com os mesmos parâmetros e o mesmo 422 do resumo. A conta é `relatorios.maiores_gastos`. Mesmo recorte de despesas por categoria (efetivado, pela data do lançamento, sem transferência interna nem ingestão pendente). Devolve `gastos`: no máximo 10 (`LIMITE_MAIORES_GASTOS`), do maior valor para o menor; no empate, o mais recente e depois o maior `id`. Cada gasto: `id`, `description`, `amount`, `settled_at`, `category_id` e `category_name` (nulos se sem categoria). Tela: `MaioresGastos`; cada linha vai a `/finance/transactions?editar=<id>` (`hrefLancamento` em `lib/relatorios-gastos.ts`). Sem despesa: "Sem despesas neste período". O limite de 10 é decisão do ticket (o spec #7 só pede "ordem e limite corretos"). Por comerciante fica para a Fatia 6.
 
+## Parcelados (issue #20)
+
+`GET /api/reports/installments/{user_id}?hoje=AAAA-MM-DD&incluir_quitados=false`. `hoje` é obrigatório (vem do relógio do cliente, como em vencimentos); inválido ou ausente responde 422 com a frase. A conta é `relatorios_parcelados.parcelados`, em módulo próprio.
+
+**Independente do seletor de Período.** Parcelado é compromisso em aberto, não movimento de um intervalo; o spec #7 não liga a aba ao seletor e por isso a aba não o mostra. A aba escolhida vai na URL (`aba=parcelados`; ausente = Resumo) e `periodo`/`de`/`ate` seguem nela, para voltar ao Resumo sem perder a escolha (`lib/relatorios-parcelados.ts`).
+
+**O que entra:** séries `kind == "installment"` do usuário que tenham parcelas. Tudo sai das parcelas que existem (leitura padrão: ingestão pendente fica fora), não de `total_count`: parcela excluída do meio não conta, coerente com "o total nunca é gravado". Dinheiro somado em centavos inteiros.
+
+**Campos de cada parcelado:** `series_id`, `description`, `total` (soma real das parcelas, com a sobra da divisão na primeira), `parcela` (valor da ÚLTIMA parcela: a primeira pode levar a sobra e, numa edição "esta e futuras", a última reflete o valor vigente), `realizadas` e `restantes` (parcela efetivada, `settled_at`; não é fatura paga), `falta` (soma das parcelas abertas), `proxima` (vencimento da primeira aberta, nula se quitado), `proxima_atrasada` (a próxima já venceu antes de `hoje`), `termino` (vencimento da última parcela; a tela mostra o mês) e `quitado` (nenhuma aberta).
+
+**Lista e total:** só os ativos, ou todos com `incluir_quitados=true`. Ativos pela próxima parcela (a atrasada primeiro), depois os quitados pelo término mais recente. `total_comprometido` soma o `falta` dos ATIVOS e não muda com o interruptor. Sem parcelados: lista vazia e total 0.
+
+**Cartão (ticket #35):** não existe aqui ainda. Entra como campo a mais no item (e coluna na tela), nulo para carnê e crediário; a indicação de "parcela em fatura em aberto" vem junto, sem mudar as contas acima.
+
+Tela: `Parcelados` (em `relatorios/_components/`), tabela com rodapé "Total comprometido", interruptor "Incluir quitados", estados de carregamento, erro e vazio; valores em `MoneyValue` (privacidade). Aceite: `backend/scripts/testa_relatorios_parcelados.py`.
+
 ## Cartão (Fatia 5, ticket #21)
 
 Entidade própria, separada de Conta (coleção `cards`). Cartão não é Conta: o valor `card` saiu de `AccountKind` e a API de contas o recusa (422).
