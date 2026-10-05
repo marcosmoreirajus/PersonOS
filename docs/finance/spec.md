@@ -309,6 +309,23 @@ Regras: valor inválido é ignorado em silêncio, e um intervalo invertido (`de`
 - `total` = soma dos saldos das contas + `no_account`: é o **Saldo da página**. Sem contas cadastradas, tudo está em `no_account` e o total é receita menos despesa, como era.
 - `balance`, `income` e `expense` seguem como antes: `balance` é o **Resultado** (receita menos despesa, sem transferência), não o Saldo. O Saldo é `accounts_balance.total`.
 
+### Relatórios por período (issue #14)
+
+`GET /api/reports/summary/{user_id}?hoje=AAAA-MM-DD&periodo=<atalho>[&de=&ate=]`. `hoje` é obrigatório: quem decide o dia é o relógio local do cliente, e é isso que deixa o teste determinístico. `periodo` é um de `hoje`, `semana`, `mes` (padrão), `mes_anterior`, `ultimos_3_meses`, `ultimos_6_meses`, `ultimos_12_meses`, `ano`, `personalizado` (este exige `de` e `ate`). Pedido inválido responde 422 com `detail` em frase. A conta mora em `app/services/relatorios.py` e só ali; a tela não recalcula intervalos.
+
+Resposta (`data`): `periodo {atalho, de, ate, aberto}`, `anterior {de, ate}`, `anterior_inteiro {de, ate}` e três cartões, `receita`, `despesa` e `resultado`, cada um `{valor, anterior, anterior_inteiro, diferenca, percentual}`. Não há Saldo.
+
+Regras:
+
+- **Aberto** (hoje, semana, mês, últimos N meses, ano): vai do início até hoje e `anterior` é o **mesmo trecho** deslocado (1 dia, 7 dias, N meses; mês curto encolhe o dia: 31/03 compara com 28/02). A semana começa na **segunda**. "Últimos N meses" são N meses de calendário terminando no atual (inclui o corrente, ainda aberto).
+- **Fechado** (mês anterior): `anterior` é o mês anterior inteiro. **Personalizado**: `anterior` é a janela imediatamente anterior de mesma duração; também fechado.
+- `anterior_inteiro` é sempre o período anterior por inteiro (igual a `anterior` nos fechados); a tela o mostra ao lado só nos abertos.
+- `percentual` é `diferenca / |anterior| * 100`, uma casa decimal, e é **`null`** quando o anterior é zero ou vazio (a tela escreve "—"); `diferenca` em reais existe sempre. Nunca "novo".
+- Conta só lançamento **efetivado** (`settled_at`), pela **data do lançamento** (`settled_at`, a que Transações mostra), sem transferência interna e sem ingestão pendente. Estorno e pagamento de fatura entram com a Fatia 5.
+- A URL da tela leva `periodo` (ausente = este mês) e, no personalizado, `de` e `ate`; a leitura e a montagem são puras e testadas em `frontend/lib/relatorios-periodo.ts`.
+
+O bloco "Despesas por categoria" ainda lê `/api/dashboard` (tudo o que está efetivado, sem período): é do ticket #17.
+
 ## Migração (Fatia 1)
 
 1. **Backup** de `backend/data/` antes de qualquer escrita — o projeto tem git, mas o `data/` é dado, não código.
