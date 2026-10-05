@@ -12,18 +12,17 @@ Além dos dois critérios do PRD, cobre as decisões de implementação que o sp
 deixava em aberto (ver o cabeçalho de import_service.py).
 """
 
-import shutil
 import sys
-import tempfile
 from datetime import date, timedelta
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-from app.services import data_service  # noqa: E402
 from app.services import import_service as imp  # noqa: E402
 from app.services.data_service import DataService  # noqa: E402
+from app.services.store import usar_store  # noqa: E402
+from suporte_testes import store_com_dados_de_exemplo  # noqa: E402
 
 falhas = []
 
@@ -65,11 +64,9 @@ def csv_bytes(linhas, sep=";"):
 
 
 def main():
-    tmp = Path(tempfile.mkdtemp(prefix="clari-fatia3-"))
-    for f in (RAIZ / "data").glob("*.json"):
-        shutil.copy(f, tmp / f.name)
-    data_service.DATA_DIR = tmp
-    print("dados de teste em", tmp)
+    # Dados de exemplo em memória: nada é copiado nem gravado em disco.
+    usar_store(store_com_dados_de_exemplo())
+    print("dados de teste em memória")
     print()
 
     hoje = date.today()
@@ -568,7 +565,6 @@ def main():
             print("  -", f_)
         return 1
     print("todos os critérios passaram")
-    shutil.rmtree(tmp, ignore_errors=True)
     return 0
 
 
