@@ -7,6 +7,8 @@ from app.schemas import (
     AccountCreate,
     AccountUpdate,
     BulkAction,
+    CardCreate,
+    CardUpdate,
     PostponePayload,
     PreferencesUpdate,
     ReconcilePayload,
@@ -17,7 +19,7 @@ from app.schemas import (
 )
 from app.services import DataService, BusinessService
 from app.services import import_service as ImportService
-from app.services import relatorios
+from app.services import cartoes, relatorios
 from app.services.import_service import ArquivoInvalido
 
 app = FastAPI(
@@ -168,6 +170,48 @@ async def update_account(account_id: int, payload: AccountUpdate):
     if conta is None:
         raise HTTPException(status_code=404, detail="Conta não encontrada.")
     return {"data": conta}
+
+
+# Cartões (Fatia 5)
+#
+# Entidade própria, separada de Conta: dívida com ciclo (limite, fechamento,
+# vencimento, conta pagadora). Fatura e compras vêm nos tickets seguintes.
+@app.get("/api/cards/user/{user_id}")
+async def get_cards(user_id: int):
+    return {"data": cartoes.listar(user_id)}
+
+
+@app.post("/api/cards")
+async def create_card(payload: CardCreate):
+    try:
+        return {"data": cartoes.criar(
+            payload.user_id,
+            payload.name,
+            payload.limit,
+            payload.closing_day,
+            payload.due_day,
+            payload.default_payer_account_id,
+        )}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.patch("/api/cards/{card_id}")
+async def update_card(card_id: int, payload: CardUpdate):
+    try:
+        cartao = cartoes.atualizar(
+            card_id,
+            payload.name,
+            payload.limit,
+            payload.closing_day,
+            payload.due_day,
+            payload.default_payer_account_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if cartao is None:
+        raise HTTPException(status_code=404, detail="Cartão não encontrado.")
+    return {"data": cartao}
 
 
 # Importação de extrato (Fatia 3)

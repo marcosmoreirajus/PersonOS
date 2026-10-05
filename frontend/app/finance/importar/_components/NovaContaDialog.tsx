@@ -9,7 +9,7 @@ import { Input } from '@/components/motion/input'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-export type ContaTipo = 'checking' | 'wallet' | 'savings' | 'investment' | 'card'
+export type ContaTipo = 'checking' | 'wallet' | 'savings' | 'investment'
 
 export type Conta = {
   id: number
@@ -24,7 +24,6 @@ export const TIPOS_CONTA: { value: ContaTipo; label: string }[] = [
   { value: 'wallet', label: 'Carteira' },
   { value: 'savings', label: 'Poupança' },
   { value: 'investment', label: 'Investimento' },
-  { value: 'card', label: 'Cartão de crédito' },
 ]
 
 const LOGO_LADO = 128

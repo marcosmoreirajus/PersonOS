@@ -175,7 +175,7 @@ O fluxo acima deixava pontos em aberto. Como foram resolvidos, e por quê:
 4. **Palavra genérica não casa** (`compra`, `cartão`, `pix`, `pagamento`, `boleto`…). Casamento por palavra-chave exige um token de 4+ letras que não esteja nessa lista; contenção de uma descrição na outra só vale se a menor tiver algum token assim.
 5. **Cada candidato é reivindicado por uma linha só**, inclusive por linhas que já estão esperando de importações anteriores.
 6. ~~Mesmo extrato em dois formatos vai para a fila~~ → **com a conta escolhida, os dois formatos coincidem** (23/09). A conta do usuário entra no hash e no `external_id` no lugar do ACCTID; CSV e OFX na mesma conta são reconhecidos como já importados, e contas diferentes continuam distintas. O ACCTID do arquivo é só **aviso** (guardado em `file_ref` da conta na primeira importação; a prévia devolve `aviso_conta` se vier de outra conta).
-7. **Entidade Conta (mínima):** `id, user_id, name, kind (checking|card|wallet), file_ref, created_at`; nome único por usuário sem diferenciar caixa/espaços. Rotas `GET /api/accounts/user/{id}`, `POST /api/accounts`, `PATCH /api/accounts/{id}`.
+7. **Entidade Conta (mínima):** `id, user_id, name, kind (checking|savings|investment|wallet; `card` saiu na Fatia 5), file_ref, created_at`; nome único por usuário sem diferenciar caixa/espaços. Rotas `GET /api/accounts/user/{id}`, `POST /api/accounts`, `PATCH /api/accounts/{id}`.
 8. **Decisões na importação:** o commit aceita `decisoes` = `{import_hash: merge|not_duplicate|queue}`; sem decisão a suspeita vai para a fila; decisão para linha não suspeita é recusada (400). A prévia traz `totais {entradas, saidas}` para denunciar sinal invertido.
 9. **Modelo padrão:** `GET /api/import/template/{csv|xlsx}` é a fonte única do layout `data;descricao;valor` (aba de dados só com cabeçalho; exemplos na aba "Como preencher").
 10. **Frontend:** a importação é a página `/finance/importar` (substituiu o diálogo); o botão em Transações é um link.
@@ -325,6 +325,22 @@ Regras:
 - A URL da tela leva `periodo` (ausente = este mês) e, no personalizado, `de` e `ate`; a leitura e a montagem são puras e testadas em `frontend/lib/relatorios-periodo.ts`.
 
 O bloco "Despesas por categoria" ainda lê `/api/dashboard` (tudo o que está efetivado, sem período): é do ticket #17.
+
+## Cartão (Fatia 5, ticket #21)
+
+Entidade própria, separada de Conta (coleção `cards`). Cartão não é Conta: o valor `card` saiu de `AccountKind` e a API de contas o recusa (422).
+
+**Campos:** `id`, `user_id`, `name`, `limit` (>= 0), `closing_day` (1 a 31), `due_day` (1 a 31), `default_payer_account_id` (opcional; precisa ser Conta do mesmo usuário), `file_ref` (reservado para a importação do cartão), `created_at`. Nome único por usuário, sem diferenciar caixa e espaços.
+
+| Método | Rota | Observação |
+|---|---|---|
+| `GET` | `/api/cards/user/{user_id}` | em ordem alfabética |
+| `POST` | `/api/cards` | corpo `{user_id, name, limit, closing_day, due_day, default_payer_account_id?}`; validação de negócio devolve 400 com frase |
+| `PATCH` | `/api/cards/{id}` | só o que vier preenchido muda; `default_payer_account_id: 0` remove a conta pagadora; 404 se não existe |
+
+**Lançamento:** ganha `card_id` e `invoice_id` (nulos). Lançamento antigo, sem o campo gravado, é devolvido com os dois nulos. Nada os preenche ainda (compra no cartão e Fatura são tickets seguintes).
+
+Lógica em `backend/app/services/cartoes.py`; aceite em `backend/scripts/testa_fatia5.py`; tela em `/finance/cartoes`.
 
 ## Migração (Fatia 1)
 
