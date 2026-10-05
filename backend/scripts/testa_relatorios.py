@@ -242,6 +242,10 @@ def categorias():
         lanc(user_id=4, valor=80, data="2026-10-02", category_id=1),
         # Usuário 5: só gasto sem categoria, nenhum no anterior.
         lanc(user_id=5, valor=25, data="2026-10-02"),
+        # Usuário 6: balde de 7 num total de 50 = 14% EXATOS (em ponto flutuante,
+        # 7/50*100 dá 14,000000000000002 e o arredondamento para cima errava para 15).
+        lanc(user_id=6, valor=7, data="2026-10-02"),
+        lanc(user_id=6, valor=43, data="2026-10-02", category_id=1),
     ])
     anterior_store = usar_store(store)
     try:
@@ -279,6 +283,9 @@ def categorias():
 
         r = relatorios.categorias(5, "mes", H)
         checa("só balde: lista de reais vazia e o balde é 100%", lista(r) == [] and r["sem_categoria"]["valor"] == 25 and r["percentual_sem_categoria"] == 100)
+
+        r = relatorios.categorias(6, "mes", H)
+        checa("percentual exato não sobe: 7 de 50 é 14%, não 15%", r["total"] == 50 and r["percentual_sem_categoria"] == 14, str(r["percentual_sem_categoria"]))
 
         r = relatorios.categorias(3, "mes", H)
         checa("período vazio: sem categorias, sem balde, total 0 e sem erro",

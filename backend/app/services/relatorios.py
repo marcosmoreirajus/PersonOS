@@ -11,7 +11,6 @@ anterior; "mês anterior" e o personalizado são fechados.
 """
 
 import calendar
-import math
 from datetime import date, timedelta
 from typing import Any, Dict, Optional, Tuple
 
@@ -192,6 +191,16 @@ def _despesas_por_categoria(user_id: int, de: str, ate: str) -> Dict[Optional[in
     return por_categoria
 
 
+def _percentual_para_cima(parte: float, total: float) -> int:
+    """`parte` sobre `total`, em %, arredondado PARA CIMA, sem erro de ponto flutuante.
+
+    Em float, 7/50*100 dá 14,000000000000002 e o `ceil` subiria para 15. Contando
+    em centavos inteiros, a divisão é exata: -(-a // b) é o teto da divisão inteira.
+    """
+    centavos_parte, centavos_total = round(parte * 100), round(total * 100)
+    return -(-centavos_parte * 100 // centavos_total)
+
+
 def categorias(
     user_id: int, periodo: str, hoje: str, de: Optional[str] = None, ate: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -227,7 +236,7 @@ def categorias(
 
     sem_categoria = cartao_de(None) if atual.get(None, 0.0) > 0 else None
     total = round(sum(c["valor"] for c in reais) + (sem_categoria["valor"] if sem_categoria else 0.0), 2)
-    percentual = math.ceil(sem_categoria["valor"] / total * 100) if sem_categoria and total > 0 else 0
+    percentual = _percentual_para_cima(sem_categoria["valor"], total) if sem_categoria and total > 0 else 0
 
     return {
         "periodo": {"atalho": p["atalho"], "de": p["de"], "ate": p["ate"], "aberto": p["aberto"]},
