@@ -309,6 +309,22 @@ Regras: valor inválido é ignorado em silêncio, e um intervalo invertido (`de`
 - `total` = soma dos saldos das contas + `no_account`: é o **Saldo da página**. Sem contas cadastradas, tudo está em `no_account` e o total é receita menos despesa, como era.
 - `balance`, `income` e `expense` seguem como antes: `balance` é o **Resultado** (receita menos despesa, sem transferência), não o Saldo. O Saldo é `accounts_balance.total`.
 
+### Próximos vencimentos (issue #13)
+
+`GET /api/dashboard/{user_id}/upcoming?hoje=AAAA-MM-DD`. `hoje` é obrigatório e vem do relógio local do cliente (determinístico, e certo em UTC-3); inválido responde 422. A conta mora em `app/services/vencimentos.py`; nada é gravado.
+
+```json
+"data": {
+  "a_pagar":   [{ "id": 5, "description": "Aluguel", "amount": 10.0, "due_date": "2026-09-15", "overdue": true }],
+  "a_receber": []
+}
+```
+
+- Entram só lançamentos **previstos** (sem `settled_at`) do usuário: despesa = `a_pagar`, receita = `a_receber`. Efetivado, transferência interna e ingestão pendente ficam fora.
+- Cada lista tem **até 5** itens ordenados por `due_date` (o `id` desempata). Como atrasado é vencimento antes de hoje, a ordenação já o põe primeiro; `overdue` marca para a tela destacar. Vencer hoje não é atrasado.
+- **Sem janela**: a janela de dias é do sino (`avisos.ts`) e a soma do sino não muda. Sem previstos, as duas listas vêm vazias (não é erro) e a tela mostra "Nada a pagar nem a receber" com link para Agendadas.
+- Todo item e o "Ver todos" levam a `/finance/agendadas`. A fatura do cartão como linha a pagar é a etapa 2. Componente: `finance/_components/ProximosVencimentos.tsx`; a posição na página é provisória (layout final no ticket #23). Teste: `backend/scripts/testa_vencimentos.py`.
+
 ### Relatórios por período (issue #14)
 
 `GET /api/reports/summary/{user_id}?hoje=AAAA-MM-DD&periodo=<atalho>[&de=&ate=]`. `hoje` é obrigatório: quem decide o dia é o relógio local do cliente, e é isso que deixa o teste determinístico. `periodo` é um de `hoje`, `semana`, `mes` (padrão), `mes_anterior`, `ultimos_3_meses`, `ultimos_6_meses`, `ultimos_12_meses`, `ano`, `personalizado` (este exige `de` e `ate`). Pedido inválido responde 422 com `detail` em frase. A conta mora em `app/services/relatorios.py` e só ali; a tela não recalcula intervalos.

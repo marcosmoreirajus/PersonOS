@@ -17,7 +17,7 @@ from app.schemas import (
 )
 from app.services import DataService, BusinessService
 from app.services import import_service as ImportService
-from app.services import relatorios
+from app.services import relatorios, vencimentos
 from app.services.import_service import ArquivoInvalido
 
 app = FastAPI(
@@ -292,6 +292,15 @@ async def get_report_summary(
 ):
     try:
         return {"data": relatorios.resumo(user_id, periodo, hoje, de, ate)}
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro))
+
+
+# Próximos vencimentos da Visão Geral (issue #13). `hoje` vem do cliente.
+@app.get("/api/dashboard/{user_id}/upcoming")
+async def get_upcoming(user_id: int, hoje: str):
+    try:
+        return {"data": vencimentos.proximos(user_id, hoje)}
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro))
 
