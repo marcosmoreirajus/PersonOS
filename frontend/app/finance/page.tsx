@@ -53,6 +53,11 @@ type Category = {
   type: 'expense' | 'income' | 'both'
 }
 
+/** O que a tela usa do resumo da Visão Geral: o Saldo vem da API, não é refeito aqui. */
+type DashboardSummary = {
+  accounts_balance: { total: number }
+}
+
 function dayKey(iso: string) {
   return iso.slice(0, 10)
 }
@@ -61,6 +66,7 @@ export default function FinanceDashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [scheduled, setScheduled] = useState<ScheduledItem[]>([])
+  const [saldo, setSaldo] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [month, setMonth] = useState(() => new Date())
@@ -80,12 +86,14 @@ export default function FinanceDashboardPage() {
       setLoading(true)
       setError(null)
       try {
-        const [tx, cats, series] = await Promise.all([
+        const [tx, cats, series, resumo] = await Promise.all([
           api<Transaction[]>(`/api/transactions/user/${CURRENT_USER_ID}`),
           api<Category[]>('/api/categories'),
           api<Series[]>(`/api/series/user/${CURRENT_USER_ID}`),
+          api<DashboardSummary>(`/api/dashboard/${CURRENT_USER_ID}`),
         ])
         if (!cancelled) {
+          setSaldo(resumo.accounts_balance.total)
           // Saldo, cards e relatórios só olham o efetivado; o previsto existe
           // na mesma base desde a fonte única, mas não soma.
           setTransactions(
@@ -281,7 +289,7 @@ export default function FinanceDashboardPage() {
           label="Saldo"
           sentence={
             <>
-              Você tem <MoneyValue value={computed.balance} className="font-bold" /> de saldo, somando{' '}
+              Você tem <MoneyValue value={saldo} className="font-bold" /> de saldo, somando as contas e os{' '}
               {computed.totalCount} lançamento{computed.totalCount === 1 ? '' : 's'} registrado
               {computed.totalCount === 1 ? '' : 's'}.
             </>

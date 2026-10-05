@@ -735,7 +735,13 @@ class DataService:
 
         income = sum(t["amount"] for t in somaveis if t["type"] == "income")
         expense = sum(t["amount"] for t in somaveis if t["type"] == "expense")
+        # `balance` continua sendo receita menos despesa (o Resultado: o
+        # testa_fatia4 e quem já o lê dependem disso). O Saldo da página é
+        # `accounts_balance["total"]`, a soma dos saldos das contas.
+        from app.services.saldos import saldos_por_conta  # import tardio: saldos importa este módulo
+
         balance = income - expense
+        accounts_balance = saldos_por_conta(user_id)
 
         # Despesas por categoria. O nulo NÃO vira uma categoria: vai num balde
         # à parte, que o relatório mostra fora da escala das categorias reais
@@ -756,6 +762,7 @@ class DataService:
 
         return {
             "balance": balance,
+            "accounts_balance": accounts_balance,
             "income": income,
             "expense": expense,
             "expenses_by_category": expenses_by_category,
