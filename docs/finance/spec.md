@@ -291,6 +291,24 @@ A tela `/finance/transactions` é **endereçável**: o que ela mostra (um lança
 
 Regras: valor inválido é ignorado em silêncio, e um intervalo invertido (`de` depois de `ate`) é ignorado por inteiro. A tela escreve a URL de volta com `replaceState`, sem criar entrada de histórico por tecla digitada; fechar a edição tira o `editar`, para o botão voltar não reabri-la. A lógica de ler e montar os parâmetros é pura e tem teste próprio (`transacoes-url.test.ts`).
 
+### Saldo por conta e Saldo da página (issue #12)
+
+`GET /api/dashboard/{user_id}` ganha `accounts_balance` (lógica em `services/saldos.py`; nada é gravado):
+
+```json
+"accounts_balance": {
+  "accounts": [{ "account_id": 1, "name": "Itaú", "kind": "checking", "balance": 1300.0 }],
+  "no_account": { "balance": 70.0 },
+  "total": 1370.0
+}
+```
+
+- `accounts[].balance` = saldo inicial + entradas − saídas **efetivadas** da conta, em ordem alfabética sem diferenciar caixa. Previsto e ingestão pendente não entram.
+- **As pontas de transferência interna contam** na conta de cada uma (o saldo tem que bater com o extrato). Receita, despesa e relatórios continuam sem elas. Com só uma ponta importada, o `total` oscila; com as duas, se anula.
+- `no_account` é `null` quando nenhum efetivado está sem conta; senão `{ "balance": x }`. Lançamento cuja conta não existe mais para o usuário também cai aí, para a soma fechar.
+- `total` = soma dos saldos das contas + `no_account`: é o **Saldo da página**. Sem contas cadastradas, tudo está em `no_account` e o total é receita menos despesa, como era.
+- `balance`, `income` e `expense` seguem como antes: `balance` é o **Resultado** (receita menos despesa, sem transferência), não o Saldo. O Saldo é `accounts_balance.total`.
+
 ## Migração (Fatia 1)
 
 1. **Backup** de `backend/data/` antes de qualquer escrita — o projeto tem git, mas o `data/` é dado, não código.
