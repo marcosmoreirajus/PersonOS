@@ -247,3 +247,44 @@ def categorias(
         "total": total,
         "percentual_sem_categoria": percentual,
     }
+
+
+LIMITE_MAIORES_GASTOS = 10
+
+
+def maiores_gastos(
+    user_id: int, periodo: str, hoje: str, de: Optional[str] = None, ate: Optional[str] = None
+) -> Dict[str, Any]:
+    """Os maiores lançamentos de despesa do período (issue #19).
+
+    Mesmo recorte de `_despesas_por_categoria`: efetivado, pela data do
+    lançamento, sem transferência interna nem ingestão pendente. Do maior valor
+    para o menor; no empate, o mais recente primeiro (depois o id, para a ordem
+    ser estável). No máximo `LIMITE_MAIORES_GASTOS`. Cada gasto leva o `id`
+    para a tela abrir o lançamento (issue #6). Por comerciante só na Fatia 6.
+    """
+    p = resolver_periodo(periodo, hoje, de, ate)
+    despesas = [
+        t
+        for t in DataService.get_settled_by_user(user_id)
+        if t["type"] == "expense" and not t.get("is_internal_transfer") and p["de"] <= t["settled_at"][:10] <= p["ate"]
+    ]
+    despesas.sort(key=lambda t: (-t["amount"], _negativa(t["settled_at"][:10]), -t["id"]))
+
+    gastos = []
+    for t in despesas[:LIMITE_MAIORES_GASTOS]:
+        categoria = DataService.get_category_by_id(t["category_id"]) if t.get("category_id") else None
+        gastos.append({
+            "id": t["id"],
+            "description": t["description"],
+            "amount": t["amount"],
+            "settled_at": t["settled_at"],
+            "category_id": t.get("category_id"),
+            "category_name": categoria["name"] if categoria else None,
+        })
+    return {"periodo": {"atalho": p["atalho"], "de": p["de"], "ate": p["ate"], "aberto": p["aberto"]}, "gastos": gastos}
+
+
+def _negativa(dia: str) -> int:
+    """`AAAA-MM-DD` como número negativo, para ordenar do mais recente ao mais antigo."""
+    return -int(dia.replace("-", ""))

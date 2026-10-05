@@ -360,6 +360,17 @@ async def get_report_categories(
         raise HTTPException(status_code=422, detail=str(erro))
 
 
+# Maiores gastos do período (issue #19).
+@app.get("/api/reports/top-expenses/{user_id}")
+async def get_report_top_expenses(
+    user_id: int, hoje: str, periodo: str = relatorios.PADRAO, de: str | None = None, ate: str | None = None
+):
+    try:
+        return {"data": relatorios.maiores_gastos(user_id, periodo, hoje, de, ate)}
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro))
+
+
 # Rotas de Patrimônio (investimentos)
 @app.get("/api/investments/{user_id}")
 async def get_investments(user_id: int):

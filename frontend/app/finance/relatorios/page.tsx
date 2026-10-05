@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { PeriodSelector } from './_components/PeriodSelector'
 import { DespesasPorCategoria } from './_components/DespesasPorCategoria'
+import { MaioresGastos } from './_components/MaioresGastos'
 import { ResultCards, type ResumoPeriodo } from './_components/ResultCards'
 import { CURRENT_USER_ID, api } from '@/lib/api'
 import { hojeLocal } from '@/lib/dates'
@@ -73,6 +74,8 @@ function RelatoriosContent() {
       )}
 
       <DespesasPorCategoria periodo={periodo} hoje={hoje} pronto={!incompleto} />
+
+      <MaioresGastos periodo={periodo} hoje={hoje} pronto={!incompleto} />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Critérios de aceite de Relatórios: período, comparação e cards (issue #14,
-spec #7). Roda sobre o MemoriaStore: nenhum arquivo é tocado.
+Critérios de aceite de Relatórios: período, comparação e cards (issue #14),
+categorias (#17) e maiores gastos (#19), spec #7. Roda sobre o MemoriaStore: nenhum arquivo é tocado.
 
     cada atalho de período devolve o intervalo certo; período aberto compara
     com o mesmo trecho do anterior, o fechado com o anterior inteiro e o
@@ -302,12 +302,73 @@ def categorias():
         usar_store(anterior_store)
 
 
+def maiores_gastos():
+    print("maiores gastos (issue #19; hoje = 03/10/2026)")
+    H = "2026-10-03"
+    store = MemoriaStore()
+    store.save("categories", [{"id": 1, "name": "Alimentação"}, {"id": 2, "name": "Transporte"}])
+    # 12 despesas de outubro (1 a 3): valores 1..12 para provar o limite de 10.
+    lancs = [lanc(valor=v, data="2026-10-02", description=f"gasto {v}", category_id=1 if v % 2 else None) for v in range(1, 13)]
+    lancs += [
+        lanc(valor=12, data="2026-10-03", description="empate mais novo", category_id=2),
+        lanc(tipo="income", valor=9000, data="2026-10-02", description="salário"),
+        lanc(valor=9000, data="2026-10-02", description="entre contas", is_internal_transfer=True),
+        lanc(valor=9000, data="2026-10-02", description="a conciliar", ingest_state="pending_reconciliation"),
+        lanc(valor=9000, data="2026-10-02", description="previsto", settled_at=None),
+        lanc(valor=9000, data="2026-10-04", description="depois de hoje"),
+        lanc(valor=9000, data="2026-09-30", description="mês passado"),
+        lanc(user_id=2, valor=9000, data="2026-10-02", description="de outro usuário"),
+        # Usuário 4: poucos gastos, um deles com centavos.
+        lanc(user_id=4, valor=80.5, data="2026-10-01", description="mercado", category_id=1),
+        lanc(user_id=4, valor=20, data="2026-10-02", description="uber", category_id=2),
+    ]
+    store.save("transactions", lancs)
+    anterior_store = usar_store(store)
+    try:
+        r = relatorios.maiores_gastos(1, "mes", H)
+        descricoes = [g["description"] for g in r["gastos"]]
+        checa("devolve no máximo 10, do maior para o menor; empate: o mais novo primeiro",
+              descricoes == ["empate mais novo", "gasto 12", "gasto 11", "gasto 10", "gasto 9", "gasto 8", "gasto 7", "gasto 6", "gasto 5", "gasto 4"],
+              str(descricoes))
+        checa("fora: receita, transferência interna, ingestão pendente, previsto, fora do período e outro usuário",
+              not {"salário", "entre contas", "a conciliar", "previsto", "depois de hoje", "mês passado", "de outro usuário"} & set(descricoes))
+        g = r["gastos"][0]
+        checa("cada gasto traz id, descrição, valor, data, categoria (id e nome)",
+              (g["amount"], g["settled_at"][:10], g["category_id"], g["category_name"]) == (12, "2026-10-03", 2, "Transporte") and isinstance(g["id"], int), str(g))
+        sem = next(x for x in r["gastos"] if x["description"] == "gasto 12")
+        checa("sem categoria: category_id e category_name nulos", sem["category_id"] is None and sem["category_name"] is None, str(sem))
+        checa("devolve o período usado", r["periodo"]["de"] == "2026-10-01" and r["periodo"]["ate"] == "2026-10-03", str(r["periodo"]))
+
+        r = relatorios.maiores_gastos(4, "mes", H)
+        checa("poucos gastos: todos, em ordem, com centavos", [(g["description"], g["amount"]) for g in r["gastos"]] == [("mercado", 80.5), ("uber", 20)], str(r["gastos"]))
+
+        r = relatorios.maiores_gastos(1, "hoje", H)
+        checa("hoje: só o do dia", [g["description"] for g in r["gastos"]] == ["empate mais novo"])
+
+        r = relatorios.maiores_gastos(1, "personalizado", H, "2026-09-30", "2026-09-30")
+        checa("personalizado: 30/09 tem só 'mês passado'", [g["description"] for g in r["gastos"]] == ["mês passado"])
+
+        r = relatorios.maiores_gastos(3, "mes", H)
+        checa("período sem despesa: lista vazia, sem erro", r["gastos"] == [])
+
+        cli = TestClient(app)
+        resp = cli.get("/api/reports/top-expenses/4", params={"periodo": "mes", "hoje": H})
+        corpo = resp.json().get("data", {})
+        checa("GET /api/reports/top-expenses/{id} devolve os maiores gastos", resp.status_code == 200 and len(corpo.get("gastos", [])) == 2, str(resp.status_code))
+        resp = cli.get("/api/reports/top-expenses/1", params={"periodo": "personalizado", "hoje": H, "de": "2026-09-10", "ate": "2026-09-01"})
+        checa("pedido inválido responde 422 com a frase", resp.status_code == 422 and isinstance(resp.json().get("detail"), str))
+    finally:
+        usar_store(anterior_store)
+
+
 def main():
     atalhos()
     print()
     cards()
     print()
     categorias()
+    print()
+    maiores_gastos()
     print()
     if falhas:
         print("FALHARAM: %d" % len(falhas))

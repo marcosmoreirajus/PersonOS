@@ -353,6 +353,10 @@ Resposta (`data`): `periodo`, `anterior`, `anterior_inteiro` (como no resumo) e:
 
 Tela: `DespesasPorCategoria` (em `relatorios/_components/`) segue o período da página, mostra variação e anterior sob cada rótulo e mantém pizza, barras e segmentada. O balde continua em `--foreground`, fora da escala das reais, e (como antes) encabeça a lista quando é o maior. Clique: categoria real vai a `/finance/transactions?tipo=saida&categoria=<id>&de=&ate=` (`hrefCategoria` em `lib/relatorios-categorias.ts`, sobre `montarBusca`); o balde vai a `/finance/revisar?secao=sem-categoria`. Sem despesa no período: "Sem lançamentos neste período" (o bloco não some). `/api/dashboard` segue servindo só a Visão Geral.
 
+### Maiores gastos (issue #19)
+
+`GET /api/reports/top-expenses/{user_id}`, com os mesmos parâmetros e o mesmo 422 do resumo. A conta é `relatorios.maiores_gastos`. Mesmo recorte de despesas por categoria (efetivado, pela data do lançamento, sem transferência interna nem ingestão pendente). Devolve `gastos`: no máximo 10 (`LIMITE_MAIORES_GASTOS`), do maior valor para o menor; no empate, o mais recente e depois o maior `id`. Cada gasto: `id`, `description`, `amount`, `settled_at`, `category_id` e `category_name` (nulos se sem categoria). Tela: `MaioresGastos`; cada linha vai a `/finance/transactions?editar=<id>` (`hrefLancamento` em `lib/relatorios-gastos.ts`). Sem despesa: "Sem despesas neste período". O limite de 10 é decisão do ticket (o spec #7 só pede "ordem e limite corretos"). Por comerciante fica para a Fatia 6.
+
 ## Cartão (Fatia 5, ticket #21)
 
 Entidade própria, separada de Conta (coleção `cards`). Cartão não é Conta: o valor `card` saiu de `AccountKind` e a API de contas o recusa (422).
