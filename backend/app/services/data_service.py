@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta, timezone
+from functools import wraps
 from typing import List, Dict, Any
 
 from app.services import series_engine
@@ -11,6 +12,23 @@ DATA_DIR = PASTA_DE_DADOS
 # ainda trocam essa variável para isolar os dados. Isso sai quando eles migrarem
 # para o MemoriaStore.
 usar_store(JsonStore(lambda: DATA_DIR))
+
+
+def em_transacao(funcao):
+    """
+    Faz a operação gravar no store ativo numa `transacao()`: tudo ou nada.
+
+    As operações que gravam mais de uma coleção (lançamentos e séries, ou
+    lançamentos e contas) usam isto, para uma falha no meio não deixar os dados
+    incoerentes. A assinatura da função não muda.
+    """
+
+    @wraps(funcao)
+    def envolvida(*args, **kwargs):
+        with store_ativo().transacao():
+            return funcao(*args, **kwargs)
+
+    return envolvida
 
 
 class DataService:
@@ -86,6 +104,7 @@ class DataService:
         return [t for t in DataService.get_transactions_by_user(user_id) if t.get("settled_at")]
 
     @staticmethod
+    @em_transacao
     def create_transaction(
         user_id: int,
         category_id: int,
@@ -207,6 +226,7 @@ class DataService:
         return [t for t in da_serie if not t.get("settled_at") or t["id"] == alvo["id"]]
 
     @staticmethod
+    @em_transacao
     def update_transaction(
         transaction_id: int, changes: Dict[str, Any], scope: str = "only_this"
     ) -> Dict[str, Any] | None:
@@ -254,6 +274,7 @@ class DataService:
         return alvo
 
     @staticmethod
+    @em_transacao
     def delete_transaction(transaction_id: int, scope: str = "only_this") -> int:
         """
         Exclui e, em escopo de série, encerra a série.
@@ -314,6 +335,7 @@ class DataService:
         return len(alvos)
 
     @staticmethod
+    @em_transacao
     def bulk_delete(ids: List[int]) -> int:
         """Exclui vários lançamentos. Não encerra série: seleção não é série."""
         transactions = DataService.load_json("transactions")
@@ -477,6 +499,7 @@ class DataService:
         return novas
 
     @staticmethod
+    @em_transacao
     def estender_series(user_id: int) -> Dict[str, Any]:
         """
         Roda a janela de todas as séries ativas do usuário.
@@ -543,6 +566,7 @@ class DataService:
         return DataService.update_transaction(transaction_id, {"settled_at": quando}, "only_this")
 
     @staticmethod
+    @em_transacao
     def postpone_transaction(transaction_id: int, scope: str = "only_this") -> int:
         """
         Adia um vencimento em um período da série (ou um mês, se avulso).
