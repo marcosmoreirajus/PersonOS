@@ -3,15 +3,7 @@ from functools import wraps
 from typing import List, Dict, Any
 
 from app.services import series_engine
-from app.services.store import PASTA_DE_DADOS, JsonStore, store_ativo, usar_store
-
-# Caminho dos dados
-DATA_DIR = PASTA_DE_DADOS
-
-# O store padrão aponta para DATA_DIR, lido a cada uso: os scripts de aceite
-# ainda trocam essa variável para isolar os dados. Isso sai quando eles migrarem
-# para o MemoriaStore.
-usar_store(JsonStore(lambda: DATA_DIR))
+from app.services.store import store_ativo
 
 
 def em_transacao(funcao):

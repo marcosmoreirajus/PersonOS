@@ -16,7 +16,6 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-from app.services import data_service  # noqa: E402
 from app.services import import_service as imp  # noqa: E402
 from app.services.data_service import DataService  # noqa: E402
 from app.services.store import JsonStore, MemoriaStore, usar_store  # noqa: E402
@@ -169,18 +168,6 @@ def json_store():
         fundo = JsonStore(tmp / "a" / "b")
         fundo.save("x", [{"id": 1}])
         checa("cria a pasta quando ela não existe", fundo.load("x") == [{"id": 1}])
-
-        # A pasta pode ser dada por função, resolvida a cada uso.
-        destino = {"pasta": tmp / "um"}
-        dinamico = JsonStore(lambda: destino["pasta"])
-        dinamico.save("y", [{"id": 1}])
-        destino["pasta"] = tmp / "dois"
-        checa("com pasta dada por função, trocar a pasta troca onde lê", dinamico.load("y") == [])
-        dinamico.save("y", [{"id": 2}])
-        checa(
-            "e onde grava",
-            (tmp / "um" / "y.json").exists() and (tmp / "dois" / "y.json").exists(),
-        )
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -206,12 +193,11 @@ def servico_usa_o_store():
     """O serviço de dados e a importação falam com o store ativo, não com o disco."""
     print("Serviço de dados e importação passam pelo store ativo")
     tmp = Path(tempfile.mkdtemp(prefix="clari-store-servico-"))
-    pasta_original = data_service.DATA_DIR
-    data_service.DATA_DIR = tmp
+    # Um JsonStore numa pasta temporária faz o papel do store padrão, sem tocar backend/data.
+    original = usar_store(JsonStore(tmp))
     try:
-        # Sem trocar nada, o padrão é o JsonStore na pasta de dados do serviço.
         (tmp / "users.json").write_text('[{"id": 1, "name": "Marco"}]', encoding="utf-8")
-        checa("por padrão o serviço lê os arquivos da pasta de dados", DataService.load_json("users") == [{"id": 1, "name": "Marco"}])
+        checa("com um JsonStore ativo o serviço lê os arquivos da pasta", DataService.load_json("users") == [{"id": 1, "name": "Marco"}])
         DataService.save_json("categories", [{"id": 5}])
         checa("e grava nela", (tmp / "categories.json").exists())
 
@@ -236,7 +222,7 @@ def servico_usa_o_store():
         checa("usar_store devolve o store que estava ativo", isinstance(devolvido, MemoriaStore))
         checa("restaurar o store anterior volta a ler o disco", DataService.load_json("users") == [{"id": 1, "name": "Marco"}])
     finally:
-        data_service.DATA_DIR = pasta_original
+        usar_store(original)
         shutil.rmtree(tmp, ignore_errors=True)
 
 

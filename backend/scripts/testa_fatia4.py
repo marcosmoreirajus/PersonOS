@@ -11,17 +11,16 @@ O lado do backend: o resumo separa o gasto sem categoria das categorias reais
 "A revisar" devolve as duas seções.
 """
 
-import shutil
 import sys
-import tempfile
 from datetime import date, timedelta
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-from app.services import data_service  # noqa: E402
 from app.services.data_service import DataService  # noqa: E402
+from app.services.store import usar_store  # noqa: E402
+from suporte_testes import store_com_dados_de_exemplo  # noqa: E402
 
 falhas = []
 
@@ -33,11 +32,9 @@ def checa(nome, condicao, detalhe=""):
 
 
 def main():
-    tmp = Path(tempfile.mkdtemp(prefix="clari-fatia4-"))
-    for f in (RAIZ / "data").glob("*.json"):
-        shutil.copy(f, tmp / f.name)
-    data_service.DATA_DIR = tmp
-    print("dados de teste em", tmp)
+    # Dados de exemplo em memória: nada é copiado nem gravado em disco.
+    usar_store(store_com_dados_de_exemplo())
+    print("dados de teste em memória")
     print()
 
     # Usuário isolado: os dados reais do usuário 1 não interferem nas contas.
@@ -149,7 +146,6 @@ def main():
             print("  -", f_)
         return 1
     print("todos os critérios passaram")
-    shutil.rmtree(tmp, ignore_errors=True)
     return 0
 
 

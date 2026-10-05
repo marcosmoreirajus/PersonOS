@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Preferências dos avisos do sino (issue #2), verificadas sobre uma cópia dos
-dados — o arquivo real não é tocado.
+Preferências dos avisos do sino (issue #2), verificadas sobre o MemoriaStore
+semeado com os dados de exemplo — nenhum arquivo é tocado.
 
 O backend só guarda e devolve: quais avisos ficam ligados, a janela do
 "a vencer" e o conjunto visto. Derivar os avisos é do front, que sabe qual é
 o "hoje" local (ver lib/dates.ts) — o servidor não.
 """
 
-import shutil
 import sys
-import tempfile
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-from app.services import data_service  # noqa: E402
 from app.services.data_service import DataService  # noqa: E402
+from app.services.store import usar_store  # noqa: E402
+from suporte_testes import store_com_dados_de_exemplo  # noqa: E402
 
 falhas = []
 
@@ -29,12 +28,10 @@ def checa(nome, condicao, detalhe=""):
 
 
 def main():
-    tmp = Path(tempfile.mkdtemp(prefix="clari-avisos-"))
-    for f in (RAIZ / "data").glob("*.json"):
-        shutil.copy(f, tmp / f.name)
-    (tmp / "preferences.json").unlink(missing_ok=True)
-    data_service.DATA_DIR = tmp
-    print("dados de teste em", tmp)
+    # Dados de exemplo em memória, sem preferências: nada vai ao disco.
+    store = store_com_dados_de_exemplo(sem=("preferences",))
+    usar_store(store)
+    print("dados de teste em memória")
     print()
 
     print("Serviço")
@@ -42,7 +39,7 @@ def main():
     checa("sem preferência gravada, valem os padrões",
           padrao == {"user_id": 1, "em_atraso": True, "a_vencer": True, "janela_a_vencer": 7, "visto": []},
           str(padrao))
-    checa("ler não grava nada", not (tmp / "preferences.json").exists())
+    checa("ler não grava nada", store.load("preferences") == [])
 
     p = DataService.update_preferences(1, {"janela_a_vencer": 3})
     checa("gravação parcial muda só o campo enviado", p["janela_a_vencer"] == 3 and p["a_vencer"] is True, str(p))
@@ -86,7 +83,6 @@ def main():
             print("  -", f_)
         return 1
     print("todos os critérios passaram")
-    shutil.rmtree(tmp, ignore_errors=True)
     return 0
 
 

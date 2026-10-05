@@ -21,12 +21,11 @@ import os
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, ContextManager, Dict, Iterator, List, Optional, Protocol, Union
+from typing import Any, ContextManager, Dict, Iterator, List, Optional, Protocol, Union
 
 Linhas = List[Dict[str, Any]]
 
-# A pasta dos dados reais. Fica aqui, num lugar só: o serviço de dados a usa para
-# o seu `DATA_DIR` e o store padrão aponta para ela.
+# A pasta dos dados reais: o store padrão aponta para ela.
 PASTA_DE_DADOS = Path(__file__).parent.parent.parent / "data"
 
 
@@ -86,11 +85,6 @@ class JsonStore(_StoreComTransacao):
     """
     Um arquivo JSON por coleção. Transitório: some quando o banco entrar.
 
-    `pasta` pode ser um caminho ou uma função que devolve o caminho, resolvida a
-    cada uso (o serviço de dados ainda aponta para a pasta por uma variável que
-    os scripts de aceite trocam; isso sai quando eles migrarem para o
-    `MemoriaStore`).
-
     A gravação não deixa arquivo pela metade: o conteúdo de TODAS as coleções é
     gerado antes de tocar o disco, cada uma é escrita num arquivo temporário da
     mesma pasta e só então os temporários trocam os definitivos. Se a
@@ -104,15 +98,12 @@ class JsonStore(_StoreComTransacao):
     em arquivo; o banco (PostgreSQL), que substitui este adaptador, a elimina.
     """
 
-    def __init__(self, pasta: Union[Path, str, Callable[[], Union[Path, str]]]) -> None:
+    def __init__(self, pasta: Union[Path, str]) -> None:
         super().__init__()
-        self._pasta = pasta
-
-    def _dir(self) -> Path:
-        return Path(self._pasta() if callable(self._pasta) else self._pasta)
+        self._pasta = Path(pasta)
 
     def _ler(self, nome: str) -> Linhas:
-        caminho = self._dir() / f"{nome}.json"
+        caminho = self._pasta / f"{nome}.json"
         try:
             with open(caminho, "r", encoding="utf-8") as f:
                 return json.load(f)
@@ -124,7 +115,7 @@ class JsonStore(_StoreComTransacao):
         conteudos = {nome: json.dumps(linhas, ensure_ascii=False, indent=2) for nome, linhas in colecoes.items()}
         if not conteudos:
             return
-        pasta = self._dir()
+        pasta = self._pasta
         pasta.mkdir(parents=True, exist_ok=True)
         temporarios: Dict[str, str] = {}
         try:
