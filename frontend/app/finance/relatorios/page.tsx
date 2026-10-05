@@ -1,107 +1,13 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { CircleAlert } from 'lucide-react'
-
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { MoneyValue } from '@/components/ui/money-value'
-import { CategoryBreakdown, rankWithUncategorized, REVISAR_SEM_CATEGORIA } from '../_components/CategoryBreakdown'
 import { PeriodSelector } from './_components/PeriodSelector'
+import { DespesasPorCategoria } from './_components/DespesasPorCategoria'
 import { ResultCards, type ResumoPeriodo } from './_components/ResultCards'
 import { CURRENT_USER_ID, api } from '@/lib/api'
-import { categoryColorByRank } from '@/lib/category-colors'
 import { hojeLocal } from '@/lib/dates'
 import { lerPeriodo, montarBuscaPeriodo, type PeriodoEscolhido } from '@/lib/relatorios-periodo'
-
-type DashboardSummary = {
-  balance: number
-  income: number
-  expense: number
-  expenses_by_category: Record<string, number>
-  /** Gasto efetivado com `category_id` nulo — o balde virtual do spec. */
-  uncategorized_expense: number
-}
-
-/**
- * Despesas por categoria. Este bloco é do ticket #17 e AINDA NÃO segue o
- * período: lê o resumo que soma tudo o que está efetivado. Fica como estava.
- */
-function DespesasPorCategoria() {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function fetchData() {
-      setLoading(true)
-      setError(null)
-      try {
-        const dash = await api<DashboardSummary>(`/api/dashboard/${CURRENT_USER_ID}`)
-        if (!cancelled) {
-          setSummary(dash)
-        }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Não foi possível carregar os relatórios.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    fetchData()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  if (loading) {
-    return <p className="text-muted-foreground">Carregando...</p>
-  }
-
-  if (error || !summary) {
-    return (
-      <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
-        {error || 'Nenhum dado disponível.'}
-      </div>
-    )
-  }
-
-  const uncategorized = summary.uncategorized_expense ?? 0
-  const categoryData = rankWithUncategorized(
-    Object.entries(summary.expenses_by_category).map(([name, value]) => ({ name, value })),
-    uncategorized,
-    categoryColorByRank
-  )
-  // Sem transferência interna nas somas, categorias + balde = despesa do card.
-  const pctSemCategoria = summary.expense > 0 ? (uncategorized / summary.expense) * 100 : 0
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Despesas por categoria</CardTitle>
-        <CardDescription>Onde o dinheiro saiu, de tudo o que está registrado (ainda não segue o período)</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {uncategorized > 0 && (
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-border bg-muted px-4 py-2 text-sm text-foreground">
-            <CircleAlert className="size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
-            {/* Arredonda para cima: 0,4% sem categoria não pode aparecer como 0%. */}
-            <span>
-              {Math.ceil(pctSemCategoria)}% das despesas (<MoneyValue value={uncategorized} />) estão sem categoria.
-            </span>
-            <Link href={REVISAR_SEM_CATEGORIA} className="font-medium underline underline-offset-4">
-              Classificar agora
-            </Link>
-          </p>
-        )}
-        <CategoryBreakdown data={categoryData} />
-      </CardContent>
-    </Card>
-  )
-}
 
 function RelatoriosContent() {
   const busca = useSearchParams()
@@ -166,7 +72,7 @@ function RelatoriosContent() {
         <ResultCards resumo={resumo} />
       )}
 
-      <DespesasPorCategoria />
+      <DespesasPorCategoria periodo={periodo} hoje={hoje} pronto={!incompleto} />
     </div>
   )
 }

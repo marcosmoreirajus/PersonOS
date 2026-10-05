@@ -11,6 +11,7 @@ anterior; "mês anterior" e o personalizado são fechados.
 """
 
 import calendar
+import math
 from datetime import date, timedelta
 from typing import Any, Dict, Optional, Tuple
 
@@ -170,4 +171,70 @@ def resumo(
         "receita": _cartao(atual[0], ant[0], inteiro[0]),
         "despesa": _cartao(atual[1], ant[1], inteiro[1]),
         "resultado": _cartao(resultado(atual), resultado(ant), resultado(inteiro)),
+    }
+
+
+def _despesas_por_categoria(user_id: int, de: str, ate: str) -> Dict[Optional[int], float]:
+    """Despesa efetivada entre `de` e `ate` por `category_id` (`None` = sem categoria).
+
+    Mesmo recorte de `_somas`: efetivado, pela data do lançamento, sem
+    transferência interna nem ingestão pendente. Só despesa: a receita sem
+    categoria não entra no balde (spec, Fatia 4, item 2).
+    """
+    por_categoria: Dict[Optional[int], float] = {}
+    for t in DataService.get_settled_by_user(user_id):
+        if t.get("is_internal_transfer") or t["type"] != "expense":
+            continue
+        if not de <= t["settled_at"][:10] <= ate:
+            continue
+        chave = t.get("category_id")
+        por_categoria[chave] = por_categoria.get(chave, 0.0) + t["amount"]
+    return por_categoria
+
+
+def categorias(
+    user_id: int, periodo: str, hoje: str, de: Optional[str] = None, ate: Optional[str] = None
+) -> Dict[str, Any]:
+    """Despesas por categoria do período, cada uma contra o anterior (issue #17).
+
+    - `categorias`: só as reais com despesa no período, da maior para a menor,
+      cada uma com o cartão de valor/anterior/variação (`_cartao`) e o
+      `category_id` para a tela montar o link de Transações. Categoria que só
+      tem despesa no anterior não aparece: o gráfico é do período.
+    - `sem_categoria`: o balde virtual, FORA da lista (a tela o põe à frente),
+      ou `None` se não há despesa sem categoria no período.
+    - `total`: categorias reais + balde, a base do gráfico.
+    - `percentual_sem_categoria`: inteiro, sobre o `total`, arredondado PARA
+      CIMA (0,4% não pode aparecer como 0%); 0 se não há balde.
+    """
+    p = resolver_periodo(periodo, hoje, de, ate)
+    atual = _despesas_por_categoria(user_id, p["de"], p["ate"])
+    ant = _despesas_por_categoria(user_id, p["anterior"]["de"], p["anterior"]["ate"])
+    inteiro = _despesas_por_categoria(user_id, p["anterior_inteiro"]["de"], p["anterior_inteiro"]["ate"])
+
+    def cartao_de(chave: Optional[int]) -> Dict[str, Any]:
+        return _cartao(
+            round(atual.get(chave, 0.0), 2), round(ant.get(chave, 0.0), 2), round(inteiro.get(chave, 0.0), 2)
+        )
+
+    reais = []
+    for chave in atual:
+        if chave is None:
+            continue
+        categoria = DataService.get_category_by_id(chave)
+        reais.append({"category_id": chave, "nome": categoria["name"] if categoria else "Outro", **cartao_de(chave)})
+    reais.sort(key=lambda c: c["valor"], reverse=True)
+
+    sem_categoria = cartao_de(None) if atual.get(None, 0.0) > 0 else None
+    total = round(sum(c["valor"] for c in reais) + (sem_categoria["valor"] if sem_categoria else 0.0), 2)
+    percentual = math.ceil(sem_categoria["valor"] / total * 100) if sem_categoria and total > 0 else 0
+
+    return {
+        "periodo": {"atalho": p["atalho"], "de": p["de"], "ate": p["ate"], "aberto": p["aberto"]},
+        "anterior": p["anterior"],
+        "anterior_inteiro": p["anterior_inteiro"],
+        "categorias": reais,
+        "sem_categoria": sem_categoria,
+        "total": total,
+        "percentual_sem_categoria": percentual,
     }

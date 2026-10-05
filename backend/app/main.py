@@ -296,6 +296,17 @@ async def get_report_summary(
         raise HTTPException(status_code=422, detail=str(erro))
 
 
+# Despesas por categoria do período, com comparação (issue #17).
+@app.get("/api/reports/categories/{user_id}")
+async def get_report_categories(
+    user_id: int, hoje: str, periodo: str = relatorios.PADRAO, de: str | None = None, ate: str | None = None
+):
+    try:
+        return {"data": relatorios.categorias(user_id, periodo, hoje, de, ate)}
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro))
+
+
 # Rotas de Patrimônio (investimentos)
 @app.get("/api/investments/{user_id}")
 async def get_investments(user_id: int):
