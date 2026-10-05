@@ -19,7 +19,7 @@ from app.schemas import (
 )
 from app.services import DataService, BusinessService
 from app.services import import_service as ImportService
-from app.services import cartoes, relatorios, relatorios_tendencia, ultimas, vencimentos
+from app.services import cartoes, relatorios, relatorios_parcelados, relatorios_tendencia, ultimas, vencimentos
 from app.services.import_service import ArquivoInvalido
 
 app = FastAPI(
@@ -384,6 +384,15 @@ async def get_report_trend(
 ):
     try:
         return {"data": relatorios_tendencia.tendencia(user_id, periodo, hoje, de, ate)}
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro))
+
+
+# Parcelados (issue #20): independente do seletor de período. `hoje` vem do cliente.
+@app.get("/api/reports/installments/{user_id}")
+async def get_report_installments(user_id: int, hoje: str, incluir_quitados: bool = False):
+    try:
+        return {"data": relatorios_parcelados.parcelados(user_id, hoje, incluir_quitados)}
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro))
 
