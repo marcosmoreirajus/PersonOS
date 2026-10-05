@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { PeriodSelector } from './_components/PeriodSelector'
 import { DespesasPorCategoria } from './_components/DespesasPorCategoria'
 import { MaioresGastos } from './_components/MaioresGastos'
+import { Tendencia } from './_components/Tendencia'
 import { ResultCards, type ResumoPeriodo } from './_components/ResultCards'
 import { CURRENT_USER_ID, api } from '@/lib/api'
 import { hojeLocal } from '@/lib/dates'
@@ -72,6 +73,8 @@ function RelatoriosContent() {
       ) : (
         <ResultCards resumo={resumo} />
       )}
+
+      <Tendencia periodo={periodo} hoje={hoje} pronto={!incompleto} />
 
       <DespesasPorCategoria periodo={periodo} hoje={hoje} pronto={!incompleto} />
 
