@@ -14,6 +14,7 @@ import calendar
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.services import despesa_liquida
 from app.services.data_service import DataService
 
 ATALHOS = (
@@ -116,10 +117,11 @@ def _somas(user_id: int, de: str, ate: str) -> Tuple[float, float]:
 
     A data é a do lançamento (`settled_at`, a que a tabela de Transações mostra).
     `get_settled_by_user` já deixa de fora o previsto e a ingestão pendente;
-    a transferência interna sai aqui. Estorno e pagamento de fatura ainda não
-    existem (Fatia 5).
+    a transferência interna sai aqui. A despesa é a líquida (compras menos
+    estornos, `despesa_liquida.py`); o estorno nunca soma em receita.
     """
-    receita = despesa = 0.0
+    receita = 0.0
+    do_periodo = []
     for t in DataService.get_settled_by_user(user_id):
         if t.get("is_internal_transfer"):
             continue
@@ -128,9 +130,9 @@ def _somas(user_id: int, de: str, ate: str) -> Tuple[float, float]:
             continue
         if t["type"] == "income":
             receita += t["amount"]
-        elif t["type"] == "expense":
-            despesa += t["amount"]
-    return round(receita, 2), round(despesa, 2)
+        else:
+            do_periodo.append(t)
+    return round(receita, 2), despesa_liquida.total(do_periodo)
 
 
 def _cartao(valor: float, anterior: float, anterior_inteiro: float) -> Dict[str, Any]:
@@ -189,11 +191,13 @@ def _despesas_por_categoria(user_id: int, de: str, ate: str) -> Dict[Optional[in
     transferência interna nem ingestão pendente. Só despesa: a receita sem
     categoria não entra no balde (spec, Fatia 4, item 2).
     """
-    por_categoria: Dict[Optional[int], float] = {}
-    for t in _despesas_do_periodo(user_id, de, ate):
+    centavos: Dict[Optional[int], int] = {}
+    for t in DataService.get_settled_by_user(user_id):
+        if t.get("is_internal_transfer") or not despesa_liquida.eh_despesa_liquida(t) or not de <= t["settled_at"][:10] <= ate:
+            continue
         chave = t.get("category_id")
-        por_categoria[chave] = por_categoria.get(chave, 0.0) + t["amount"]
-    return por_categoria
+        centavos[chave] = centavos.get(chave, 0) + despesa_liquida.centavos(t)
+    return {chave: c / 100 for chave, c in centavos.items()}
 
 
 def _percentual_para_cima(parte: float, total: float) -> int:
@@ -233,7 +237,9 @@ def categorias(
 
     reais = []
     for chave in atual:
-        if chave is None:
+        # Categoria cujos estornos superam as compras do período (líquido <= 0)
+        # não é gasto: fica fora, como o balde sem categoria.
+        if chave is None or atual[chave] <= 0:
             continue
         categoria = DataService.get_category_by_id(chave)
         reais.append({"category_id": chave, "nome": categoria["name"] if categoria else "Outro", **cartao_de(chave)})

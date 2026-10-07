@@ -27,7 +27,8 @@ import BulkActionsBar from './_components/BulkActionsBar'
 
 type Transaction = {
   id: number
-  type: 'income' | 'expense'
+  /** `refund` é o estorno no cartão (#31): abate despesa, não é entrada. */
+  type: 'income' | 'expense' | 'refund'
   amount: number
   description: string | null
   category_id: number | null
@@ -67,7 +68,12 @@ const TAMANHO_ITENS = TAMANHOS_PAGINA.map((n) => ({ value: String(n), label: Str
 
 /** O que o formulário recebe para editar este lançamento. */
 function seedDeEdicao(t: Transaction): DialogSeed {
-  return { id: t.id, type: t.type, amount: t.amount, description: t.description, category_id: t.category_id, account_id: t.account_id, card_id: t.card_id, due_date: t.settled_at ?? t.due_date }
+  return { id: t.id, type: ladoDaCategoria(t.type), amount: t.amount, description: t.description, category_id: t.category_id, account_id: t.account_id, card_id: t.card_id, due_date: t.settled_at ?? t.due_date }
+}
+
+/** Estorno se categoriza como despesa: é o lado da categoria dele (#31). */
+function ladoDaCategoria(tipo: Transaction['type']): 'income' | 'expense' {
+  return tipo === 'income' ? 'income' : 'expense'
 }
 
 function TransactionsContent() {
@@ -231,6 +237,7 @@ function TransactionsContent() {
     for (const t of filtradas) {
       if (!t.settled_at || t.is_internal_transfer) continue
       if (t.type === 'income') entradas += t.amount
+      else if (t.type === 'refund') saidas -= t.amount // estorno abate a saída, não vira entrada
       else saidas += t.amount
     }
     return { entradas, saidas, resultado: entradas - saidas }
@@ -312,7 +319,8 @@ function TransactionsContent() {
               t.is_internal_transfer ? 'text-muted-foreground' : t.type === 'income' ? 'text-positive' : 'text-foreground'
             )}
           >
-            {t.type === 'income' ? '+' : '−'}
+            {t.type === 'refund' && <span className="mr-1 text-xs font-normal text-muted-foreground">Estorno</span>}
+            {t.type === 'expense' ? '−' : '+'}
             <MoneyValue value={t.amount} />
           </span>
         ),
@@ -387,7 +395,7 @@ function TransactionsContent() {
   // para todos os lançamentos marcados.
   const tiposSelecionados = useMemo(() => {
     const ids = new Set(selecionadas)
-    return transactions.filter((t) => ids.has(String(t.id))).map((t) => t.type)
+    return transactions.filter((t) => ids.has(String(t.id))).map((t) => ladoDaCategoria(t.type))
   }, [selecionadas, transactions])
 
   // Chave própria por chip (não o texto): com categorias vindas da URL, antes de

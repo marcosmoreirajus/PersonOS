@@ -3,7 +3,7 @@ from functools import wraps
 from typing import List, Dict, Any
 
 from app.conta_logos import logo_valido
-from app.services import series_engine
+from app.services import despesa_liquida, series_engine
 from app.services.store import store_ativo
 
 
@@ -790,7 +790,7 @@ class DataService:
         somaveis = [t for t in transactions if not t.get("is_internal_transfer")]
 
         income = sum(t["amount"] for t in somaveis if t["type"] == "income")
-        expense = sum(t["amount"] for t in somaveis if t["type"] == "expense")
+        expense = despesa_liquida.total(somaveis)
         # `balance` continua sendo receita menos despesa (o Resultado: o
         # testa_fatia4 e quem já o lê dependem disso). O Saldo da página é
         # `accounts_balance["total"]`, a soma dos saldos das contas.
@@ -806,15 +806,15 @@ class DataService:
         expenses_by_category = {}
         uncategorized_expense = 0
         for t in somaveis:
-            if t["type"] != "expense":
+            if not despesa_liquida.eh_despesa_liquida(t):
                 continue
             cat_id = t.get("category_id")
             if cat_id is None:
-                uncategorized_expense += t["amount"]
+                uncategorized_expense += despesa_liquida.valor(t)
                 continue
             category = DataService.get_category_by_id(cat_id)
             cat_name = category["name"] if category else "Outro"
-            expenses_by_category[cat_name] = expenses_by_category.get(cat_name, 0) + t["amount"]
+            expenses_by_category[cat_name] = round(expenses_by_category.get(cat_name, 0) + despesa_liquida.valor(t), 2)
 
         return {
             "balance": balance,
