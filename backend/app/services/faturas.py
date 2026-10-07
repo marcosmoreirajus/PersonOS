@@ -97,22 +97,33 @@ def _pagamentos(cartao: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
 def _resumo(
     cartao: Dict[str, Any], ciclo: str, compras: List[Dict[str, Any]], pagamentos: List[Dict[str, Any]], hoje: str
 ) -> Dict[str, Any]:
-    fechamento = data_de_fechamento(ciclo, cartao["closing_day"])
+    from app.services import fatura_extrato  # tardio: ele importa este módulo
+
+    # Datas calculadas, corrigidas pelo extrato ou à mão quando há correção (#28).
+    fechamento, vencimento = fatura_extrato.datas(
+        cartao,
+        ciclo,
+        data_de_fechamento(ciclo, cartao["closing_day"]),
+        data_de_vencimento(ciclo, cartao["closing_day"], cartao["due_day"]),
+    )
     # Soma em centavos inteiros: float acumulado erra o último centavo.
     # Compras menos estornos (#31): a despesa líquida do ciclo.
     centavos = despesa_liquida.total_em_centavos(compras)
+    # Total do extrato aceito pelo usuário vale no lugar da soma; extras = diferença etc. (#28).
+    centavos, extras_extrato = fatura_extrato.ajustar(cartao, ciclo, centavos)
     pagos = sum(round(t["amount"] * 100) for t in pagamentos)
     restante = max(centavos - pagos, 0)
     return {
         "card_id": cartao["id"],
         "cycle": ciclo,
         "closing_date": fechamento,
-        "due_date": data_de_vencimento(ciclo, cartao["closing_day"], cartao["due_day"]),
+        "due_date": vencimento,
         "total": centavos / 100,
         "paid": pagos / 100,
         "remaining": restante / 100,
         "state": _estado(fechamento, hoje, pagos, centavos - pagos),
         "purchases_count": sum(1 for t in compras if t["type"] == "expense"),
+        **extras_extrato,
     }
 
 

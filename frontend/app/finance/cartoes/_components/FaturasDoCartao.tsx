@@ -4,10 +4,13 @@ import { useEffect, useState } from 'react'
 
 import { Carregando } from '@/components/ui/carregando'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { MoneyValue } from '@/components/ui/money-value'
 import { api } from '@/lib/api'
 import { formatDateBR, hojeLocal } from '@/lib/dates'
+import { lerTotalDigitado, type ExtratoDaFatura } from '@/lib/fatura-extrato'
 import { rotuloDaParcela, rotuloDoCiclo, rotuloDoEstado, type Fatura, type FaturaDetalhe } from '@/lib/faturas'
+import { REVIEW_CHANGED_EVENT } from '../../_components/FinanceTabs'
 
 type Categoria = { id: number; name: string }
 
@@ -21,6 +24,8 @@ export function FaturasDoCartao({ cardId }: { cardId: number }) {
   const [erro, setErro] = useState<string | null>(null)
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [aberta, setAberta] = useState<string | null>(null)
+  // Sobe quando uma fatura é corrigida: a lista e o detalhe recarregam.
+  const [versao, setVersao] = useState(0)
 
   useEffect(() => {
     let cancelado = false
@@ -34,7 +39,7 @@ export function FaturasDoCartao({ cardId }: { cardId: number }) {
     return () => {
       cancelado = true
     }
-  }, [cardId])
+  }, [cardId, versao])
 
   if (erro) return <p className="text-sm text-destructive">{erro}</p>
   if (!faturas) return <Carregando compacto rotulo="Carregando faturas" />
@@ -73,26 +78,48 @@ export function FaturasDoCartao({ cardId }: { cardId: number }) {
               </Button>
             </div>
           </div>
-          {aberta === f.cycle && <DetalheDaFatura cardId={cardId} ciclo={f.cycle} categorias={categorias} />}
+          {aberta === f.cycle && <DetalheDaFatura
+              cardId={cardId}
+              ciclo={f.cycle}
+              categorias={categorias}
+              versao={versao}
+              aoCorrigir={() => {
+                setVersao((v) => v + 1)
+                // A diferença de total mexe na fila "A revisar": o contador recalcula.
+                window.dispatchEvent(new Event(REVIEW_CHANGED_EVENT))
+              }}
+            />}
         </li>
       ))}
     </ul>
   )
 }
 
-function DetalheDaFatura({ cardId, ciclo, categorias }: { cardId: number; ciclo: string; categorias: Categoria[] }) {
-  const [detalhe, setDetalhe] = useState<FaturaDetalhe | null>(null)
+function DetalheDaFatura({
+  cardId,
+  ciclo,
+  categorias,
+  versao,
+  aoCorrigir,
+}: {
+  cardId: number
+  ciclo: string
+  categorias: Categoria[]
+  versao: number
+  aoCorrigir: () => void
+}) {
+  const [detalhe, setDetalhe] = useState<(FaturaDetalhe & ExtratoDaFatura) | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelado = false
-    api<FaturaDetalhe>(`/api/cards/${cardId}/invoices/${ciclo}?hoje=${hojeLocal()}`)
+    api<FaturaDetalhe & ExtratoDaFatura>(`/api/cards/${cardId}/invoices/${ciclo}?hoje=${hojeLocal()}`)
       .then((d) => !cancelado && setDetalhe(d))
       .catch((e) => !cancelado && setErro(e instanceof Error ? e.message : 'Não foi possível carregar a fatura.'))
     return () => {
       cancelado = true
     }
-  }, [cardId, ciclo])
+  }, [cardId, ciclo, versao])
 
   if (erro) return <p className="mt-2 text-sm text-destructive">{erro}</p>
   if (!detalhe) return <Carregando compacto rotulo="Carregando compras" />
@@ -124,6 +151,12 @@ function DetalheDaFatura({ cardId, ciclo, categorias }: { cardId: number; ciclo:
         <span>Total da fatura</span>
         <MoneyValue value={detalhe.total} />
       </div>
+      {detalhe.declared_total !== null && detalhe.difference !== 0 && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {detalhe.total_decision === 'extract' ? 'Total do extrato adotado' : 'Extrato diz'}{' '}
+          <MoneyValue value={detalhe.declared_total} />; soma das compras <MoneyValue value={detalhe.purchases_total} />.
+        </p>
+      )}
       {detalhe.payments.length > 0 && (
         <div className="mt-2 flex flex-col gap-1.5 border-t border-border pt-2 text-sm">
           <ul className="flex flex-col gap-1.5">
@@ -145,6 +178,83 @@ function DetalheDaFatura({ cardId, ciclo, categorias }: { cardId: number; ciclo:
           </div>
         </div>
       )}
+      <EditorDaFatura key={`${detalhe.closing_date}|${detalhe.due_date}|${detalhe.declared_total}`} cardId={cardId} detalhe={detalhe} aoCorrigir={aoCorrigir} />
+    </div>
+  )
+}
+
+/**
+ * Fechamento, vencimento e total do extrato, editáveis à mão (issue #28).
+ * Vazio apaga a correção: fechamento e vencimento voltam ao calculado e o
+ * total do extrato deixa de existir. O arquivo OFX preenche os mesmos campos.
+ */
+function EditorDaFatura({
+  cardId,
+  detalhe,
+  aoCorrigir,
+}: {
+  cardId: number
+  detalhe: FaturaDetalhe & ExtratoDaFatura
+  aoCorrigir: () => void
+}) {
+  const [fechamento, setFechamento] = useState(detalhe.closing_date)
+  const [vencimento, setVencimento] = useState(detalhe.due_date)
+  const [total, setTotal] = useState(detalhe.declared_total === null ? '' : String(detalhe.declared_total))
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  async function salvar() {
+    const t = lerTotalDigitado(total)
+    if (!t.valido) {
+      setErro('Informe o total da fatura como um número, sem negativo.')
+      return
+    }
+    // Só o que mudou: mandar o que não mexeu fixaria como "à mão" um valor lido do arquivo.
+    const body: Record<string, string | number | null> = {}
+    if (fechamento !== detalhe.closing_date) body.closing_date = fechamento || null
+    if (vencimento !== detalhe.due_date) body.due_date = vencimento || null
+    if (t.valor !== detalhe.declared_total) body.declared_total = t.valor
+    if (Object.keys(body).length === 0) {
+      setErro(null)
+      return
+    }
+    setSalvando(true)
+    try {
+      await api(`/api/cards/${cardId}/invoices/${detalhe.cycle}?hoje=${hojeLocal()}`, { method: 'PATCH', body })
+      setErro(null)
+      aoCorrigir()
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível salvar a fatura.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-2 border-t border-border pt-2">
+      <p className="text-xs text-muted-foreground">
+        Corrija com o que o banco informou. Se o total do extrato for diferente da soma das compras, a diferença vai para &quot;A revisar&quot;.
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          Fechamento
+          <Input type="date" value={fechamento} onChange={(e) => setFechamento(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          Vencimento
+          <Input type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          Total do extrato (R$)
+          <Input inputMode="decimal" placeholder="sem total declarado" value={total} onChange={(e) => setTotal(e.target.value)} />
+        </label>
+      </div>
+      {erro && <p className="text-xs text-destructive">{erro}</p>}
+      <div>
+        <Button size="sm" disabled={salvando} onClick={salvar}>
+          Salvar correção
+        </Button>
+      </div>
     </div>
   )
 }

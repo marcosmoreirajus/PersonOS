@@ -522,3 +522,30 @@ O **parcelado no cartão** é uma série `installment` com o Cartão como destin
 **Tela.** O formulário libera "Parcelado" para destino Cartão (a "Recorrente" some; trocar para Cartão com Recorrente marcada volta a À vista). Lógica em `lib/lancamento-destino.ts` (`repeticoesDoDestino`, `repeticaoNoDestino`) e `lib/faturas.ts` (`rotuloDaParcela`).
 
 **Fora:** o Cartão na aba Parcelados de Relatórios (#35) e "parcela em fatura em aberto" (mesmo ticket).
+
+## Fatura corrigida pelo extrato (issue #28)
+
+A fatura continua derivada das compras (`faturas.py`). O que o cálculo não sabe, o banco ou o usuário diz: **fechamento, vencimento e total declarado**. Isso mora numa coleção nova, `invoices`, uma linha por `(card_id, cycle)`, criada na primeira correção e apagada quando a última some (a fatura sem correção continua sem registro). Lógica em `backend/app/services/fatura_extrato.py`. Aceite: `backend/scripts/testa_fatura_extrato.py`.
+
+**Registro `invoices`:** `{id, user_id, card_id, cycle, closing_date, due_date, declared_total, sources, total_decision, created_at, updated_at}`. `closing_date`, `due_date` e `declared_total` são `null` quando não há correção ("não sei", nunca zero). `sources` diz de onde veio cada campo: `file` (lido do OFX) ou `manual`. `total_decision` é `null`, `extract` ou `purchases` (ver abaixo).
+
+**Decisões (não reabrir sem discussão):**
+1. **A data corrigida não move compras de ciclo.** Quem decide a fatura de uma compra continua sendo `ciclo_da_compra` (dia de fechamento do cartão). O fechamento corrigido só aparece na tela e decide aberta/fechada. Se o banco fechou depois e uma compra caiu na fatura errada, o total do extrato denuncia (item em "A revisar"). Mover compras pela data corrigida quebraria o ciclo e as compras já pagas, e o ticket manda não mexer em `ciclo_da_compra`.
+2. **O total declarado nunca corrige em silêncio.** `total` da fatura continua a soma das compras. Se `declared_total` difere dela, a fatura mostra `difference` (declarado menos soma) e nasce um item em "A revisar". O usuário decide: `extract` (o total da fatura passa a ser o do extrato; compra faltando, juros) ou `purchases` (mantém a soma). As duas decisões tiram o item da fila; importar a compra que faltava também (a diferença some). Um **novo** total declarado reabre a pergunta.
+3. **À mão vence o arquivo.** Um campo editado à mão (`sources[campo] = manual`) não é sobrescrito por uma importação posterior; campo lido de arquivo é sobrescrito pela importação seguinte.
+4. **Só ciclo com compra tem fatura.** Editar ou decidir num ciclo sem compras dá 404 (a fatura nasce com a primeira compra, como no #26).
+5. **Plausibilidade.** Fechamento e vencimento corrigidos ficam a no máximo 10 dias das datas calculadas (o banco desloca por feriado e fim de semana, não por semanas) e o vencimento é depois do fechamento; senão 400. Total negativo é 400. Na importação, dado incoerente é ignorado, nunca recusa o arquivo.
+
+**OFX de cartão (`ler_cabecalho_ofx`, chamado por `importar` só quando o destino é Cartão):** fechamento = `DTEND` do extrato; total = valor absoluto de `LEDGERBAL/BALAMT` (saldo devedor vem negativo); vencimento = `LEDGERBAL/DTASOF` **só se** vier entre 1 e 40 dias depois do fechamento (senão é data de geração do arquivo, não vencimento). O ciclo é o cujo fechamento calculado fica mais perto de `DTEND` (até 10 dias; longe disso o arquivo é ignorado). Sem `DTEND` não se sabe de qual fatura é o total: nada é lido. CSV e XLSX não trazem esses dados e não corrigem nada. Risco conhecido: bancos que gravam em `DTEND` algo que não é o fechamento (ex.: o vencimento) darão uma fatura com data estranha; a edição à mão corrige.
+
+| Método | Rota | Observação |
+|---|---|---|
+| `PATCH` | `/api/cards/{id}/invoices/{ciclo}?hoje=AAAA-MM-DD` `{closing_date?, due_date?, declared_total?}` | campo ausente = não mexe; `null` apaga a correção do campo. Responde o detalhe da fatura. 404 cartão ou ciclo sem compras, 400 ciclo/data/valor inválido |
+| `POST` | `/api/cards/{id}/invoices/{ciclo}/total-decision?hoje=...` `{decision: "extract" \| "purchases"}` | resolve a diferença de total. 400 se não há total declarado |
+
+A fatura (lista e detalhe) ganha `declared_total`, `difference`, `total_decision`, `purchases_total` (a soma das compras, mesmo quando o total adotado é o do extrato) e `corrected` (lista dos campos corrigidos). `GET /api/review/user/{id}` ganha `diferencas_fatura`: `[{card_id, card_name, cycle, due_date, declared_total, purchases_total, difference, source}]`, e o `total` (contador da navegação) a inclui.
+
+**Ponto de extensão para #30 e #31.** `faturas._resumo` chama `fatura_extrato.datas(...)` para as datas e `fatura_extrato.ajustar(cartao, ciclo, soma_centavos)` logo depois de somar. Quem mudar a soma (estornos, parcelas previstas) deve passar o novo valor a `ajustar`; a diferença é medida contra o que entrar ali. `pendencias` hoje soma as compras do ciclo direto (`faturas._por_ciclo`): se o total passar a abater estornos, é lá que se troca a soma.
+
+**Tela.** Detalhe da fatura (`FaturasDoCartao.tsx`): campos Fechamento, Vencimento e Total do extrato, "Salvar correção" (envia só o que mudou, para não fixar como "à mão" o que veio do arquivo). "A revisar": seção "Diferença no total da fatura" (`?secao=diferencas`) com "Usar o total do extrato" e "Manter a soma das compras".
+

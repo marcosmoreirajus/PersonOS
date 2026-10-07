@@ -14,7 +14,9 @@ import { REVIEW_CHANGED_EVENT } from '../_components/FinanceTabs'
 import { CURRENT_USER_ID, api } from '@/lib/api'
 import { chaveDaFatura, lerChave, type OpcoesDePagamento } from '@/lib/pagamento-fatura'
 import { SeletorDeFatura } from '../_components/SeletorDeFatura'
-import { formatDateBR } from '@/lib/dates'
+import { formatDateBR, hojeLocal } from '@/lib/dates'
+import { explicarDiferenca, type DiferencaDeFatura } from '@/lib/fatura-extrato'
+import { rotuloDoCiclo } from '@/lib/faturas'
 
 type Lancamento = {
   id: number
@@ -31,12 +33,14 @@ type Fila = {
   a_conciliar: (Lancamento & { candidato: Candidato | null })[]
   /** Saídas da conta que parecem pagar uma fatura (#29), com as faturas possíveis. */
   pagamentos_fatura: (Lancamento & OpcoesDePagamento)[]
+  /** Total do extrato diferente da soma das compras de uma fatura (#28). */
+  diferencas_fatura: DiferencaDeFatura[]
   sem_categoria: Lancamento[]
   total: number
 }
 
 /** Seções que um link pode pedir sozinhas — ex.: o balde de Relatórios. */
-type Secao = 'conciliar' | 'pagamentos' | 'sem-categoria'
+type Secao = 'conciliar' | 'pagamentos' | 'diferencas' | 'sem-categoria'
 
 function Valor({ t }: { t: Pick<Lancamento, 'type' | 'amount'> }) {
   return (
@@ -59,11 +63,11 @@ function Revisar() {
   // Valor desconhecido na URL mostra a fila inteira, em vez de esconder tudo.
   const pedida = useSearchParams().get('secao')
   const secao: Secao | null =
-    pedida === 'conciliar' || pedida === 'pagamentos' || pedida === 'sem-categoria' ? pedida : null
+    pedida === 'conciliar' || pedida === 'pagamentos' || pedida === 'diferencas' || pedida === 'sem-categoria' ? pedida : null
   const [fila, setFila] = useState<Fila | null>(null)
   const [categories, setCategories] = useState<PickerCategory[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [ocupado, setOcupado] = useState<number | null>(null)
+  const [ocupado, setOcupado] = useState<number | string | null>(null)
   // Fatura escolhida por linha; sem escolha vale a padrão que o backend sugeriu.
   const [faturaEscolhida, setFaturaEscolhida] = useState<Record<number, string>>({})
 
@@ -86,7 +90,7 @@ function Revisar() {
     carregar().catch((e: unknown) => setError(e instanceof Error ? e.message : 'Não foi possível carregar a fila.'))
   }, [carregar])
 
-  async function resolver(id: number, req: () => Promise<unknown>) {
+  async function resolver(id: number | string, req: () => Promise<unknown>) {
     setOcupado(id)
     try {
       await req()
@@ -109,6 +113,11 @@ function Revisar() {
   }
 
   const recusarPagamento = (id: number) => resolver(id, () => api(`/api/invoice-payments/${id}/reject`, { method: 'POST' }))
+
+  const decidirDiferenca = (d: DiferencaDeFatura, decision: 'extract' | 'purchases') =>
+    resolver(`${d.card_id}|${d.cycle}`, () =>
+      api(`/api/cards/${d.card_id}/invoices/${d.cycle}/total-decision?hoje=${hojeLocal()}`, { method: 'POST', body: { decision } }),
+    )
 
   const categorizar = (id: number, categoryId: string) =>
     resolver(id, () => api(`/api/transactions/${id}`, { method: 'PATCH', body: { category_id: Number(categoryId), scope: 'only_this' } }))
@@ -265,6 +274,52 @@ function Revisar() {
                   })}
                 </TableBody>
               </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {mostrar('diferencas') && (fila.diferencas_fatura.length > 0 || secao === 'diferencas') && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Diferença no total da fatura</CardTitle>
+            <CardDescription>
+              O total que o extrato declarou não bate com a soma das compras importadas. Nada é corrigido sozinho: adote o total do
+              extrato ou mantenha a soma (você também pode importar a compra que falta).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {fila.diferencas_fatura.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma fatura com diferença de total.</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-border">
+                {fila.diferencas_fatura.map((d) => {
+                  const chave = `${d.card_id}|${d.cycle}`
+                  return (
+                    <li key={chave} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 flex-col gap-0.5 text-sm">
+                        <span className="font-medium text-foreground">
+                          {d.card_name} · fatura de {rotuloDoCiclo(d.cycle)}
+                        </span>
+                        <span className="text-muted-foreground">
+                          Extrato: <MoneyValue value={d.declared_total} /> · compras: <MoneyValue value={d.purchases_total} /> · diferença:{' '}
+                          {d.difference > 0 ? '+' : '−'}
+                          <MoneyValue value={Math.abs(d.difference)} />
+                        </span>
+                        <span className="text-xs text-muted-foreground">{explicarDiferenca(d.difference)}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" disabled={ocupado === chave} onClick={() => decidirDiferenca(d, 'extract')}>
+                          Usar o total do extrato
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={ocupado === chave} onClick={() => decidirDiferenca(d, 'purchases')}>
+                          Manter a soma das compras
+                        </Button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
             )}
           </CardContent>
         </Card>

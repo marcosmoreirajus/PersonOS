@@ -53,7 +53,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.services import estorno_importacao, pagamentos_fatura
+from app.services import estorno_importacao, fatura_extrato, pagamentos_fatura
 from app.services.data_service import DataService, em_transacao
 
 # Distância máxima entre a data do extrato e a do lançamento existente.
@@ -737,6 +737,10 @@ def importar(
         if not gravado.get("file_ref"):
             gravado["file_ref"] = analise["arquivo_acctid"]
             DataService.save_json(destino.colecao, registros)
+
+    # OFX de cartão pode trazer fechamento, vencimento e total da fatura (#28).
+    if destino.eh_cartao and analise["formato"] == "ofx":
+        fatura_extrato.registrar_do_arquivo(destino.registro, _decodificar(conteudo))
 
     return {
         "formato": analise["formato"],

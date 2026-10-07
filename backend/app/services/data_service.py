@@ -742,7 +742,7 @@ class DataService:
             return (t.get("settled_at") or t.get("due_date") or "", t["id"])
 
         # Import tardio: pagamentos_fatura importa este módulo.
-        from app.services import pagamentos_fatura
+        from app.services import fatura_extrato, pagamentos_fatura
 
         a_conciliar = []
         pagamentos_fatura_pendentes = []
@@ -776,11 +776,13 @@ class DataService:
         a_conciliar.sort(key=recente_primeiro, reverse=True)
         pagamentos_fatura_pendentes.sort(key=recente_primeiro, reverse=True)
         sem_categoria.sort(key=recente_primeiro, reverse=True)
+        diferencas_fatura = fatura_extrato.pendencias(user_id)  # #28
         return {
             "a_conciliar": a_conciliar,
             "pagamentos_fatura": pagamentos_fatura_pendentes,
+            "diferencas_fatura": diferencas_fatura,
             "sem_categoria": sem_categoria,
-            "total": len(a_conciliar) + len(pagamentos_fatura_pendentes) + len(sem_categoria),
+            "total": len(a_conciliar) + len(pagamentos_fatura_pendentes) + len(diferencas_fatura) + len(sem_categoria),
         }
 
     @staticmethod
