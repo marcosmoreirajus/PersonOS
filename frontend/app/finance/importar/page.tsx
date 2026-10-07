@@ -176,7 +176,9 @@ export default function ImportarPage() {
     setErro(null)
   }
 
-  const aGravar = previa ? previa.contagem.nova + previa.contagem.suspeita + previa.contagem.pagamento_fatura : 0
+  const aGravar = previa
+    ? previa.contagem.nova + previa.contagem.suspeita + previa.contagem.pagamento_fatura + (previa.contagem.estorno ?? 0)
+    : 0
   const destinoItens = [
     ...contas.map((c) => ({ value: chave({ tipo: 'conta', id: c.id }), label: c.name })),
     ...cartoes.map((c) => ({ value: chave({ tipo: 'cartao', id: c.id }), label: `${c.name} (cartão)` })),
@@ -311,7 +313,7 @@ export default function ImportarPage() {
           <p className="text-sm text-muted-foreground">
             {previa.destino === 'cartao' ? 'Cartão' : 'Conta'}{' '}
             <strong className="font-medium text-foreground">{nomeDestino}</strong> ·{' '}
-            {previa.destino === 'cartao' ? 'positivas (tratadas depois)' : 'entradas'}{' '}
+            {previa.destino === 'cartao' ? 'estornos e pagamentos' : 'entradas'}{' '}
             <MoneyValue value={previa.totais.entradas} /> · {previa.destino === 'cartao' ? 'compras' : 'saídas'}{' '}
             <MoneyValue value={previa.totais.saidas} />
           </p>
