@@ -58,6 +58,31 @@ def main_testes():
           item.get("purchases_total") == 70.0 and item.get("difference") == 30.0, str(item))
     checa("a fatura mostra a mesma diferença", fatura("2026-08")["difference"] == 30.0, str(fatura("2026-08")))
 
+    print("ciclo que ficou sem compras não deixa item preso em A revisar")
+    ids = [t["id"] for t in cli.get(f"/api/transactions/user/{UID}").json()["data"] if t.get("card_id") == cartao]
+    for i in ids:
+        cli.delete(f"/api/transactions/{i}")
+    checa("sem nenhuma compra no ciclo, a diferença some da fila", fila() == [], str(fila()))
+
+    print("parcela PREVISTA não infla a diferença do extrato (#30 x #28)")
+    lanca("expense", "2026-09-10", 100, "Posto")
+    r = cli.post("/api/transactions", json={"user_id": UID, "category_id": 1, "type": "expense", "amount": 200, "description": "Geladeira",
+                                           "due_date": "2026-09-15", "source": "manual", "card_id": cartao,
+                                           "series": {"kind": "installment", "frequency": "monthly", "total_count": 2}})
+    assert r.status_code == 200, r.text
+    declara("2026-09", 100)
+    checa("a parcela prevista entra no total da fatura (200), mas o extrato (100) bate com o realizado",
+          fatura("2026-09")["total"] == 200.0 and fatura("2026-09")["difference"] == 0.0 and fila() == [], str(fatura("2026-09")))
+
+    print("decisão 'manter a soma' reabre quando as compras mudam depois")
+    declara("2026-09", 150)
+    d = cli.post(f"/api/cards/{cartao}/invoices/2026-09/total-decision", params={"hoje": HOJE}, json={"decision": "purchases"})
+    checa("decidir 'manter a soma' tira o item da fila", d.status_code == 200 and fila() == [], d.text[:100])
+    lanca("expense", "2026-09-12", 20, "Padaria")
+    itens = fila()
+    checa("uma compra nova depois da decisão reabre a pergunta (soma 120 x extrato 150)",
+          len(itens) == 1 and itens[0]["purchases_total"] == 120.0 and itens[0]["difference"] == 30.0, str(itens))
+
 
 def main():
     anterior = usar_store(MemoriaStore())

@@ -110,7 +110,9 @@ def _resumo(
     # Compras menos estornos (#31): a despesa líquida do ciclo.
     centavos = despesa_liquida.total_em_centavos(compras)
     # Total do extrato aceito pelo usuário vale no lugar da soma; extras = diferença etc. (#28).
-    centavos, extras_extrato = fatura_extrato.ajustar(cartao, ciclo, centavos)
+    # A diferença com o extrato compara com o REALIZADO: a parcela prevista ainda não foi cobrada.
+    realizado = despesa_liquida.total_em_centavos([t for t in compras if t.get("settled_at")])
+    centavos, extras_extrato = fatura_extrato.ajustar(cartao, ciclo, centavos, realizado)
     pagos = sum(round(t["amount"] * 100) for t in pagamentos)
     restante = max(centavos - pagos, 0)
     return {

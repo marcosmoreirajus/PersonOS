@@ -170,20 +170,25 @@ def _cent(valor: float) -> int:
     return int(round(valor * 100))
 
 
-def ajustar(cartao: Dict[str, Any], ciclo: str, soma_centavos: int) -> Tuple[int, Dict[str, Any]]:
+def ajustar(
+    cartao: Dict[str, Any], ciclo: str, soma_centavos: int, realizado_centavos: Optional[int] = None
+) -> Tuple[int, Dict[str, Any]]:
     """
     Ponto de extensão de faturas._resumo: recebe a soma das compras (em
     centavos) e devolve o total efetivo e os campos extras da fatura.
-    O total só deixa de ser a soma se o usuário aceitou o do extrato.
+    O total só deixa de ser a soma se o usuário aceitou o do extrato. A
+    diferença com o extrato usa só o REALIZADO (parcela prevista não foi
+    cobrada pelo banco); sem esse valor, vale a soma.
     """
+    realizado = soma_centavos if realizado_centavos is None else realizado_centavos
     r = correcao(cartao, ciclo)
     declarado = r.get("declared_total") if r else None
     decisao = r.get("total_decision") if r else None
     extras = {
         "declared_total": declarado,
-        "difference": None if declarado is None else (_cent(declarado) - soma_centavos) / 100,
+        "difference": None if declarado is None else (_cent(declarado) - realizado) / 100,
         "total_decision": decisao,
-        "purchases_total": soma_centavos / 100,
+        "purchases_total": realizado / 100,
         "corrected": sorted(r["sources"]) if r else [],
     }
     efetivo = _cent(declarado) if declarado is not None and decisao == "extract" else soma_centavos
@@ -202,11 +207,21 @@ def pendencias(user_id: int) -> List[Dict[str, Any]]:
     for cartao in cartoes.listar(user_id):
         grupos = faturas._por_ciclo(cartao)
         for r in linhas:
-            if r["card_id"] != cartao["id"] or r.get("declared_total") is None or r.get("total_decision"):
+            if r["card_id"] != cartao["id"] or r.get("declared_total") is None:
                 continue
-            # Compras menos estornos (#31): a mesma conta do total da fatura.
-            soma = despesa_liquida.total_em_centavos(grupos.get(r["cycle"], []))
+            # Ciclo que ficou sem compras já não é fatura: não há o que decidir (e o
+            # botão da fila daria 404). A correção guardada espera, caso ele volte.
+            if not grupos.get(r["cycle"]):
+                continue
+            # Compras menos estornos (#31), só o realizado: a mesma conta da diferença da fatura.
+            soma = despesa_liquida.total_em_centavos([t for t in grupos[r["cycle"]] if t.get("settled_at")])
             if soma == _cent(r["declared_total"]):
+                continue
+            # "Manter a soma" vale para a soma de quando se decidiu: se as compras mudaram
+            # depois, a pergunta volta (nunca correção silenciosa).
+            if r.get("total_decision") == "extract":
+                continue
+            if r.get("total_decision") == "purchases" and r.get("decided_sum") == soma:
                 continue
             _, vencimento = datas(
                 cartao,
@@ -243,6 +258,9 @@ def decidir_total(cartao: Dict[str, Any], ciclo: str, decisao: str) -> None:
     if r is None or r.get("declared_total") is None:
         raise ValueError("Esta fatura não tem total declarado para decidir.")
     r["total_decision"] = decisao
+    r["decided_sum"] = despesa_liquida.total_em_centavos(
+        [t for t in faturas._por_ciclo(cartao).get(ciclo, []) if t.get("settled_at")]
+    )
     r["updated_at"] = _agora()
     DataService.save_json(COLECAO, linhas)
 
