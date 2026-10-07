@@ -25,7 +25,8 @@ export function SeletorDeFatura({
       <SelectTrigger size="sm" className="w-full sm:w-72" aria-label={rotulo}>
         <SelectValue placeholder="Escolher a fatura..." />
       </SelectTrigger>
-      <SelectContent>
+      {/* O menu cresce com o conteúdo: preso à largura do seletor, cortaria o "falta R$ …". */}
+      <SelectContent className="w-auto min-w-80">
         {opcoes.map((o) => (
           <SelectItem key={chaveDaFatura(o)} value={chaveDaFatura(o)}>
             <span className="flex w-full items-center justify-between gap-3">
