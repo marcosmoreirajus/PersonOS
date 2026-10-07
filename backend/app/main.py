@@ -21,7 +21,8 @@ from app.schemas import (
 )
 from app.services import DataService, BusinessService
 from app.services import import_service as ImportService
-from app.services import cartoes, faturas, pagamentos_fatura, relatorios, relatorios_parcelados, relatorios_tendencia, ultimas, vencimentos
+from app.schemas.fatura_extrato import InvoiceTotalDecision, InvoiceUpdate
+from app.services import cartoes, fatura_extrato, faturas, pagamentos_fatura, relatorios, relatorios_parcelados, relatorios_tendencia, ultimas, vencimentos
 from app.services.import_service import ArquivoInvalido
 from app.services.store import store_ativo
 
@@ -265,6 +266,32 @@ async def get_card_invoice(card_id: int, ciclo: str, hoje: str):
     if fatura is None:
         raise HTTPException(status_code=404, detail="Esse cartão não tem fatura nesse ciclo.")
     return {"data": fatura}
+
+
+# Fatura corrigida pelo extrato (issue #28): fechamento, vencimento e total
+# declarado, à mão ou lidos do arquivo. A lógica mora em fatura_extrato.py.
+@app.patch("/api/cards/{card_id}/invoices/{ciclo}")
+async def update_card_invoice(card_id: int, ciclo: str, hoje: str, payload: InvoiceUpdate):
+    cartao = _cartao_ou_404(card_id)
+    try:
+        fatura_extrato.editar(cartao, ciclo, {k: getattr(payload, k) for k in payload.model_fields_set})
+        return {"data": faturas.detalhe(cartao, ciclo, hoje)}
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/cards/{card_id}/invoices/{ciclo}/total-decision")
+async def decide_invoice_total(card_id: int, ciclo: str, hoje: str, payload: InvoiceTotalDecision):
+    cartao = _cartao_ou_404(card_id)
+    try:
+        fatura_extrato.decidir_total(cartao, ciclo, payload.decision)
+        return {"data": faturas.detalhe(cartao, ciclo, hoje)}
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # Pagamento da fatura pela conta corrente (issue #29): a saída da conta vira
