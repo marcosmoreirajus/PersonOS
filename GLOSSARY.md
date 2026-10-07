@@ -44,6 +44,10 @@ _Avoid_: Rotativo, encargo
 Devolução de uma compra: abate a despesa da categoria original e reduz a fatura. Não é receita.
 _Avoid_: Crédito, receita de estorno
 
+**Tratada depois**:
+Linha positiva de um extrato de Cartão (estorno ou pagamento da fatura). Aparece na prévia da importação, mas não é gravada: quem a trata são o Estorno e o Pagamento da fatura, em tickets próprios. Nunca é descartada em silêncio.
+_Avoid_: Ignorada, descartada, entrada
+
 ### Visão Geral
 
 **Conta**:
