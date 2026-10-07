@@ -484,3 +484,22 @@ O pagamento é **a própria saída da conta**: `is_internal_transfer = true` e `
 | `POST` | `/api/invoice-payments/{id}/reject` | só para linha sugerida: volta como despesa comum, confirmada |
 
 `GET /api/review/user/{id}` ganha `pagamentos_fatura` (cada item com `opcoes` e `padrao`) e o `total` inclui a seção. A fatura (`/api/cards/{id}/invoices`) ganha `paid`, `remaining` (nunca negativo) e os estados `partially_paid` e `paid`; o detalhe traz `payments`. A importação devolve `aguardando_pagamento` e a prévia a situação `pagamento_fatura`.
+
+## Estorno no cartão (issue #31)
+
+O **estorno** é um tipo de lançamento novo, `type = "refund"`, sempre num Cartão (`card_id`, sem conta). Abate a despesa da categoria dele e reduz a fatura; **nunca** é receita. Aceite: `backend/scripts/testa_estorno.py`.
+
+**Despesa líquida (`backend/app/services/despesa_liquida.py`).** Uma função única: compra soma, estorno subtrai, o resto vale zero; tudo em centavos inteiros. Passam a usá-la: o dashboard/Visão Geral (`expense`, `balance`, `expenses_by_category`, `uncategorized_expense`), Relatórios (despesa do resumo, categorias, balde "sem categoria") e a tendência, além do total da fatura (`faturas._resumo`). Receita só soma `income`, então o estorno não a infla. Decisões:
+- **Maiores gastos** continua só com compras: estorno não é um gasto, e listar uma linha negativa no ranking confundiria.
+- **Categoria com líquido <= 0** no período (estornos maiores que as compras daquele recorte) sai da lista de categorias do relatório, como o balde sem categoria quando não é positivo.
+- **Saldo das contas** não muda: o estorno é do cartão (`saldos_por_conta` já ignora `card_id`).
+
+**Criação manual.** `POST /api/transactions` aceita `type: "refund"` com `card_id` (a mesma validação da compra: cartão do usuário, sem `account_id`, sem série; `settled_at` ausente vale `due_date`). Estorno sem `card_id` é 400 ("Estorno é do cartão..."); `income` no cartão continua 400. Não há formulário de estorno na tela: a via principal é a importação. Fica a lacuna de editar/excluir pela UI, igual a qualquer lançamento.
+
+**Fatura.** `total` = compras menos estornos do ciclo (centavos inteiros); `purchases_count` conta só compras. O detalhe traz o estorno em `purchases` com `type: "refund"` e `amount` **negativo**; a compra ganha `type: "expense"`. Fatura de um ciclo só com estorno aparece com total negativo (crédito); o `remaining` segue nunca negativo.
+
+**Importação do cartão.** A linha positiva sem marcador de pagamento vira situação `estorno` na prévia e é gravada (`type = "refund"`, efetivada na data da linha, `source = "import"`); a resposta do commit ganha `estornos` (fora de `importadas`). Com marcador (`pagamento|pgto|pagto|pag ... recebido`, `pagamento on line`, `pagamento (de) fatura`) continua `tratada_depois` e não grava: a ponta do cartão do pagamento é o #32. Duplicidade reaproveita a da importação (hash com prefixo `cardN` ou FITID): reimportar não duplica. O estorno **não concilia** com compra manual. Na Conta, positiva segue sendo entrada.
+
+**Categoria do estorno importado (`estorno_importacao.py`).** Herda a da compra original só se o casamento for óbvio: compra do mesmo cartão, já confirmada e categorizada, **mesmo valor em centavos**, data até a do estorno, descrição que casa (mesma regra da conciliação) e **uma única** categoria entre as candidatas. Caso contrário (devolução parcial, compra ainda não importada, categorias divergentes) entra sem categoria e vai para "A revisar".
+
+**Tela.** Detalhe da fatura: estorno como linha negativa com "· Estorno". Prévia da importação do cartão: situação "Estorno" e contagem própria; "Tratada depois" agora só para pagamento recebido. Transações e Últimas: rótulo "Estorno" com sinal `+` em tom neutro (não é receita); o rodapé de Transações abate a saída em vez de somar entrada.

@@ -23,7 +23,9 @@ export type Fatura = {
 export type CompraDaFatura = {
   id: number
   description: string | null
+  /** Negativo no estorno (`refund`): ele reduz o total da fatura (#31). */
   amount: number
+  type: 'expense' | 'refund'
   date: string
   category_id: number | null
 }

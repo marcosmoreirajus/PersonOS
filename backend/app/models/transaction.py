@@ -4,6 +4,8 @@ from enum import Enum
 class TransactionType(str, Enum):
     INCOME = "income"
     EXPENSE = "expense"
+    # Estorno no cartão (#31): abate despesa e fatura, nunca é receita.
+    REFUND = "refund"
 
 
 class TransactionSource(str, Enum):

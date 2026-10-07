@@ -17,6 +17,7 @@ import calendar
 from datetime import date
 from typing import Any, Dict, List, Optional
 
+from app.services import despesa_liquida
 from app.services.data_service import DataService
 
 
@@ -98,7 +99,8 @@ def _resumo(
 ) -> Dict[str, Any]:
     fechamento = data_de_fechamento(ciclo, cartao["closing_day"])
     # Soma em centavos inteiros: float acumulado erra o último centavo.
-    centavos = sum(round(t["amount"] * 100) for t in compras)
+    # Compras menos estornos (#31): a despesa líquida do ciclo.
+    centavos = despesa_liquida.total_em_centavos(compras)
     pagos = sum(round(t["amount"] * 100) for t in pagamentos)
     restante = max(centavos - pagos, 0)
     return {
@@ -110,7 +112,7 @@ def _resumo(
         "paid": pagos / 100,
         "remaining": restante / 100,
         "state": _estado(fechamento, hoje, pagos, centavos - pagos),
-        "purchases_count": len(compras),
+        "purchases_count": sum(1 for t in compras if t["type"] == "expense"),
     }
 
 
@@ -148,7 +150,9 @@ def detalhe(cartao: Dict[str, Any], ciclo: str, hoje: str) -> Optional[Dict[str,
             {
                 "id": t["id"],
                 "description": t.get("description"),
-                "amount": t["amount"],
+                # Estorno é linha negativa (reduz o total); a compra segue positiva.
+                "amount": despesa_liquida.valor(t) if t["type"] == "refund" else t["amount"],
+                "type": t["type"],
                 "date": t["due_date"][:10],
                 "category_id": t.get("category_id"),
             }

@@ -111,12 +111,14 @@ async def create_transaction(payload: TransactionCreate):
                 raise ValueError("Escolha a conta ou o cartão, não os dois.")
             if not any(c["id"] == payload.card_id for c in cartoes.listar(payload.user_id)):
                 raise ValueError("Cartão não encontrado. Escolha um dos seus cartões.")
-            if payload.type != TransactionType.EXPENSE:
-                raise ValueError("No cartão só cabe compra (despesa).")
+            if payload.type not in (TransactionType.EXPENSE, TransactionType.REFUND):
+                raise ValueError("No cartão só cabe compra (despesa) ou estorno.")
             if payload.series is not None:
                 raise ValueError("Compra parcelada ou recorrente no cartão ainda não está disponível.")
             # A compra é despesa na data dela: nasce efetivada nesse dia.
             dados["settled_at"] = dados["settled_at"] or dados["due_date"]
+        elif payload.type == TransactionType.REFUND:
+            raise ValueError("Estorno é do cartão: escolha o cartão da compra devolvida.")
         else:
             DataService.validar_conta_do_usuario(
                 payload.user_id, payload.account_id, obrigatoria=payload.source == TransactionSource.MANUAL

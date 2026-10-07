@@ -17,7 +17,8 @@ type Ultima = {
   id: number
   description: string | null
   amount: number
-  type: 'income' | 'expense'
+  /** `refund` é o estorno no cartão (#31): rótulo próprio, nunca receita. */
+  type: 'income' | 'expense' | 'refund'
   /** AAAA-MM-DD do dia em que efetivou. */
   day: string
   /** Nulo = "Sem categoria". */
@@ -135,12 +136,13 @@ export function UltimasTransacoes({ refreshKey = 0, onNovo }: { refreshKey?: num
                           'pointer-events-none shrink-0 font-medium ' +
                           (t.is_internal_transfer
                             ? 'text-muted-foreground'
-                            : t.type === 'income'
+                            : t.type !== 'expense'
                               ? 'text-foreground'
                               : 'text-destructive')
                         }
                       >
-                        {t.type === 'income' ? '+' : '-'}
+                        {t.type === 'refund' && <span className="mr-1 text-xs font-normal text-muted-foreground">Estorno</span>}
+                        {t.type === 'expense' ? '-' : '+'}
                         <MoneyValue value={t.amount} />
                       </span>
                     </li>

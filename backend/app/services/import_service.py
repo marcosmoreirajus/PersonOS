@@ -53,7 +53,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.services import pagamentos_fatura
+from app.services import estorno_importacao, pagamentos_fatura
 from app.services.data_service import DataService, em_transacao
 
 # Distância máxima entre a data do extrato e a do lançamento existente.
@@ -445,8 +445,9 @@ def _dias_entre(a: str, b: str) -> int:
 def classificar(linhas: List[Dict[str, Any]], existentes: List[Dict[str, Any]], destino: Destino) -> None:
     """
     Marca cada linha como `nova`, `ja_importada` ou `suspeita` (com candidato).
-    No destino Cartão, a linha positiva fica `tratada_depois`: não é compra e
-    não entra em nenhuma regra de duplicidade (estorno e pagamento são de #31/#29).
+    No destino Cartão, a linha positiva é `estorno` (#31) ou, com marcador de
+    pagamento recebido, `tratada_depois` (ponta do cartão do pagamento, #32).
+    Estorno só é reconhecido como repetido (hash/FITID); não concilia com compra.
 
     Determinístico: sem similaridade por limiar. Um percentual de parecença
     esconderia a regra e produziria decisões que ninguém sabe explicar.
@@ -475,9 +476,12 @@ def classificar(linhas: List[Dict[str, Any]], existentes: List[Dict[str, Any]], 
     usados = {t["reconcile_candidate_id"] for t in existentes if t.get("reconcile_candidate_id")}
 
     for l in linhas:
+        eh_estorno = False
         if destino.eh_cartao and l["type"] == "income":
-            l["situacao"] = "tratada_depois"
-            continue
+            if estorno_importacao.eh_pagamento_recebido(normalizar(l["descricao"])):
+                l["situacao"] = "tratada_depois"
+                continue
+            eh_estorno = True
         if l["external_id"]:
             # Com FITID: ele decide. O hash só vale contra registro que veio
             # sem FITID (ex.: o mesmo extrato importado antes como CSV).
@@ -486,6 +490,14 @@ def classificar(linhas: List[Dict[str, Any]], existentes: List[Dict[str, Any]], 
             ja = l["import_hash"] in hash_todos
         if ja:
             l["situacao"] = "ja_importada"
+            continue
+
+        if eh_estorno:
+            # Não concilia com compra manual: estorno só repete a si mesmo (hash/FITID acima).
+            l["situacao"] = "estorno"
+            l["category_id"] = estorno_importacao.categoria_da_compra_original(
+                l, existentes, destino.id, normalizar, _descricoes_casam
+            )
             continue
 
         desc = normalizar(l["descricao"])
@@ -550,7 +562,7 @@ def analisar(
             ):
                 l["situacao"] = "pagamento_fatura"
 
-    contagem = {"nova": 0, "ja_importada": 0, "suspeita": 0, "tratada_depois": 0, "pagamento_fatura": 0}
+    contagem = {"nova": 0, "ja_importada": 0, "suspeita": 0, "tratada_depois": 0, "pagamento_fatura": 0, "estorno": 0}
     entradas = 0.0
     saidas = 0.0
     for l in linhas:
@@ -591,12 +603,14 @@ def _registro_importado(
     return {
         "id": novo_id,
         "user_id": user_id,
-        "type": l["type"],
+        # A linha positiva do cartão é `income` no extrato, mas grava como estorno (#31).
+        "type": "refund" if l["situacao"] == "estorno" else l["type"],
         "amount": l["amount"],
         "description": l["descricao"],
         # Nulo só nasce de importação: é o "o classificador não soube".
-        # A classificação automática é da Fatia 6.
-        "category_id": None,
+        # A classificação automática é da Fatia 6; só o estorno herda a
+        # categoria da compra original, quando o casamento é óbvio.
+        "category_id": l.get("category_id"),
         "due_date": l["data"],
         "settled_at": l["data"],
         "account_id": destino.account_id,
@@ -671,6 +685,7 @@ def importar(
     conciliadas = 0
     em_espera = 0
     em_pagamento = 0
+    estornos = 0
     for l in analise["linhas"]:
         if l["situacao"] in ("ja_importada", "tratada_depois"):
             continue
@@ -681,6 +696,12 @@ def importar(
             transactions.append(registro)
             proximo += 1
             em_pagamento += 1
+            continue
+
+        if l["situacao"] == "estorno":
+            transactions.append(_registro_importado(l, user_id, destino, proximo, agora, "confirmed"))
+            proximo += 1
+            estornos += 1
             continue
 
         if l["situacao"] == "nova":
@@ -728,6 +749,7 @@ def importar(
         "aguardando_conciliacao": em_espera,
         "aguardando_pagamento": em_pagamento,
         "tratadas_depois": analise["contagem"]["tratada_depois"],
+        "estornos": estornos,
         "invalidas": analise["invalidas"],
         # Todas as importadas entram sem categoria até a Fatia 6.
         "sem_categoria": novas,

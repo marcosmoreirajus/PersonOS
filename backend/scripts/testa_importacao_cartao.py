@@ -4,7 +4,7 @@ Critérios de aceite da importação de extrato do cartão (issue #27, Fatia 5).
 Tudo pela API (preview e commit), com dados isolados num `MemoriaStore`; os
 valores esperados são escritos à mão.
 Fora do escopo: pagamento da fatura (#29), parcelas (#30), estorno (#31) —
-as linhas positivas só aparecem na prévia como "tratadas depois".
+a linha positiva sem marcador de pagamento virou estorno no #31 (testa_estorno.py).
 """
 
 import sys
@@ -69,38 +69,38 @@ def main_testes():
     p = r.json().get("data", {}) if r.status_code == 200 else {}
     checa("prévia responde 200 com o cartão como destino", r.status_code == 200 and p.get("cartao", {}).get("id") == cartao, r.text[:160])
     c = p.get("contagem", {})
-    checa("4 compras novas e 1 linha tratada depois", c.get("nova") == 4 and c.get("tratada_depois") == 1, str(c))
+    checa("4 compras novas e 1 estorno (#31: antes era tratada depois)", c.get("nova") == 4 and c.get("estorno") == 1 and c.get("tratada_depois") == 0, str(c))
     positivas = [l for l in p.get("linhas", []) if l["valor"] > 0]
-    checa("a linha positiva aparece, marcada 'tratada_depois' (não engolida)",
-          len(positivas) == 1 and positivas[0]["situacao"] == "tratada_depois" and positivas[0]["descricao"] == "Estorno Loja", str(positivas))
+    checa("a linha positiva aparece, marcada 'estorno' (não engolida)",
+          len(positivas) == 1 and positivas[0]["situacao"] == "estorno" and positivas[0]["descricao"] == "Estorno Loja", str(positivas))
     checa("totais da prévia: compras 166,00 e positivas 30,00", p.get("totais") == {"entradas": 30.0, "saidas": 166.0}, str(p.get("totais")))
     checa("a prévia não grava nada", DataService.load_json("transactions") == [])
 
     print("importação do cartão")
     r = envia(cli, "commit", CSV.encode(), card_id=cartao)
     d = r.json().get("data", {}) if r.status_code == 200 else {}
-    checa("commit importa 4 compras e deixa 1 para depois", r.status_code == 200 and d.get("importadas") == 4 and d.get("tratadas_depois") == 1, r.text[:200])
-    gravadas = [t for t in DataService.load_json("transactions") if t.get("card_id") == cartao]
+    checa("commit importa 4 compras e 1 estorno", r.status_code == 200 and d.get("importadas") == 4 and d.get("estornos") == 1 and d.get("tratadas_depois") == 0, r.text[:200])
+    gravadas = [t for t in DataService.load_json("transactions") if t.get("card_id") == cartao and t["type"] == "expense"]
     checa("gravou 4 despesas no Cartão, sem Conta, efetivadas na data do banco",
           len(gravadas) == 4 and all(t["type"] == "expense" and t["account_id"] is None and t["settled_at"] == t["due_date"] and t["source"] == "import" for t in gravadas),
           str(gravadas)[:200])
-    checa("a linha positiva não foi gravada", all(t["description"] != "Estorno Loja" for t in DataService.load_json("transactions")))
+    checa("a linha positiva foi gravada como estorno (refund)", [t["type"] for t in DataService.load_json("transactions") if t["description"] == "Estorno Loja"] == ["refund"])
     cartao_faturas = lambda: {f["cycle"]: f for f in cli.get(f"/api/cards/{cartao}/invoices", params={"hoje": "2026-10-05"}).json()["data"]}
     f = cartao_faturas()
-    checa("setembro soma 116,00 com os dois cafés iguais contados separados", f.get("2026-09", {}).get("total") == 116.0 and f["2026-09"]["purchases_count"] == 3, str(f))
+    checa("setembro soma 116,00 - 30,00 de estorno = 86,00, com os dois cafés iguais contados separados", f.get("2026-09", {}).get("total") == 86.0 and f["2026-09"]["purchases_count"] == 3, str(f))
     checa("28/09 cai na fatura de outubro (fechamento dia 25)", f.get("2026-10", {}).get("total") == 50.0, str(f))
 
     print("reimportar não duplica")
     r = envia(cli, "preview", CSV.encode(), card_id=cartao)
     c = r.json()["data"]["contagem"]
-    checa("prévia reconhece as 4 como já importadas", c.get("ja_importada") == 4 and c.get("nova") == 0, str(c))
+    checa("prévia reconhece as 4 compras e o estorno como já importados", c.get("ja_importada") == 5 and c.get("nova") == 0 and c.get("estorno") == 0, str(c))
     r = envia(cli, "commit", CSV.encode(), card_id=cartao)
     d = r.json().get("data", {})
-    checa("commit não grava nada de novo", d.get("importadas") == 0 and d.get("ja_existiam") == 4, str(d))
-    checa("fatura continua igual", cartao_faturas()["2026-09"]["total"] == 116.0)
+    checa("commit não grava nada de novo", d.get("importadas") == 0 and d.get("estornos") == 0 and d.get("ja_existiam") == 5, str(d))
+    checa("fatura continua igual", cartao_faturas()["2026-09"]["total"] == 86.0)
     mais = CSV + "06/09/2026;Padaria Pao;-12,00\n"
     d = envia(cli, "commit", mais.encode(), card_id=cartao).json()["data"]
-    checa("extrato com uma linha a mais traz só a nova", d.get("importadas") == 1 and d.get("ja_existiam") == 4 and cartao_faturas()["2026-09"]["total"] == 128.0, str(d))
+    checa("extrato com uma linha a mais traz só a nova", d.get("importadas") == 1 and d.get("ja_existiam") == 5 and cartao_faturas()["2026-09"]["total"] == 98.0, str(d))
 
     print("compra manual do mesmo cartão é candidata a duplicata")
     inter = cli.post("/api/cards", json={"user_id": UID, "name": "Inter", "limit": 1000, "closing_day": 25, "due_day": 5}).json()["data"]["id"]
@@ -128,8 +128,8 @@ def main_testes():
     r = envia(cli, "commit", CSV.encode(), account_id=conta)
     d = r.json().get("data", {}) if r.status_code == 200 else {}
     checa("na Conta, a linha positiva continua entrando como entrada", r.status_code == 200 and d.get("importadas") == 5, r.text[:160])
-    # 128,00 do CSV + 25,00 do OFX A1: a importação na Conta não mexeu na fatura.
-    checa("e a fatura do cartão não mudou com a importação na Conta", cartao_faturas()["2026-09"]["total"] == 153.0)
+    # 98,00 do CSV (já com o estorno) + 25,00 do OFX A1: a importação na Conta não mexeu na fatura.
+    checa("e a fatura do cartão não mudou com a importação na Conta", cartao_faturas()["2026-09"]["total"] == 123.0)
 
 
 def main():

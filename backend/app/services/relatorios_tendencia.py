@@ -4,8 +4,8 @@ Relatórios: tendência do período (issue #18, spec #7). Só o PASSADO; a Proje
 
 Reusa de `relatorios` o intervalo (`resolver_periodo`). O recorte é o de
 `_somas`: efetivado, pela data do lançamento (`settled_at`), sem transferência
-interna nem ingestão pendente. Estorno ainda não existe (Fatia 5): quando
-existir, abate a despesa do ponto; ver "Tendência (issue #18)" no spec.
+interna nem ingestão pendente. O estorno (#31) abate a despesa do ponto, pela
+despesa líquida (`despesa_liquida.py`); ver "Tendência (issue #18)" no spec.
 
 Granularidade: por dia até 31 dias de período, por mês acima disso. Todo
 balde do intervalo aparece, mesmo sem lançamentos (zero), para o gráfico não
@@ -15,7 +15,7 @@ pular dias nem meses. Soma em centavos inteiros para não acumular erro de float
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
-from app.services import relatorios
+from app.services import despesa_liquida, relatorios
 from app.services.data_service import DataService
 
 LIMITE_DIAS_POR_DIA = 31
@@ -71,8 +71,8 @@ def tendencia(
             continue
         if t["type"] == "income":
             somas[dia[:tamanho_chave]][0] += _centavos(t["amount"])
-        elif t["type"] == "expense":
-            somas[dia[:tamanho_chave]][1] += _centavos(t["amount"])
+        else:
+            somas[dia[:tamanho_chave]][1] += despesa_liquida.centavos(t)
 
     pontos = []
     for b in baldes:

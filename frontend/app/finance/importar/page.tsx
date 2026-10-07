@@ -17,7 +17,7 @@ import { formatDateBR } from '@/lib/dates'
 
 const PASSOS = ['Origem', 'Revisar', 'Confirmar']
 
-type Situacao = 'nova' | 'ja_importada' | 'suspeita' | 'tratada_depois' | 'pagamento_fatura'
+type Situacao = 'nova' | 'ja_importada' | 'suspeita' | 'tratada_depois' | 'pagamento_fatura' | 'estorno'
 type Decisao = 'merge' | 'not_duplicate' | 'queue'
 
 type LinhaPrevia = {
@@ -47,6 +47,7 @@ type Resumo = {
   ja_existiam: number
   aguardando_conciliacao: number
   tratadas_depois?: number
+  estornos?: number
   aguardando_pagamento?: number
   sem_categoria: number
 }
@@ -66,6 +67,7 @@ const SITUACAO: Record<Situacao, { texto: string; ponto: string; linha?: string 
   suspeita: { texto: 'Possível duplicata', ponto: 'bg-destructive' },
   tratada_depois: { texto: 'Tratada depois', ponto: 'bg-muted-foreground/40', linha: 'text-muted-foreground' },
   pagamento_fatura: { texto: 'Possível pagamento de fatura', ponto: 'bg-destructive' },
+  estorno: { texto: 'Estorno', ponto: 'bg-positive' },
 }
 
 const DECISOES: { value: Decisao; label: string }[] = [
@@ -288,6 +290,11 @@ export default function ImportarPage() {
                 <strong className="font-semibold">{previa.contagem.pagamento_fatura}</strong> possíveis pagamentos de fatura
               </span>
             )}
+            {previa.contagem.estorno > 0 && (
+              <span>
+                <strong className="font-semibold">{previa.contagem.estorno}</strong> {previa.contagem.estorno === 1 ? 'estorno' : 'estornos'}
+              </span>
+            )}
             {previa.contagem.tratada_depois > 0 && (
               <span className="text-muted-foreground">
                 <strong className="font-semibold text-foreground">{previa.contagem.tratada_depois}</strong> tratadas depois
@@ -425,10 +432,16 @@ export default function ImportarPage() {
               seleção em lote em Transações para categorizar várias de uma vez.
             </p>
           )}
+          {!!resumo.estornos && (
+            <p className="text-sm text-muted-foreground">
+              {resumo.estornos} {resumo.estornos === 1 ? 'estorno importado' : 'estornos importados'}: reduz a fatura e abate a despesa,
+              sem virar receita.
+            </p>
+          )}
           {!!resumo.tratadas_depois && (
             <p className="text-sm text-muted-foreground">
-              {resumo.tratadas_depois} {resumo.tratadas_depois === 1 ? 'linha positiva não foi importada' : 'linhas positivas não foram importadas'}:
-              estorno e pagamento da fatura são tratados depois.
+              {resumo.tratadas_depois} {resumo.tratadas_depois === 1 ? 'pagamento recebido não foi importado' : 'pagamentos recebidos não foram importados'}:
+              a ponta do cartão do pagamento da fatura é tratada depois.
             </p>
           )}
           {!!resumo.aguardando_pagamento && (

@@ -105,11 +105,13 @@ function DetalheDaFatura({ cardId, ciclo, categorias }: { cardId: number; ciclo:
         {detalhe.purchases.map((c) => (
           <li key={c.id} className="flex items-center justify-between gap-3">
             <span className="flex min-w-0 flex-col">
-              <span className="truncate text-foreground">{c.description || 'Compra'}</span>
+              <span className="truncate text-foreground">{c.description || (c.type === 'refund' ? 'Estorno' : 'Compra')}</span>
               <span className="text-xs text-muted-foreground">
                 {formatDateBR(c.date)} · {nomeDaCategoria(c.category_id)}
+                {c.type === 'refund' ? ' · Estorno' : ''}
               </span>
             </span>
+            {/* O estorno vem negativo da API: reduz o total da fatura. */}
             <MoneyValue value={c.amount} className="shrink-0 text-foreground" />
           </li>
         ))}

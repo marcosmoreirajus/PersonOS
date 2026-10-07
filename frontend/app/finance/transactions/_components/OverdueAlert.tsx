@@ -13,7 +13,7 @@ import { hojeLocal, formatDateBR } from '@/lib/dates'
 
 export type OverdueTransaction = {
   id: number
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'refund'
   amount: number
   description: string | null
   category_id: number | null
