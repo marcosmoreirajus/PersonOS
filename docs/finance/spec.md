@@ -465,3 +465,22 @@ A **compra** é um lançamento com `card_id` e sem conta; a **Fatura** não é g
 **Fora do saldo da conta.** `saldos_por_conta` ignora lançamento com `card_id`: a compra não sai da conta (é dívida do Cartão) e também não vira "Sem conta". O Saldo como "contas menos dívida dos cartões" é da Visão Geral etapa 2. Em Relatórios e no dashboard a compra é despesa em `settled_at` (a data da compra), sem lançamento futuro, portanto sem dupla contagem.
 
 **Tela.** Formulário de lançamento: escolha "Conta | Cartão" (Cartão trava em Saída e à vista; preseleciona o único cartão). Aba Cartões: cada cartão lista suas faturas (ciclo, estado, fechamento, vencimento, total) e o detalhe abre as compras e o total (`cartoes/_components/FaturasDoCartao.tsx`); valores em `MoneyValue`, com carregamento, vazio e erro. Lógica pura testada em `frontend/lib/faturas.ts` e `frontend/lib/lancamento-destino.ts`.
+
+## Pagamento da fatura pela conta (issue #29)
+
+O pagamento é **a própria saída da conta**: `is_internal_transfer = true` e `invoice_payment = {card_id, cycle}`. Não é despesa (fora de relatórios e de "Sem categoria"), o saldo da conta já o considera (as pontas de transferência contam em `saldos.py`) e a fatura abate o restante. O valor é sempre o da linha, nunca o total. As duas pontas (pagamento recebido no extrato do cartão) são do #32. Aceite: `backend/scripts/testa_pagamento_fatura.py`.
+
+**Suspeita (`pagamentos_fatura.py`).** Uma saída da conta é suspeita quando existe fatura **fechada na data da própria linha** com restante e (o valor iguala o total ou o restante dela **ou** a descrição tem um marcador de fatura: `fatura`, `fat cartao`, `pgto/pagto/pag cartao`). Medir o "fechada" na data da linha dispensa o `hoje` do cliente na importação e deixa o resultado determinístico. A linha entra com `ingest_state = awaiting_reconciliation` e `payment_suspect = true`: fora de toda soma, na seção "Pagamentos de fatura" de "A revisar" (e não na de conciliação; `/api/reconcile` a recusa).
+
+**Decisões de 06/10 (não reabrir sem discussão):**
+1. **Marcador sem fatura a pagar não sugere.** "Fatura de energia" sem nenhuma fatura de cartão fechada com restante entra como despesa comum, sem perguntar. Em vez de seguir o texto do ticket ("valor igual **ou** marcador") ao pé da letra, o marcador só vale havendo fatura candidata: evita encher a fila com contas de consumo. O custo aceito: um pagamento de cartão com marcador, numa data em que a fatura ainda não foi importada, vira despesa comum.
+2. **Fatura padrão = a sugerida mais antiga.** Com agosto (R$ 300) e setembro (R$ 200) em aberto e uma saída de R$ 200, vem marcada setembro (bate o valor); sem nenhuma que bata, a mais antiga. Divergência do ticket ("a mais antiga ainda não rolada"): "rolada" só existe com o saldo anterior (#33), e quem paga R$ 200 quase sempre paga a fatura de R$ 200. O seletor mostra todas as opções.
+3. **Saldo líquido fica no #37.** Agora só a ponta da conta: o Saldo total (soma das contas) cai ao pagar a fatura; "contas menos dívida dos cartões" não oscila só quando o #37 chegar.
+
+| Método | Rota | Observação |
+|---|---|---|
+| `GET` | `/api/invoice-payments/{id}/options` | faturas que a saída poderia pagar, mais antiga primeiro: `{opcoes: [{card_id, card_name, cycle, closing_date, due_date, total, remaining, state, sugerida}], padrao}`; 400 se não é saída da conta |
+| `POST` | `/api/invoice-payments/{id}` `{card_id, cycle}` | confirma (linha sugerida ou marcação manual de qualquer saída efetivada); 400 se a fatura não está fechada e em aberto na data da saída, se o cartão não é do usuário, ou se já é pagamento |
+| `POST` | `/api/invoice-payments/{id}/reject` | só para linha sugerida: volta como despesa comum, confirmada |
+
+`GET /api/review/user/{id}` ganha `pagamentos_fatura` (cada item com `opcoes` e `padrao`) e o `total` inclui a seção. A fatura (`/api/cards/{id}/invoices`) ganha `paid`, `remaining` (nunca negativo) e os estados `partially_paid` e `paid`; o detalhe traz `payments`. A importação devolve `aguardando_pagamento` e a prévia a situação `pagamento_fatura`.
