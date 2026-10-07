@@ -41,7 +41,7 @@ Parte da fatura anterior que ficou sem pagar e volta como linha da fatura seguin
 _Avoid_: Rotativo, encargo
 
 **Estorno**:
-Devolução de uma compra: abate a despesa da categoria original e reduz a fatura. Não é receita. Tipo de lançamento próprio (efund); a Despesa líquida (despesa menos estorno) é a conta que os resumos usam.
+Devolução de uma compra: abate a despesa da categoria original e reduz a fatura. Não é receita. Tipo de lançamento próprio (`refund`); a Despesa líquida (despesa menos estorno) é a conta que os resumos usam.
 _Avoid_: Crédito, receita de estorno
 
 **Tratada depois**:
