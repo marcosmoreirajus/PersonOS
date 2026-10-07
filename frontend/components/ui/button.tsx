@@ -1,5 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Loader } from "@/components/ui/loader"
 import { cn } from "cn"
 
 const buttonVariants = cva(
@@ -43,14 +44,29 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  pending = false,
+  disabled,
+  children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonPrimitive.Props &
+  VariantProps<typeof buttonVariants> & {
+    /** Operação em andamento: desabilita o botão e troca o ícone por um spinner. */
+    pending?: boolean
+  }) {
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      aria-busy={pending || undefined}
+      disabled={disabled || pending}
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        pending && "disabled:opacity-80 [&>svg]:hidden"
+      )}
       {...props}
-    />
+    >
+      {pending && <Loader variant="spinner" size={14} label="Processando" className="text-current" />}
+      {children}
+    </ButtonPrimitive>
   )
 }
 

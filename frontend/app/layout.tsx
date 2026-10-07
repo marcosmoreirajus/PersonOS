@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ApiToastStack } from '@/components/ui/ApiToastStack'
 import { THEME_INIT_SCRIPT } from '@/lib/theme'
 import './globals.css'
 
@@ -19,7 +20,10 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <ApiToastStack />
+        {children}
+      </body>
     </html>
   )
 }

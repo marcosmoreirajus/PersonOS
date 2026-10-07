@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { Carregando } from '@/components/ui/carregando'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { MoneyValue } from '@/components/ui/money-value'
@@ -78,7 +79,7 @@ export default function PatrimonioPage() {
   }, [])
 
   if (loading) {
-    return <p className="text-muted-foreground">Carregando...</p>
+    return <Carregando />
   }
 
   if (error || !data || !data.holdings?.length) {

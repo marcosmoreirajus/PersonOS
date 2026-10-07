@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { Carregando } from '@/components/ui/carregando'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -75,7 +76,7 @@ export default function ConfiguracoesPage() {
       )}
 
       {!prefs ? (
-        !erro && <p className="text-muted-foreground">Carregando...</p>
+        !erro && <Carregando />
       ) : (
         <Card>
           <CardHeader>

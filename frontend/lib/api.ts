@@ -53,6 +53,110 @@ export class RespostaInvalida extends Error {
 
 export type Query = Record<string, string | number | boolean | null | undefined>
 
+export type ApiOperationToast = {
+  id: string
+  status: 'loading' | 'success' | 'error' | 'dismiss'
+  title: string
+  description?: string
+}
+
+type ApiOperationLabels = {
+  loading: string
+  success: string
+  error: string
+}
+
+const operationToastListeners = new Set<(toast: ApiOperationToast) => void>()
+let queuedOperationToasts: ApiOperationToast[] = []
+let operationSeed = 0
+
+/** Permite que a interface global acompanhe operações da API sem acoplar o
+ *  cliente HTTP a componentes React. Eventos anteriores à montagem da pilha
+ *  ficam em fila para não perder operações disparadas na montagem de uma tela. */
+export function subscribeToApiOperationToasts(listener: (toast: ApiOperationToast) => void) {
+  operationToastListeners.add(listener)
+  queuedOperationToasts.forEach(listener)
+  queuedOperationToasts = []
+  return () => {
+    operationToastListeners.delete(listener)
+  }
+}
+
+function publicarToastOperacao(toast: ApiOperationToast) {
+  // api() também é exercitada em Node nos testes; notificações são exclusivas
+  // do navegador e nunca alteram o contrato do cliente HTTP.
+  if (typeof window === 'undefined') return
+  if (operationToastListeners.size === 0) {
+    queuedOperationToasts.push(toast)
+    return
+  }
+  operationToastListeners.forEach((listener) => listener(toast))
+}
+
+function rotulosDaOperacao(caminho: string, metodo: string, body: unknown): ApiOperationLabels {
+  const rota = caminho.split('?')[0].toLowerCase()
+  const acaoEmLote = body && typeof body === 'object' && 'action' in body
+    ? String((body as { action: unknown }).action)
+    : ''
+
+  if (rota.includes('/import/preview')) {
+    return { loading: 'Analisando arquivo...', success: 'Arquivo analisado', error: 'Não foi possível analisar o arquivo.' }
+  }
+  if (rota.includes('/import/confirm') || rota.includes('/import/commit')) {
+    return { loading: 'Importando lançamentos...', success: 'Importação concluída', error: 'Não foi possível concluir a importação.' }
+  }
+  if (rota.includes('/series/extend')) {
+    return { loading: 'Atualizando lançamentos recorrentes...', success: 'Lançamentos recorrentes atualizados', error: 'Não foi possível atualizar os lançamentos recorrentes.' }
+  }
+  if (rota.includes('/reconcile')) {
+    return { loading: 'Conciliando lançamento...', success: 'Lançamento conciliado', error: 'Não foi possível conciliar o lançamento.' }
+  }
+  if (/\/publish|\/publicar|\/publications/.test(rota)) {
+    return { loading: 'Publicando item...', success: 'Item publicado', error: 'Não foi possível publicar o item.' }
+  }
+
+  const recurso = rota.includes('/transactions')
+    ? { singular: 'lançamento', plural: 'lançamentos', objeto: 'o lançamento', contexto: 'no lançamento', salvo: 'Lançamento salvo', excluido: 'Lançamento excluído' }
+    : rota.includes('/accounts')
+      ? { singular: 'conta', plural: 'contas', objeto: 'a conta', contexto: 'na conta', salvo: 'Conta salva', excluido: 'Conta excluída' }
+      : rota.includes('/cards')
+        ? { singular: 'cartão', plural: 'cartões', objeto: 'o cartão', contexto: 'no cartão', salvo: 'Cartão salvo', excluido: 'Cartão excluído' }
+        : rota.includes('/preferences')
+          ? { singular: 'preferência', plural: 'preferências', objeto: 'as preferências', contexto: 'nas preferências', salvo: 'Preferências salvas', excluido: 'Preferências atualizadas' }
+          : rota.includes('/business')
+            ? { singular: 'dados da seção', plural: 'dados da seção', objeto: 'os dados da seção', contexto: 'nos dados da seção', salvo: 'Dados da seção salvos', excluido: 'Dados da seção excluídos' }
+            : { singular: 'item', plural: 'itens', objeto: 'o item', contexto: 'no item', salvo: 'Item salvo', excluido: 'Item excluído' }
+
+  const emLote = rota.endsWith('/bulk')
+  const alvo = emLote ? recurso.plural : recurso.objeto
+  const contexto = emLote ? 'nos lançamentos' : recurso.contexto
+
+  if (metodo === 'DELETE' || (emLote && acaoEmLote === 'delete')) {
+    return {
+      loading: `Excluindo ${alvo}...`,
+      success: emLote ? 'Lançamentos excluídos' : recurso.excluido,
+      error: `Não foi possível excluir ${alvo}.`,
+    }
+  }
+  if (metodo === 'POST' && !emLote) {
+    return {
+      loading: `Salvando ${recurso.singular}...`,
+      success: recurso.salvo,
+      error: `Não foi possível salvar ${alvo}.`,
+    }
+  }
+
+  return {
+    loading: `Salvando alterações ${contexto}...`,
+    success: 'Alterações salvas',
+    error: `Não foi possível salvar as alterações ${contexto}.`,
+  }
+}
+
+function novoIdDeOperacao() {
+  return `api-operation-${Date.now()}-${operationSeed++}`
+}
+
 export type Initiativa = {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
   /** Objeto vira JSON com o `Content-Type`. `FormData` passa intacto e SEM
@@ -131,30 +235,54 @@ async function buscar(url: string, init: Initiativa): Promise<Response> {
   }
 }
 
-/** Requisição que dá `data` ou lança. */
+/** Requisição que dá `data` ou lança. Escritas também publicam o ciclo de
+ *  feedback (carregamento/sucesso/erro) consumido pela pilha global de toasts. */
 export async function api<T = unknown>(caminho: string, init: Initiativa = {}): Promise<T> {
   const url = apiUrl(caminho, init.query)
-  const res = await buscar(url, init)
+  const metodo = init.method ?? 'GET'
+  const rotulos = metodo === 'GET' ? null : rotulosDaOperacao(caminho, metodo, init.body)
+  const operationId = rotulos ? novoIdDeOperacao() : null
 
-  const texto = await res.text().catch(() => '')
-  let corpo: unknown = null
+  if (rotulos && operationId) {
+    publicarToastOperacao({ id: operationId, status: 'loading', title: rotulos.loading })
+  }
+
   try {
-    corpo = texto ? JSON.parse(texto) : null
-  } catch {
-    throw new RespostaInvalida(url, res.status, texto)
-  }
+    const res = await buscar(url, init)
+    const texto = await res.text().catch(() => '')
+    let corpo: unknown = null
+    try {
+      corpo = texto ? JSON.parse(texto) : null
+    } catch {
+      throw new RespostaInvalida(url, res.status, texto)
+    }
 
-  if (!res.ok) {
-    throw new ApiError(extraiMensagem(corpo) ?? mensagemDe(res.status), res.status, corpo)
-  }
+    if (!res.ok) {
+      throw new ApiError(extraiMensagem(corpo) ?? mensagemDe(res.status), res.status, corpo)
+    }
 
-  // Toda rota de dados do backend responde `{"data": ...}` — as 31, sem
-  // exceção. Um 2xx sem essa chave é contrato quebrado, e devolver `undefined`
-  // como se fosse `T` é exatamente o "500 virou lista vazia" que este módulo
-  // existe para acabar com.
-  if (!corpo || typeof corpo !== 'object' || !('data' in corpo)) {
-    throw new RespostaInvalida(url, res.status, texto)
-  }
+    // Toda rota de dados do backend responde `{"data": ...}` — as 31, sem
+    // exceção. Um 2xx sem essa chave é contrato quebrado, e devolver `undefined`
+    // como se fosse `T` é exatamente o "500 virou lista vazia" que este módulo
+    // existe para acabar com.
+    if (!corpo || typeof corpo !== 'object' || !('data' in corpo)) {
+      throw new RespostaInvalida(url, res.status, texto)
+    }
 
-  return (corpo as { data: T }).data
+    if (rotulos && operationId) {
+      publicarToastOperacao({ id: operationId, status: 'success', title: rotulos.success })
+    }
+    return (corpo as { data: T }).data
+  } catch (erro) {
+    if (rotulos && operationId) {
+      const cancelada = erro instanceof DOMException && erro.name === 'AbortError'
+      publicarToastOperacao({
+        id: operationId,
+        status: cancelada ? 'dismiss' : 'error',
+        title: cancelada ? rotulos.loading : rotulos.error,
+        ...(cancelada || !(erro instanceof Error) ? {} : { description: erro.message }),
+      })
+    }
+    throw erro
+  }
 }

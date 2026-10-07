@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 
+import { Carregando } from '@/components/ui/carregando'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -10,7 +11,9 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 // reservada). Ver a convenção em docs/design-system.md: campo de formulário
 // usa `motion/input`; campo de tela (busca, filtro) usa `ui/input`.
 import { Input } from '@/components/motion/input'
+import { CampoValor } from '@/components/ui/campo-valor'
 import { api } from '@/lib/api'
+import { lerValor, valorParaCampo } from '@/lib/valor'
 import { cn } from '@/lib/utils'
 import { hojeLocal } from '@/lib/dates'
 import { contaInicial, guardarUltimaConta, lerUltimaConta } from '@/lib/conta-lancamento'
@@ -130,7 +133,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
     setCardId('')
     if (seed) {
       setType(seed.type)
-      setAmount(String(seed.amount).replace('.', ','))
+      setAmount(valorParaCampo(seed.amount))
       setDescription(seed.description ?? '')
       setCategoryId(seed.category_id != null ? String(seed.category_id) : '')
       setDate(seed.due_date)
@@ -202,7 +205,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
    * positiva e a primeira ficar sempre a maior.
    */
   const previaParcelas = (() => {
-    const total = Number(amount.replace(/\./g, '').replace(',', '.'))
+    const total = (lerValor(amount) ?? 0)
     const n = Number(parcelas)
     if (!total || !n || n < 2) return 'Informe o total e o nº de parcelas'
     const parcela = Math.floor((total / n) * 100) / 100
@@ -213,7 +216,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
   })()
 
   async function submit(addAnother: boolean) {
-    const valor = Number(amount.replace(/\./g, '').replace(',', '.'))
+    const valor = (lerValor(amount) ?? 0)
     // Todos os campos são validados de uma vez: apontar um erro por vez faz o
     // usuário corrigir, salvar e descobrir o próximo.
     const novos = {
@@ -331,11 +334,9 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Input
+            <CampoValor
               id="amount"
               label={repeticao === 'installment' ? 'Valor total' : 'Valor'}
-              inputMode="decimal"
-              placeholder="0,00"
               value={amount}
               onChange={setAmount}
               error={erros.amount}
@@ -477,7 +478,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
               <p className="text-xs text-muted-foreground">Compra no cartão: o cartão não muda por aqui.</p>
             ) : destino === 'cartao' ? (
               cartoes === null ? (
-                <p className="text-xs text-muted-foreground">Carregando cartões...</p>
+                <Carregando compacto rotulo="Carregando cartões" />
               ) : cartoes.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Cadastre um cartão em Cartões para lançar compras.</p>
               ) : (
@@ -502,7 +503,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
                 </div>
               )
             ) : contas === null ? (
-              <p className="text-xs text-muted-foreground">Carregando contas...</p>
+              <Carregando compacto rotulo="Carregando contas" />
             ) : contas.length === 0 ? (
               <div className="flex flex-wrap items-center gap-3">
                 <p className="text-xs text-muted-foreground">Cadastre uma conta para lançar.</p>
@@ -551,7 +552,7 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
                 Salvar e adicionar outra
               </Button>
             )}
-            <Button onClick={() => submit(false)} disabled={saving}>
+            <Button onClick={() => submit(false)} pending={saving}>
               {saving ? 'Salvando...' : editando ? 'Salvar alterações' : 'Adicionar transação'}
             </Button>
           </div>

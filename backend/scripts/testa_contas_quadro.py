@@ -81,6 +81,38 @@ def main():
         checa("conta que não existe devolve 404", r.status_code == 404)
         r = cli.patch(f"/api/accounts/{cid}", json={"initial_balance": 10})
         checa("editar só o saldo mantém nome e tipo", r.json()["data"]["name"] == "itaú pj" and r.json()["data"]["kind"] == "savings")
+
+        print("não somar no Saldo Geral")
+        antes = quadro(cli)["total"]
+        r = cli.post("/api/accounts", json={"user_id": UID, "name": "Cofre", "kind": "savings", "initial_balance": 500, "exclude_from_total": True})
+        cofre = r.json().get("data", {}) if r.status_code == 200 else {}
+        checa("conta criada já marcada para ficar fora do Saldo Geral", r.status_code == 200 and cofre.get("exclude_from_total") is True, r.text[:100])
+        q = quadro(cli)
+        linha = next((c for c in q["accounts"] if c["name"] == "Cofre"), {})
+        checa("a conta segue na lista com o próprio saldo e a marca", linha.get("balance") == 500 and linha.get("exclude_from_total") is True, str(linha))
+        checa("mas o total não a soma", q["total"] == antes, f"{antes} -> {q['total']}")
+        r = cli.patch(f"/api/accounts/{cofre['id']}", json={"exclude_from_total": False})
+        checa("desmarcar devolve a conta ao total", r.status_code == 200 and quadro(cli)["total"] == antes + 500, r.text[:100])
+        r = cli.patch(f"/api/accounts/{cofre['id']}", json={"exclude_from_total": True})
+        checa("marcar de novo tira do total", quadro(cli)["total"] == antes)
+        r = cli.patch(f"/api/accounts/{cofre['id']}", json={"initial_balance": 800})
+        checa("editar outro campo não mexe na marca", r.json()["data"]["exclude_from_total"] is True)
+        r = cli.post("/api/accounts", json={"user_id": UID, "name": "Comum"})
+        checa("sem informar, a conta entra no Saldo Geral", r.json()["data"]["exclude_from_total"] is False)
+
+        print("logos da coleção")
+        for logo, ok in [
+            ("catalogo:nubank", True),
+            ("icone:cofrinho:ffe600", True),
+            ("icone:banco:333333", True),
+            ("icone:aviao:ffe600", False),
+            ("icone:banco:123456", False),
+            ("icone:banco", False),
+            ("catalogo:inexistente", False),
+            ("data:image/png;base64,iVBORw0KGgo=", False),
+        ]:
+            r = cli.post("/api/accounts", json={"user_id": UID, "name": f"L {logo}", "logo": logo})
+            checa(f"logo {logo!r} {'aceito' if ok else 'recusado'}", (r.status_code == 200) == ok, r.text[:80])
     finally:
         usar_store(anterior)
 

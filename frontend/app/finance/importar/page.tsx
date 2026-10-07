@@ -421,7 +421,7 @@ export default function ImportarPage() {
           </Button>
         )}
         {passo === 1 && (
-          <Button onClick={confirmar} disabled={carregando || aGravar === 0}>
+          <Button onClick={confirmar} pending={carregando} disabled={aGravar === 0}>
             {carregando
               ? 'Importando...'
               : aGravar === 0

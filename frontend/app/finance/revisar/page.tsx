@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
+import { Carregando } from '@/components/ui/carregando'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { MoneyValue } from '@/components/ui/money-value'
@@ -99,7 +100,7 @@ function Revisar() {
     resolver(id, () => api(`/api/transactions/${id}`, { method: 'PATCH', body: { category_id: Number(categoryId), scope: 'only_this' } }))
 
   if (!fila) {
-    return error ? <Erro texto={error} /> : <p className="text-muted-foreground">Carregando...</p>
+    return error ? <Erro texto={error} /> : <Carregando />
   }
 
   const mostrar = (s: Secao) => !secao || secao === s
@@ -249,7 +250,7 @@ function Erro({ texto }: { texto: string }) {
 // pré-renderizada no build.
 export default function RevisarPage() {
   return (
-    <Suspense fallback={<p className="text-muted-foreground">Carregando...</p>}>
+    <Suspense fallback={<Carregando />}>
       <Revisar />
     </Suspense>
   )

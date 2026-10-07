@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, FileUp } from 'lucide-react'
 
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { VisaoGeralSkeleton } from './_components/VisaoGeralSkeleton'
 import { MonthPicker } from '@/components/ui/month-picker'
-import { MoneyValue } from '@/components/ui/money-value'
-import { StatCard } from './_components/StatCard'
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
+import { BotoesRapidos } from './_components/BotoesRapidos'
+import { HeroSaldo } from './_components/HeroSaldo'
 import { ProximosVencimentos } from './_components/ProximosVencimentos'
 import { UltimasTransacoes } from './_components/UltimasTransacoes'
 import { QuadroContas } from './_components/QuadroContas'
@@ -72,7 +71,6 @@ export default function FinanceDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [month, setMonth] = useState(() => new Date())
-  const [expanded, setExpanded] = useState(false)
   const [breakdownKind, setBreakdownKind] = useState<BreakdownKind>('expense')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogKind, setDialogKind] = useState<'expense' | 'income' | 'transfer'>('expense')
@@ -226,7 +224,7 @@ export default function FinanceDashboardPage() {
   }, [scheduled])
 
   if (loading) {
-    return <p className="text-muted-foreground">Carregando...</p>
+    return <VisaoGeralSkeleton />
   }
 
   if (error) {
@@ -237,143 +235,44 @@ export default function FinanceDashboardPage() {
     )
   }
 
-  const topCategoryPct =
-    computed.topCategory && computed.expense > 0 ? (computed.topCategory.value / computed.expense) * 100 : 0
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-semibold text-foreground">Visão geral</h1>
         <MonthPicker value={month} onChange={setMonth} />
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setDialogKind('expense')
-              setDialogOpen(true)
-            }}
-          >
-            <ArrowDownToLine className="size-4" />
-            Despesas
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setDialogKind('income')
-              setDialogOpen(true)
-            }}
-          >
-            <ArrowUpFromLine className="size-4" />
-            Entradas
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setDialogKind('transfer')
-              setDialogOpen(true)
-            }}
-          >
-            <ArrowLeftRight className="size-4" />
-            Transferência
-          </Button>
-          <Button variant="outline" size="sm" render={<Link href="/finance/importar" />} nativeButton={false}>
-            <FileUp className="size-4" />
-            Importar
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Saldo"
-          sentence={
-            <>
-              Você tem <MoneyValue value={saldo} className="font-bold" /> de saldo, somando as contas e os{' '}
-              {computed.totalCount} lançamento{computed.totalCount === 1 ? '' : 's'} registrado
-              {computed.totalCount === 1 ? '' : 's'}.
-            </>
-          }
-          secondaryValue={`${computed.totalCount} lançamentos`}
-          secondaryDesc="no total registrado"
-          sparklinePoints={computed.saldoSparkline}
-          facts={[
-            { label: 'Maior entrada', value: computed.biggestIncome ? <MoneyValue value={computed.biggestIncome.amount} /> : '—' },
-            { label: 'Maior saída', value: computed.biggestExpense ? <MoneyValue value={computed.biggestExpense.amount} /> : '—' },
-          ]}
-          expanded={expanded}
-          onToggle={() => setExpanded((e) => !e)}
-        />
-
-        <StatCard
-          label="Entradas"
-          sentence={
-            <>
-              Entraram <MoneyValue value={computed.income} className="font-bold" /> em {computed.incomeCount}{' '}
-              lançamento{computed.incomeCount === 1 ? '' : 's'}.
-            </>
-          }
-          secondaryValue={`${computed.incomeCount} lançamento${computed.incomeCount === 1 ? '' : 's'}`}
-          secondaryDesc="de entrada"
-          sparklinePoints={computed.entradasSparkline}
-          facts={[
-            { label: 'Maior entrada', value: computed.biggestIncome ? <MoneyValue value={computed.biggestIncome.amount} /> : '—' },
-            { label: 'Lançamentos', value: computed.incomeCount },
-          ]}
-          expanded={expanded}
-          onToggle={() => setExpanded((e) => !e)}
-        />
-
-        <StatCard
-          label="Saídas"
-          sentence={
-            <>
-              Saíram <MoneyValue value={computed.expense} className="font-bold" /> em {computed.expenseCount}{' '}
-              lançamento{computed.expenseCount === 1 ? '' : 's'}
-              {computed.topCategory ? `, ${topCategoryPct.toFixed(0)}% só em ${computed.topCategory.name}` : ''}.
-            </>
-          }
-          secondaryValue={computed.topCategory ? `${topCategoryPct.toFixed(0)}%` : '—'}
-          secondaryDesc={computed.topCategory ? `maior categoria: ${computed.topCategory.name}` : 'sem despesas'}
-          sparklinePoints={computed.saidasSparkline}
-          facts={[
-            { label: 'Lançamentos', value: computed.expenseCount },
-            { label: 'Maior saída', value: computed.biggestExpense ? <MoneyValue value={computed.biggestExpense.amount} /> : '—' },
-          ]}
-          expanded={expanded}
-          onToggle={() => setExpanded((e) => !e)}
-        />
-
-        <StatCard
-          label="Resultado"
-          sentence={
-            <>
-              Fechou <MoneyValue value={computed.balance} className="font-bold" /> no{' '}
-              {computed.balance >= 0 ? 'positivo' : 'negativo'} neste período.
-            </>
-          }
-          secondaryValue={computed.balance >= 0 ? 'Positivo' : 'Negativo'}
-          secondaryDesc="resultado do período"
-          sparklinePoints={computed.saldoSparkline}
-          facts={[
-            { label: 'Entradas', value: <MoneyValue value={computed.income} /> },
-            { label: 'Saídas', value: <MoneyValue value={computed.expense} /> },
-          ]}
-          expanded={expanded}
-          onToggle={() => setExpanded((e) => !e)}
+        <BotoesRapidos
+          onDespesa={() => {
+            setDialogKind('expense')
+            setDialogOpen(true)
+          }}
+          onEntrada={() => {
+            setDialogKind('income')
+            setDialogOpen(true)
+          }}
+          onTransferencia={() => {
+            setDialogKind('transfer')
+            setDialogOpen(true)
+          }}
         />
       </div>
 
-      {/* Posição provisória: o layout final é o ticket #23. */}
-      <ProximosVencimentos refreshKey={refreshKey} />
-      <QuadroContas onChange={() => setRefreshKey((k) => k + 1)} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <HeroSaldo
+          saldo={saldo}
+          income={computed.income}
+          expense={computed.expense}
+          balance={computed.balance}
+          className="justify-center"
+        />
+        <QuadroContas />
+      </div>
+
+      <ProximosVencimentos refreshKey={refreshKey} onChanged={() => setRefreshKey((k) => k + 1)} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Saídas por dia</CardTitle>
+            <CardTitle>Saldo por dia</CardTitle>
             <CardDescription>Quanto saiu em cada dia do mês.</CardDescription>
           </CardHeader>
           <CardContent>

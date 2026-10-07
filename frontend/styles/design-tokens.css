@@ -52,6 +52,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
+  --color-card-tint: var(--card-tint);
   --color-card: var(--card);
 
   /* Radius alto — escala derivada de --radius (0.75rem). */
@@ -67,6 +68,8 @@
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
+  /* Card oficial no claro: branco. A lavanda de 2026-10-05 saiu em 06/10; o único
+     destaque colorido é o --card-tint, nas contas cadastradas. */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -95,6 +98,9 @@
 
   /* Radius alto no estilo WikiOS — bordas bem arredondadas em toda a UI. */
   --radius: 0.75rem;
+
+  /* Azul mais forte, só para o card de Contas (2026-10-05). */
+  --card-tint: oklch(0.925 0.045 255);
 
   /* Canvas neutro — 2026-09-22. ~~Quente ("papel", #f5f1e7)~~ saiu: o fundo
      amarelado era a assinatura visual que o Marco quer evitar. Fica um
@@ -162,6 +168,7 @@
   --sidebar-ring: oklch(0.556 0 0);
 
   --canvas: oklch(0.145 0 0);
+  --card-tint: oklch(0.285 0.04 255);
   --amber-accent: #ec8a52;
   --positive: #4cba7f;
   --sage: #96a67d;

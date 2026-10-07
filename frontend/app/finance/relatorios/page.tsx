@@ -9,6 +9,7 @@ import { Tendencia } from './_components/Tendencia'
 import { AbasRelatorios } from './_components/AbasRelatorios'
 import { Parcelados } from './_components/Parcelados'
 import { ResultCards, type ResumoPeriodo } from './_components/ResultCards'
+import { Carregando } from '@/components/ui/carregando'
 import { CURRENT_USER_ID, api } from '@/lib/api'
 import { hojeLocal } from '@/lib/dates'
 import { lerAba, montarBuscaRelatorios, type Aba } from '@/lib/relatorios-parcelados'
@@ -90,7 +91,7 @@ function RelatoriosContent() {
       ) : error ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">{error}</div>
       ) : loading || !resumo ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <Carregando />
       ) : (
         <ResultCards resumo={resumo} />
       )}
@@ -108,7 +109,7 @@ function RelatoriosContent() {
 // gerada estaticamente (o mesmo cuidado de "A revisar" e de Transações).
 export default function RelatoriosPage() {
   return (
-    <Suspense fallback={<p className="text-muted-foreground">Carregando...</p>}>
+    <Suspense fallback={<Carregando />}>
       <RelatoriosContent />
     </Suspense>
   )

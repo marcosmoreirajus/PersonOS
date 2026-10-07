@@ -8,7 +8,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { API_URL, ApiError, RespostaInvalida, api, apiUrl } from './api.ts'
+import {
+  API_URL,
+  ApiError,
+  RespostaInvalida,
+  api,
+  apiUrl,
+  subscribeToApiOperationToasts,
+  type ApiOperationToast,
+} from './api.ts'
 
 type Chamada = { url: string; init: RequestInit }
 
@@ -33,6 +41,22 @@ async function comResposta(
     globalThis.fetch = original
   }
   return registro
+}
+
+/** Simula o navegador para validar os eventos que alimentam a pilha visual. */
+async function comNotificacoes(corpo: (eventos: ApiOperationToast[]) => Promise<void>) {
+  const tinhaWindow = Reflect.has(globalThis, 'window')
+  const windowOriginal = Reflect.get(globalThis, 'window')
+  const eventos: ApiOperationToast[] = []
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: {} })
+  const cancelar = subscribeToApiOperationToasts((toast) => eventos.push(toast))
+  try {
+    await corpo(eventos)
+  } finally {
+    cancelar()
+    if (tinhaWindow) Object.defineProperty(globalThis, 'window', { configurable: true, value: windowOriginal })
+    else Reflect.deleteProperty(globalThis, 'window')
+  }
 }
 
 const responde = (status: number, corpo: unknown) =>
@@ -196,4 +220,32 @@ test('query aceita boolean e number e ignora null/undefined', () => {
 
 test('apiUrl monta a URL do link de download, que não é fetch', () => {
   assert.equal(apiUrl('/api/import/template/csv'), `${API_URL}/api/import/template/csv`)
+})
+
+test('mutação publica carregamento e sucesso com o mesmo id', async () => {
+  await comNotificacoes(async (eventos) => {
+    await comResposta(responde(200, { data: { id: 1 } }), async () => {
+      await api('/api/transactions', { method: 'POST', body: {} })
+    })
+
+    assert.deepEqual(eventos.map(({ status, title }) => ({ status, title })), [
+      { status: 'loading', title: 'Salvando lançamento...' },
+      { status: 'success', title: 'Lançamento salvo' },
+    ])
+    assert.equal(eventos[0].id, eventos[1].id)
+  })
+})
+
+test('falha de mutação publica erro e preserva a mensagem do backend', async () => {
+  await comNotificacoes(async (eventos) => {
+    await comResposta(responde(400, { detail: 'O nome já está em uso.' }), async () => {
+      await rejeita(api('/api/cards/1', { method: 'PATCH', body: {} }))
+    })
+
+    assert.deepEqual(eventos.map(({ status, title, description }) => ({ status, title, description })), [
+      { status: 'loading', title: 'Salvando alterações no cartão...', description: undefined },
+      { status: 'error', title: 'Não foi possível salvar as alterações no cartão.', description: 'O nome já está em uso.' },
+    ])
+    assert.equal(eventos[0].id, eventos[1].id)
+  })
 })

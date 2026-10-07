@@ -28,7 +28,7 @@ const SECOES: TabItem[] = [
   { href: '/finance/transactions', label: 'Transações', icon: ArrowLeftRight },
   { href: '/finance/agendadas', label: 'Agendadas', icon: CalendarClock },
   { href: '/finance/relatorios', label: 'Relatórios', icon: PieChart },
-  { href: '/finance/cartoes', label: 'Cartões', icon: CreditCard },
+  { href: '/finance/contas', label: 'Contas e cartões', icon: CreditCard },
   { href: '/finance/patrimonio', label: 'Patrimônio', icon: PiggyBank },
   { href: '/finance/revisar', label: 'A revisar', icon: ListChecks },
 ]

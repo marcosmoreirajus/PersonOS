@@ -9,6 +9,7 @@ disponível são dos tickets seguintes; aqui só mora o cadastro.
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
+from app.conta_logos import logo_valido
 from app.services.store import store_ativo
 
 COLECAO = "cards"
@@ -28,6 +29,15 @@ def _limite_valido(valor: Any) -> float:
     if isinstance(valor, bool) or not isinstance(valor, (int, float)) or valor < 0:
         raise ValueError("O limite não pode ser negativo.")
     return round(float(valor), 2)
+
+
+def _logo_valido(logo: str | None) -> str | None:
+    """Mesma coleção fechada das contas (`app/conta_logos.py`): imagem enviada não é aceita. Vazio remove."""
+    if not logo:
+        return None
+    if not logo_valido(logo):
+        raise ValueError("Escolha um dos ícones da lista.")
+    return logo
 
 
 def _conta_pagadora_valida(user_id: int, account_id: int | None) -> int | None:
@@ -61,6 +71,7 @@ def criar(
     closing_day: int,
     due_day: int,
     default_payer_account_id: int | None = None,
+    logo: str | None = None,
 ) -> Dict[str, Any]:
     """
     Cria um Cartão. O nome é único por usuário (sem diferenciar caixa nem
@@ -82,6 +93,7 @@ def criar(
         "closing_day": _dia_valido(closing_day, "fechamento"),
         "due_day": _dia_valido(due_day, "vencimento"),
         "default_payer_account_id": _conta_pagadora_valida(user_id, default_payer_account_id),
+        "logo": _logo_valido(logo),
         # Identificador que o banco põe no arquivo; usado pela importação do
         # extrato do cartão (ticket próprio) para avisar de arquivo trocado.
         "file_ref": None,
@@ -99,10 +111,11 @@ def atualizar(
     closing_day: int | None = None,
     due_day: int | None = None,
     default_payer_account_id: int | None = None,
+    logo: str | None = None,
 ) -> Dict[str, Any] | None:
     """
     Só o que vier preenchido é alterado. `default_payer_account_id` = 0 remove
-    a conta pagadora. Tudo é validado antes de mudar qualquer campo: uma edição
+    a conta pagadora e `logo` = "" remove o ícone. Tudo é validado antes de mudar qualquer campo: uma edição
     recusada não grava nada. Devolve None se o cartão não existe.
     """
     cartoes = store_ativo().load(COLECAO)
@@ -126,6 +139,9 @@ def atualizar(
         mudancas["due_day"] = _dia_valido(due_day, "vencimento")
     if default_payer_account_id is not None:
         mudancas["default_payer_account_id"] = _conta_pagadora_valida(cartao["user_id"], default_payer_account_id)
+    if logo is not None:
+        # string vazia remove o ícone
+        mudancas["logo"] = _logo_valido(logo)
 
     cartao.update(mudancas)
     store_ativo().save(COLECAO, cartoes)

@@ -12,6 +12,7 @@ class CardCreate(BaseModel):
     closing_day: int
     due_day: int
     default_payer_account_id: int | None = None
+    logo: str | None = None
 
 
 class CardUpdate(BaseModel):
@@ -22,6 +23,7 @@ class CardUpdate(BaseModel):
     closing_day: int | None = None
     due_day: int | None = None
     default_payer_account_id: int | None = None
+    logo: str | None = None
 
 
 class CardResponse(BaseModel):
@@ -32,6 +34,7 @@ class CardResponse(BaseModel):
     closing_day: int
     due_day: int
     default_payer_account_id: int | None = None
+    logo: str | None = None
     created_at: datetime
 
     class Config:

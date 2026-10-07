@@ -9,6 +9,7 @@ class AccountCreate(BaseModel):
     kind: AccountKind = AccountKind.CHECKING
     initial_balance: float = 0
     logo: str | None = None
+    exclude_from_total: bool = False
 
 
 class AccountUpdate(BaseModel):
@@ -18,6 +19,7 @@ class AccountUpdate(BaseModel):
     kind: AccountKind | None = None
     initial_balance: float | None = None
     logo: str | None = None
+    exclude_from_total: bool | None = None
 
 
 class AccountResponse(BaseModel):
@@ -27,6 +29,7 @@ class AccountResponse(BaseModel):
     kind: AccountKind
     initial_balance: float = 0
     logo: str | None = None
+    exclude_from_total: bool = False
 
     class Config:
         from_attributes = True

@@ -184,6 +184,11 @@ para a mesma função.
 - **Escolha entre muitas opções** → `motion/combobox` (uma) ou
   `motion/multi-select` (várias). O `ui/select` fica para listas curtas e
   fechadas, onde buscar não ajuda.
+- **Feedback de operações assíncronas** → `motion/animated-toast-stack`
+  (beUI), montado uma vez em `app/layout.tsx`. O `ApiToastStack` acompanha as
+  mutações centralizadas em `lib/api.ts`, atualizando o mesmo aviso de
+  carregamento para sucesso ou erro e preservando a mensagem que veio do
+  backend. Consultas GET não geram toast de sucesso/carregamento.
 - **Navegação estrutural** → `ui/app-shell` (`AppShell` + `SectionTabs`),
   construído sobre `motion/animated-sidebar`. A sidebar **recolhe para só
   ícones** pelo botão **dentro do cabeçalho dela**, à direita de "PersonOS"

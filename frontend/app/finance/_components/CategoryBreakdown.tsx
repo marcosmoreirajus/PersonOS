@@ -83,7 +83,7 @@ export interface CategoryBreakdownProps {
   onKindChange?: (kind: BreakdownKind) => void
 }
 
-type ViewMode = 'donut' | 'bars' | 'segmented'
+type ViewMode = 'donut' | 'bars'
 
 const KIND_LABEL: Record<BreakdownKind, { toggle: string; plural: string }> = {
   expense: { toggle: 'Despesas', plural: 'despesas' },
@@ -145,7 +145,6 @@ function CategoryBreakdown({ data, kind = 'expense', onKindChange }: CategoryBre
         options={[
           ['donut', 'Pizza'],
           ['bars', 'Barras'],
-          ['segmented', 'Segmentada'],
         ] as const}
         value={view}
         onChange={setView}
@@ -234,29 +233,6 @@ function CategoryBreakdown({ data, kind = 'expense', onKindChange }: CategoryBre
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {view === 'segmented' && (
-        <div className="flex flex-col gap-3">
-          <div className="flex h-7 w-full overflow-hidden rounded-md">
-            {slices.map((s) => (
-              <div
-                key={s.name}
-                style={{ width: `${s.pct}%`, backgroundColor: s.color }}
-                title={`${s.name} — ${formatCurrency(s.value)} (${s.pct.toFixed(0)}%)`}
-                className="h-full border-r-2 border-card last:border-r-0"
-              />
-            ))}
-          </div>
-          <div className="flex flex-col gap-2">
-            {slices.map((s) => (
-              <div key={s.name} className="flex items-center justify-between gap-4 text-sm">
-                <CategoryLabel d={s} />
-                <span className="font-medium text-foreground">{s.pct.toFixed(0)}%</span>
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>

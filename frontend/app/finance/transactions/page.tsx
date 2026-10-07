@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, FileUp, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 
+import { Carregando } from '@/components/ui/carregando'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -678,7 +679,7 @@ function TransactionsContent() {
 // gerada estaticamente (o mesmo cuidado de "A revisar").
 export default function TransactionsPage() {
   return (
-    <Suspense fallback={<p className="text-muted-foreground">Carregando...</p>}>
+    <Suspense fallback={<Carregando />}>
       <TransactionsContent />
     </Suspense>
   )

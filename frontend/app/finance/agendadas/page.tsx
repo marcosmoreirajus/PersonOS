@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { Carregando } from '@/components/ui/carregando'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { MonthStrip } from '@/components/ui/month-strip'
 import { MonthCalendar } from './_components/MonthCalendar'
@@ -139,7 +140,7 @@ export default function AgendadasPage() {
   )
 
   if (loading) {
-    return <p className="text-muted-foreground">Carregando...</p>
+    return <Carregando />
   }
 
   if (error) {

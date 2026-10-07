@@ -16,9 +16,11 @@ from app.services.data_service import DataService
 def saldos_por_conta(user_id: int) -> Dict[str, Any]:
     """
     Devolve:
-      accounts   — [{account_id, name, kind, balance}] em ordem alfabética
+      accounts   — [{account_id, name, kind, balance, exclude_from_total}] em ordem alfabética
       no_account — {"balance": x} com os efetivados sem conta, ou None se não há
-      total      — soma das contas mais "Sem conta": o Saldo da página
+      total      — soma das contas mais "Sem conta": o Saldo da página. Contas
+                   marcadas `exclude_from_total` (dinheiro guardado) ficam de fora
+                   da soma, mas seguem na lista com o próprio saldo.
     """
     contas: List[Dict[str, Any]] = DataService.get_accounts(user_id)
     saldos = {c["id"]: float(c.get("initial_balance") or 0) for c in contas}
@@ -47,10 +49,12 @@ def saldos_por_conta(user_id: int) -> Dict[str, Any]:
             "name": c["name"],
             "kind": c.get("kind"),
             "balance": round(saldos[c["id"]], 2),
+            "exclude_from_total": bool(c.get("exclude_from_total")),
         }
         for c in contas
     ]
-    total = round(sum(saldos.values()) + sem_conta, 2)
+    fora = {c["id"] for c in contas if c.get("exclude_from_total")}
+    total = round(sum(v for cid, v in saldos.items() if cid not in fora) + sem_conta, 2)
     return {
         "accounts": linhas,
         "no_account": {"balance": round(sem_conta, 2)} if tem_sem_conta else None,

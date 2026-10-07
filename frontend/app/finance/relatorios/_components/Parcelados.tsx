@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { SkeletonLinhas } from '@/components/ui/carregando'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { MoneyValue } from '@/components/ui/money-value'
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -64,7 +65,7 @@ export function Parcelados({ hoje }: { hoje: string }) {
 
   let corpo
   if (!atual) {
-    corpo = <p className="text-muted-foreground">Carregando...</p>
+    corpo = <SkeletonLinhas />
   } else if (atual.erro || !atual.dados) {
     corpo = (
       <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">

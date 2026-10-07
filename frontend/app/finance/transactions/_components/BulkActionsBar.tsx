@@ -159,7 +159,7 @@ export function BulkActionsBar({
               <Button variant="ghost" size="sm" onClick={() => setConfirmando(false)} disabled={saving}>
                 Cancelar
               </Button>
-              <Button variant="destructive" size="sm" onClick={() => enviar({ action: 'delete' })} disabled={saving}>
+              <Button variant="destructive" size="sm" onClick={() => enviar({ action: 'delete' })} pending={saving}>
                 Confirmar
               </Button>
             </>
@@ -167,7 +167,8 @@ export function BulkActionsBar({
             <>
               <Button
                 size="sm"
-                disabled={saving || mudancas.length === 0}
+                pending={saving}
+                disabled={mudancas.length === 0}
                 onClick={() => enviar({ action: 'update', changes: pendente })}
               >
                 <Save className="size-4" strokeWidth={1.5} aria-hidden="true" />

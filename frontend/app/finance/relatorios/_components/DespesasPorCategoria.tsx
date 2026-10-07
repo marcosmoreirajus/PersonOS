@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { CircleAlert } from 'lucide-react'
 
+import { Carregando } from '@/components/ui/carregando'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { MoneyValue } from '@/components/ui/money-value'
 import { CategoryBreakdown, rankWithUncategorized, REVISAR_SEM_CATEGORIA } from '../../_components/CategoryBreakdown'
@@ -74,7 +75,7 @@ export function DespesasPorCategoria({ periodo, hoje, pronto }: { periodo: Perio
   if (!pronto) {
     corpo = <p className="text-sm text-muted-foreground">Escolha a data inicial e a final.</p>
   } else if (!atual) {
-    corpo = <p className="text-muted-foreground">Carregando...</p>
+    corpo = <Carregando compacto variante="bars" rotulo="Carregando gráfico" className="min-h-40" />
   } else if (atual.erro || !atual.dados) {
     corpo = (
       <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">

@@ -186,7 +186,8 @@ async def get_accounts(user_id: int):
 async def create_account(payload: AccountCreate):
     try:
         return {"data": DataService.create_account(
-            payload.user_id, payload.name, payload.kind.value, payload.initial_balance, payload.logo
+            payload.user_id, payload.name, payload.kind.value, payload.initial_balance, payload.logo,
+            payload.exclude_from_total,
         )}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -201,6 +202,7 @@ async def update_account(account_id: int, payload: AccountUpdate):
             payload.kind.value if payload.kind else None,
             payload.initial_balance,
             payload.logo,
+            payload.exclude_from_total,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -228,6 +230,7 @@ async def create_card(payload: CardCreate):
             payload.closing_day,
             payload.due_day,
             payload.default_payer_account_id,
+            payload.logo,
         )}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -273,6 +276,7 @@ async def update_card(card_id: int, payload: CardUpdate):
             payload.closing_day,
             payload.due_day,
             payload.default_payer_account_id,
+            payload.logo,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

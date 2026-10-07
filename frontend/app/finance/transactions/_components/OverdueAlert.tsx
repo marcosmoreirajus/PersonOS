@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Check, ChevronDown, CircleAlert, LoaderCircle } from 'lucide-react'
+import { Check, ChevronDown, CircleAlert } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -200,16 +200,12 @@ export function OverdueAlert({
                         // recebimento confirma em verde, despesa em neutro.
                         t.type === 'income' && 'text-positive'
                       )}
-                      disabled={salvando === t.id}
+                      pending={salvando === t.id}
                       onClick={() => efetivar(t)}
                       aria-label={t.type === 'income' ? 'Marcar recebido' : 'Marcar pago'}
                       title={t.type === 'income' ? 'Marcar recebido' : 'Marcar pago'}
                     >
-                      {salvando === t.id ? (
-                        <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Check className="size-4" strokeWidth={2} aria-hidden="true" />
-                      )}
+                      <Check className="size-4" strokeWidth={2} aria-hidden="true" />
                     </Button>
                   </li>
                 )

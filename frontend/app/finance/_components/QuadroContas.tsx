@@ -1,79 +1,124 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Pencil, Plus } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { ChevronLeft, ChevronRight, CreditCard } from 'lucide-react'
 
+import { TiltCard } from '@/components/motion/tilt-card'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { SkeletonLinhas } from '@/components/ui/carregando'
 import { MoneyValue } from '@/components/ui/money-value'
 import { CURRENT_USER_ID, api } from '@/lib/api'
-import { NovaContaDialog, TIPOS_CONTA, type Conta } from '../importar/_components/NovaContaDialog'
+import { logoDaConta } from '@/lib/conta-logos'
+import type { Cartao } from '../cartoes/_components/CartaoDialog'
+import { LogoConta } from './LogoConta'
+import { TileConta } from './TileConta'
+import { useContas } from './useContas'
 
-/** O que `accounts_balance` (GET /api/dashboard) devolve; a conta é do backend. */
-type Saldos = {
-  accounts: { account_id: number; name: string; kind: string; balance: number }[]
-  no_account: { balance: number } | null
-  total: number
-}
+const PAGINA = '/finance/contas'
 
-const rotuloTipo = (kind: string) => TIPOS_CONTA.find((t) => t.value === kind)?.label ?? kind
+/** Todo tile do carrossel é igual: inclina ao passar o mouse e leva à página completa. */
+const LINK_TILE =
+  'block h-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card'
 
 /**
- * Quadro "Contas e cartões" da Visão Geral (por ora só contas): saldo de cada
- * conta, "Sem conta" quando houver e o total. Cadastra e edita pelo mesmo
- * diálogo da importação. Não filtra nada na página; carrega e falha sozinho.
- * `onChange` avisa a página quando um saldo mudou, para o card Saldo acompanhar.
+ * Rolagem do carrossel sem a barra nativa: diz se há mais para cada lado (as
+ * setas e o esmaecer das bordas dependem disso) e rola de página em página.
+ * Reavalia ao rolar, ao redimensionar e quando os itens mudam.
  */
-export function QuadroContas({ onChange }: { onChange?: () => void }) {
-  const [saldos, setSaldos] = useState<Saldos | null>(null)
-  // Saldo vem do resumo; saldo inicial e logo (para editar) vêm da lista de contas.
-  const [contas, setContas] = useState<Conta[]>([])
-  const [erro, setErro] = useState<string | null>(null)
-  const [recarga, setRecarga] = useState(0)
-  const [novaAberta, setNovaAberta] = useState(false)
-  const [editando, setEditando] = useState<Conta | null>(null)
+function useRolagem(itens: number) {
+  const lista = useRef<HTMLUListElement>(null)
+  const [pode, setPode] = useState({ esquerda: false, direita: false })
+
+  const medir = useCallback(() => {
+    const el = lista.current
+    if (!el) return
+    const esquerda = el.scrollLeft > 4
+    const direita = el.scrollLeft + el.clientWidth < el.scrollWidth - 4
+    setPode((p) => (p.esquerda === esquerda && p.direita === direita ? p : { esquerda, direita }))
+  }, [])
+
+  useEffect(() => {
+    const el = lista.current
+    if (!el) return
+    medir()
+    const obs = new ResizeObserver(medir)
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [medir, itens])
+
+  const rolar = (sentido: 1 | -1) =>
+    lista.current?.scrollBy({ left: sentido * lista.current.clientWidth * 0.8, behavior: 'smooth' })
+
+  return { lista, pode, medir, rolar }
+}
+
+/** Esmaece só a borda por onde ainda há conteúdo, em vez de cortar o tile no meio. */
+function mascaraDasBordas(pode: { esquerda: boolean; direita: boolean }): string | undefined {
+  if (!pode.esquerda && !pode.direita) return undefined
+  const ini = pode.esquerda ? 'transparent 0, #000 2rem' : '#000 0'
+  const fim = pode.direita ? '#000 calc(100% - 2rem), transparent 100%' : '#000 100%'
+  return `linear-gradient(to right, ${ini}, ${fim})`
+}
+
+/**
+ * Quadro "Contas e cartões" da Visão Geral: uma fileira que rola para o lado,
+ * com contas, "Sem conta" (quando houver) e cartões. A altura é fixa — o card
+ * não cresce com o número de contas, e a barra de rolagem nativa não aparece: setas no
+ * cabeçalho e o esmaecer das bordas dizem que há mais para o lado — e o total não se repete aqui: o Saldo
+ * grande ao lado já é o Saldo Geral. Aqui só se olha: cada tile leva à página completa,
+ * onde se cadastra e edita contas e cartões. Carrega e falha sozinho.
+ */
+export function QuadroContas({ className }: { className?: string }) {
+  const { saldos, contas, erro } = useContas()
+  const [cartoes, setCartoes] = useState<Cartao[]>([])
+  const { lista, pode, medir, rolar } = useRolagem((saldos?.accounts.length ?? 0) + cartoes.length)
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([
-      api<{ accounts_balance: Saldos }>(`/api/dashboard/${CURRENT_USER_ID}`),
-      api<Conta[]>(`/api/accounts/user/${CURRENT_USER_ID}`),
-    ])
-      .then(([resumo, lista]) => {
-        if (cancelled) return
-        setSaldos(resumo.accounts_balance)
-        setContas(lista)
-        setErro(null)
-      })
-      .catch((e) => {
-        if (!cancelled) setErro(e instanceof Error ? e.message : 'Não foi possível carregar as contas.')
-      })
+    // Os cartões só completam a fileira: sem eles o quadro segue com as contas.
+    api<Cartao[]>(`/api/cards/user/${CURRENT_USER_ID}`)
+      .then((lista) => !cancelled && setCartoes(lista))
+      .catch(() => {})
     return () => {
       cancelled = true
     }
-  }, [recarga])
+  }, [])
 
-  const salvou = useCallback(() => {
-    setRecarga((n) => n + 1)
-    onChange?.()
-  }, [onChange])
-
-  const vazio = saldos !== null && saldos.accounts.length === 0
+  const vazio = saldos !== null && saldos.accounts.length === 0 && cartoes.length === 0
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <div>
             <CardTitle>Contas e cartões</CardTitle>
-            <CardDescription>O saldo de cada conta, somando o que já foi efetivado.</CardDescription>
+            <CardDescription>Use as setas para ver todas.</CardDescription>
           </div>
-          {!erro && saldos !== null && !vazio && (
-            <Button variant="outline" size="sm" onClick={() => setNovaAberta(true)}>
-              <Plus className="size-4" />
-              Conta
+          <div className="flex shrink-0 items-center gap-1">
+            <Link href={PAGINA} className="mr-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+              Ver tudo ›
+            </Link>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              aria-label="Ver contas anteriores"
+              disabled={!pode.esquerda}
+              onClick={() => rolar(-1)}
+            >
+              <ChevronLeft className="size-4" />
             </Button>
-          )}
+            <Button
+              variant="outline"
+              size="icon-sm"
+              aria-label="Ver mais contas"
+              disabled={!pode.direita}
+              onClick={() => rolar(1)}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -82,68 +127,74 @@ export function QuadroContas({ onChange }: { onChange?: () => void }) {
             {erro}
           </div>
         ) : saldos === null ? (
-          <p className="text-sm text-muted-foreground">Carregando...</p>
+          <SkeletonLinhas linhas={2} />
         ) : vazio ? (
-          // Sem contas, tudo estaria em "Sem conta": o convite basta.
-          <div className="flex flex-col items-start gap-3">
-            <p className="text-sm text-muted-foreground">Cadastre suas contas para ver os saldos</p>
-            <Button variant="outline" size="sm" onClick={() => setNovaAberta(true)}>
-              <Plus className="size-4" />
-              Conta
-            </Button>
-          </div>
+          // Sem nada cadastrado, tudo estaria em "Sem conta": o convite basta.
+          <p className="text-sm text-muted-foreground">
+            Cadastre suas contas e cartões em{' '}
+            <Link href={PAGINA} className="font-medium text-foreground underline underline-offset-2">
+              Contas e cartões
+            </Link>
+            .
+          </p>
         ) : (
-          <ul className="flex flex-col">
-            {saldos.accounts.map((c) => {
-              const completa = contas.find((x) => x.id === c.account_id)
-              return (
-                <li key={c.account_id} className="flex items-center gap-3 border-b border-border py-2 last:border-b-0">
-                  {completa?.logo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={completa.logo} alt="" className="size-8 shrink-0 rounded-md object-contain" />
-                  ) : null}
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm text-foreground">{c.name}</span>
-                    <span className="text-xs text-muted-foreground">{rotuloTipo(c.kind)}</span>
-                  </div>
-                  <MoneyValue value={c.balance} className="shrink-0 text-sm font-medium" />
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Editar ${c.name}`}
-                    disabled={!completa}
-                    onClick={() => completa && setEditando(completa)}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                </li>
-              )
-            })}
+          <ul
+            ref={lista}
+            onScroll={medir}
+            style={{ maskImage: mascaraDasBordas(pode), WebkitMaskImage: mascaraDasBordas(pode) }}
+            className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-1 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label="Contas e cartões"
+          >
+            {saldos.accounts.map((c) => (
+              <li key={c.account_id} className="w-56 shrink-0 snap-start">
+                <Link href={PAGINA} className={LINK_TILE}>
+                  <TileConta linha={c} completa={contas.find((x) => x.id === c.account_id)} className="h-full" />
+                </Link>
+              </li>
+            ))}
             {saldos.no_account && (
-              <li className="flex items-center gap-3 border-b border-border py-2">
-                <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">Sem conta</span>
-                <MoneyValue value={saldos.no_account.balance} className="shrink-0 text-sm font-medium" />
+              <li className="w-56 shrink-0 snap-start">
+                <Link href={PAGINA} className={LINK_TILE}>
+                  <TiltCard className="h-full border border-dashed border-border">
+                    <div className="flex flex-col gap-4 p-4">
+                      <span className="text-sm text-muted-foreground">Sem conta</span>
+                      <MoneyValue value={saldos.no_account.balance} className="text-xl font-bold" />
+                    </div>
+                  </TiltCard>
+                </Link>
               </li>
             )}
-            <li className="flex items-center justify-between pt-3 text-sm">
-              <span className="font-medium text-foreground">Total nas contas</span>
-              <MoneyValue value={saldos.total} className="font-semibold" />
-            </li>
+            {cartoes.map((c) => (
+              <li key={`cartao-${c.id}`} className="w-56 shrink-0 snap-start">
+                <Link href={PAGINA} className={LINK_TILE}>
+                  <TiltCard className="h-full border border-border bg-background">
+                    <div className="flex flex-col gap-4 p-4">
+                      <div className="flex items-center gap-3">
+                        {logoDaConta(c.logo) ? (
+                          <LogoConta logo={c.logo} />
+                        ) : (
+                          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                            <CreditCard className="size-4" strokeWidth={1.75} aria-hidden="true" />
+                          </span>
+                        )}
+                        <div className="flex min-w-0 flex-col">
+                          <span className="truncate text-sm font-medium text-foreground">{c.name}</span>
+                          <span className="text-xs text-muted-foreground">Cartão de crédito</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col">
+                        <MoneyValue value={c.limit} className="text-xl font-bold" />
+                        <span className="text-xs text-muted-foreground">Limite</span>
+                      </div>
+                    </div>
+                  </TiltCard>
+                </Link>
+              </li>
+            ))}
           </ul>
         )}
       </CardContent>
 
-      <NovaContaDialog open={novaAberta} onOpenChange={setNovaAberta} userId={CURRENT_USER_ID} onCreated={salvou} />
-      {editando && (
-        <NovaContaDialog
-          key={editando.id}
-          open
-          onOpenChange={(aberto) => !aberto && setEditando(null)}
-          userId={CURRENT_USER_ID}
-          conta={editando}
-          onCreated={salvou}
-        />
-      )}
     </Card>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { Carregando } from '@/components/ui/carregando'
 import { api } from '@/lib/api'
 
 export type FieldConfig = {
@@ -78,7 +79,7 @@ export default function BusinessSectionForm({
   }
 
   if (loading) {
-    return <p className="text-muted-foreground">Carregando...</p>
+    return <Carregando />
   }
 
   return (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { Carregando } from '@/components/ui/carregando'
 import { Button } from '@/components/ui/button'
 import { MoneyValue } from '@/components/ui/money-value'
 import { api } from '@/lib/api'
@@ -36,7 +37,7 @@ export function FaturasDoCartao({ cardId }: { cardId: number }) {
   }, [cardId])
 
   if (erro) return <p className="text-sm text-destructive">{erro}</p>
-  if (!faturas) return <p className="text-sm text-muted-foreground">Carregando faturas...</p>
+  if (!faturas) return <Carregando compacto rotulo="Carregando faturas" />
   if (faturas.length === 0) {
     return <p className="text-sm text-muted-foreground">Nenhuma compra neste cartão ainda. A fatura nasce com a primeira compra.</p>
   }
@@ -81,7 +82,7 @@ function DetalheDaFatura({ cardId, ciclo, categorias }: { cardId: number; ciclo:
   }, [cardId, ciclo])
 
   if (erro) return <p className="mt-2 text-sm text-destructive">{erro}</p>
-  if (!detalhe) return <p className="mt-2 text-sm text-muted-foreground">Carregando compras...</p>
+  if (!detalhe) return <Carregando compacto rotulo="Carregando compras" />
 
   const nomeDaCategoria = (id: number | null) => categorias.find((c) => c.id === id)?.name ?? 'Sem categoria'
 

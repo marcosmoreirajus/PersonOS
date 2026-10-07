@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta, timezone
 from functools import wraps
 from typing import List, Dict, Any
 
+from app.conta_logos import logo_valido
 from app.services import series_engine
 from app.services.store import store_ativo
 
@@ -407,26 +408,27 @@ class DataService:
             for a in contas
         )
 
-    LOGO_MAX_CHARS = 300_000
-
     @staticmethod
     def _logo_valido(logo: str | None) -> str | None:
         """
-        O logo é guardado como data URL de imagem no próprio JSON (o app não
-        serve arquivos estáticos). O frontend reduz a imagem antes de enviar;
-        aqui só barramos o que não é imagem ou é grande demais.
+        O logo é sempre um item da coleção fechada (`app/conta_logos.py`):
+        uma instituição ou um ícone sobre uma cor da paleta. Imagem enviada
+        não é aceita.
         """
         if not logo:
             return None
-        if not logo.startswith("data:image/png;base64,") and not logo.startswith("data:image/jpeg;base64,") and not logo.startswith("data:image/webp;base64,"):
-            raise ValueError("O logo precisa ser uma imagem PNG, JPG ou WebP.")
-        if len(logo) > DataService.LOGO_MAX_CHARS:
-            raise ValueError("O logo é grande demais.")
+        if not logo_valido(logo):
+            raise ValueError("Escolha um dos logos da lista.")
         return logo
 
     @staticmethod
     def create_account(
-        user_id: int, name: str, kind: str = "checking", initial_balance: float = 0, logo: str | None = None
+        user_id: int,
+        name: str,
+        kind: str = "checking",
+        initial_balance: float = 0,
+        logo: str | None = None,
+        exclude_from_total: bool = False,
     ) -> Dict[str, Any]:
         """
         Cria uma conta. O nome é único por usuário (sem diferenciar caixa nem
@@ -450,6 +452,9 @@ class DataService:
             # entra nas somas de saldo das telas.
             "initial_balance": round(float(initial_balance), 2),
             "logo": DataService._logo_valido(logo),
+            # Conta de dinheiro guardado (poupança, investimento): o saldo dela
+            # continua nos lançamentos e relatórios, mas não entra no Saldo Geral.
+            "exclude_from_total": bool(exclude_from_total),
             # Identificador que o banco põe no arquivo (ACCTID do OFX). Guardado
             # na primeira importação e usado para avisar quando um arquivo de
             # outra conta é enviado para esta.
@@ -467,6 +472,7 @@ class DataService:
         kind: str | None = None,
         initial_balance: float | None = None,
         logo: str | None = None,
+        exclude_from_total: bool | None = None,
     ) -> Dict[str, Any] | None:
         contas = DataService.load_json("accounts")
         conta = next((a for a in contas if a["id"] == account_id), None)
@@ -486,6 +492,8 @@ class DataService:
         if logo is not None:
             # string vazia remove o logo
             conta["logo"] = DataService._logo_valido(logo)
+        if exclude_from_total is not None:
+            conta["exclude_from_total"] = bool(exclude_from_total)
         DataService.save_json("accounts", contas)
         return conta
 

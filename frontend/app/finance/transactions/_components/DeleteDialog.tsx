@@ -108,7 +108,7 @@ export function DeleteDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>
-          <Button variant="destructive" onClick={confirmar} disabled={saving}>
+          <Button variant="destructive" onClick={confirmar} pending={saving}>
             {saving ? 'Excluindo...' : 'Excluir'}
           </Button>
         </DialogFooter>

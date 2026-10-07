@@ -20,7 +20,7 @@ test('vazio vale zero e texto que não é número é recusado', () => {
 })
 
 test('o saldo volta ao campo no mesmo formato que lerSaldo entende', () => {
-  assert.equal(saldoParaCampo(1250.5), '1250,50')
+  assert.equal(saldoParaCampo(1250.5), '1.250,50')
   assert.equal(saldoParaCampo(-50), '-50,00')
   assert.equal(saldoParaCampo(0), '')
   assert.equal(saldoParaCampo(undefined), '')

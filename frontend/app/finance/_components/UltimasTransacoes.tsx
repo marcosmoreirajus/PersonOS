@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
+import { SkeletonLinhas } from '@/components/ui/carregando'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { MoneyValue } from '@/components/ui/money-value'
@@ -88,7 +89,7 @@ export function UltimasTransacoes({ refreshKey = 0, onNovo }: { refreshKey?: num
             {erro}
           </div>
         ) : itens === null ? (
-          <p className="text-sm text-muted-foreground">Carregando...</p>
+          <SkeletonLinhas />
         ) : itens.length === 0 ? (
           <div className="flex flex-col items-start gap-3">
             <p className="text-sm text-muted-foreground">Nenhuma transação ainda.</p>
