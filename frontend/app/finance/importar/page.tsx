@@ -17,7 +17,7 @@ import { formatDateBR } from '@/lib/dates'
 
 const PASSOS = ['Origem', 'Revisar', 'Confirmar']
 
-type Situacao = 'nova' | 'ja_importada' | 'suspeita'
+type Situacao = 'nova' | 'ja_importada' | 'suspeita' | 'tratada_depois'
 type Decisao = 'merge' | 'not_duplicate' | 'queue'
 
 type LinhaPrevia = {
@@ -33,6 +33,7 @@ type LinhaPrevia = {
 type Previa = {
   formato: string
   aviso_conta: string | null
+  destino: 'conta' | 'cartao'
   total: number
   contagem: Record<Situacao, number>
   totais: { entradas: number; saidas: number }
@@ -45,16 +46,24 @@ type Resumo = {
   conciliadas: number
   ja_existiam: number
   aguardando_conciliacao: number
+  tratadas_depois?: number
   sem_categoria: number
 }
 
+type Cartao = { id: number; name: string }
+
+// Destino escolhido: o valor do Select carrega o tipo junto do id ("c:3" conta, "k:2" cartão).
+type Destino = { tipo: 'conta' | 'cartao'; id: number }
+
 const LIMITE_LINHAS = 200
 const NOVA_CONTA = '__nova__'
+const chave = (d: Destino) => `${d.tipo === 'conta' ? 'c' : 'k'}:${d.id}`
 
 const SITUACAO: Record<Situacao, { texto: string; ponto: string; linha?: string }> = {
   nova: { texto: 'Nova', ponto: 'bg-foreground' },
   ja_importada: { texto: 'Já importada', ponto: 'bg-muted-foreground/40', linha: 'text-muted-foreground' },
   suspeita: { texto: 'Possível duplicata', ponto: 'bg-destructive' },
+  tratada_depois: { texto: 'Tratada depois', ponto: 'bg-muted-foreground/40', linha: 'text-muted-foreground' },
 }
 
 const DECISOES: { value: Decisao; label: string }[] = [
@@ -73,7 +82,8 @@ const DECISOES: { value: Decisao; label: string }[] = [
 export default function ImportarPage() {
   const [passo, setPasso] = useState(0)
   const [contas, setContas] = useState<Conta[]>([])
-  const [contaId, setContaId] = useState<number | null>(null)
+  const [cartoes, setCartoes] = useState<Cartao[]>([])
+  const [destino, setDestino] = useState<Destino | null>(null)
   const [novaConta, setNovaConta] = useState(false)
   const [arquivo, setArquivo] = useState<File | null>(null)
   const [previa, setPrevia] = useState<Previa | null>(null)
@@ -84,7 +94,12 @@ export default function ImportarPage() {
 
   const carregarContas = useCallback(async () => {
     try {
-      setContas(await api<Conta[]>(`/api/accounts/user/${CURRENT_USER_ID}`))
+      const [cs, ks] = await Promise.all([
+        api<Conta[]>(`/api/accounts/user/${CURRENT_USER_ID}`),
+        api<Cartao[]>(`/api/cards/user/${CURRENT_USER_ID}`),
+      ])
+      setContas(cs)
+      setCartoes(ks)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível carregar as contas.')
     }
@@ -95,14 +110,16 @@ export default function ImportarPage() {
     carregarContas()
   }, [carregarContas])
 
-  const conta = contas.find((c) => c.id === contaId) ?? null
+  const conta = destino?.tipo === 'conta' ? (contas.find((c) => c.id === destino.id) ?? null) : null
+  const cartao = destino?.tipo === 'cartao' ? (cartoes.find((c) => c.id === destino.id) ?? null) : null
+  const nomeDestino = conta?.name ?? cartao?.name
 
   async function enviar<T>(rota: 'preview' | 'commit') {
-    if (!arquivo || contaId === null) return null
+    if (!arquivo || destino === null) return null
     const form = new FormData()
     form.append('file', arquivo)
     form.append('user_id', String(CURRENT_USER_ID))
-    form.append('account_id', String(contaId))
+    form.append(destino.tipo === 'conta' ? 'account_id' : 'card_id', String(destino.id))
     if (rota === 'commit') form.append('decisoes', JSON.stringify(decisoes))
     // Sem Content-Type manual: o navegador precisa definir o boundary do
     // multipart. `api()` respeita isso — passar FormData é a única forma de ele
@@ -156,8 +173,9 @@ export default function ImportarPage() {
   }
 
   const aGravar = previa ? previa.contagem.nova + previa.contagem.suspeita : 0
-  const contaItens = [
-    ...contas.map((c) => ({ value: String(c.id), label: c.name })),
+  const destinoItens = [
+    ...contas.map((c) => ({ value: chave({ tipo: 'conta', id: c.id }), label: c.name })),
+    ...cartoes.map((c) => ({ value: chave({ tipo: 'cartao', id: c.id }), label: `${c.name} (cartão)` })),
     { value: NOVA_CONTA, label: '+ Nova conta' },
   ]
 
@@ -178,22 +196,23 @@ export default function ImportarPage() {
       {passo === 0 && (
         <section className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground" htmlFor="conta-destino">
-              Conta de destino
+            <label className="text-sm font-medium text-foreground" htmlFor="destino-importacao">
+              Conta ou cartão de destino
             </label>
             <Select
-              items={contaItens}
-              value={contaId === null ? null : String(contaId)}
+              items={destinoItens}
+              value={destino === null ? null : chave(destino)}
               onValueChange={(v) => {
                 if (v === NOVA_CONTA) setNovaConta(true)
-                else setContaId(v === null ? null : Number(v))
+                else if (v === null) setDestino(null)
+                else setDestino({ tipo: v.startsWith('k:') ? 'cartao' : 'conta', id: Number(v.slice(2)) })
               }}
             >
-              <SelectTrigger id="conta-destino" className="w-full sm:w-80">
+              <SelectTrigger id="destino-importacao" className="w-full sm:w-80">
                 <SelectValue placeholder="Escolha a conta ou cartão" />
               </SelectTrigger>
               <SelectContent>
-                {contaItens.map((i) => (
+                {destinoItens.map((i) => (
                   <SelectItem key={i.value} value={i.value}>
                     {i.value === NOVA_CONTA ? (
                       <span className="flex items-center gap-1.5">
@@ -209,6 +228,11 @@ export default function ImportarPage() {
             </Select>
             {conta && (
               <p className="text-xs text-muted-foreground">{TIPOS_CONTA.find((t) => t.value === conta.kind)?.label}</p>
+            )}
+            {cartao && (
+              <p className="text-xs text-muted-foreground">
+                Fatura de cartão: valor negativo é compra; linhas positivas ficam para depois.
+              </p>
             )}
           </div>
 
@@ -257,6 +281,11 @@ export default function ImportarPage() {
             <span className={previa.contagem.suspeita ? 'text-foreground' : 'text-muted-foreground'}>
               <strong className="font-semibold">{previa.contagem.suspeita}</strong> possíveis duplicatas
             </span>
+            {previa.contagem.tratada_depois > 0 && (
+              <span className="text-muted-foreground">
+                <strong className="font-semibold text-foreground">{previa.contagem.tratada_depois}</strong> tratadas depois
+              </span>
+            )}
             {previa.invalidas.length > 0 && (
               <span className="text-destructive">
                 <strong className="font-semibold">{previa.invalidas.length}</strong> com problema
@@ -266,8 +295,11 @@ export default function ImportarPage() {
 
           {/* Entradas e saídas do arquivo: extrato com o sinal invertido salta aos olhos aqui. */}
           <p className="text-sm text-muted-foreground">
-            Conta <strong className="font-medium text-foreground">{conta?.name}</strong> · entradas{' '}
-            <MoneyValue value={previa.totais.entradas} /> · saídas <MoneyValue value={previa.totais.saidas} />
+            {previa.destino === 'cartao' ? 'Cartão' : 'Conta'}{' '}
+            <strong className="font-medium text-foreground">{nomeDestino}</strong> ·{' '}
+            {previa.destino === 'cartao' ? 'positivas (tratadas depois)' : 'entradas'}{' '}
+            <MoneyValue value={previa.totais.entradas} /> · {previa.destino === 'cartao' ? 'compras' : 'saídas'}{' '}
+            <MoneyValue value={previa.totais.saidas} />
           </p>
 
           {previa.aviso_conta && (
@@ -386,6 +418,12 @@ export default function ImportarPage() {
               seleção em lote em Transações para categorizar várias de uma vez.
             </p>
           )}
+          {!!resumo.tratadas_depois && (
+            <p className="text-sm text-muted-foreground">
+              {resumo.tratadas_depois} {resumo.tratadas_depois === 1 ? 'linha positiva não foi importada' : 'linhas positivas não foram importadas'}:
+              estorno e pagamento da fatura são tratados depois.
+            </p>
+          )}
           {resumo.aguardando_conciliacao > 0 && (
             <p className="text-sm text-muted-foreground">
               {resumo.aguardando_conciliacao} possíveis duplicatas ficaram aguardando conciliação e ainda não aparecem
@@ -416,7 +454,7 @@ export default function ImportarPage() {
         )}
 
         {passo === 0 && (
-          <Button onClick={analisar} disabled={!arquivo || contaId === null || carregando}>
+          <Button onClick={analisar} disabled={!arquivo || destino === null || carregando}>
             {carregando ? 'Lendo...' : 'Revisar'}
           </Button>
         )}
@@ -442,7 +480,7 @@ export default function ImportarPage() {
         userId={CURRENT_USER_ID}
         onCreated={(c) => {
           setContas((cs) => [...cs, c])
-          setContaId(c.id)
+          setDestino({ tipo: 'conta', id: c.id })
         }}
       />
     </div>

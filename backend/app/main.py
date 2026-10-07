@@ -293,6 +293,12 @@ async def update_card(card_id: int, payload: CardUpdate):
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 
 
+def _exigir_um_destino(account_id: int | None, card_id: int | None) -> None:
+    """Importação vai para uma Conta OU um Cartão: o contrato de formulário recusa com 422."""
+    if (account_id is None) == (card_id is None):
+        raise HTTPException(status_code=422, detail="Escolha o destino da importação: uma conta ou um cartão.")
+
+
 async def _ler_upload(file: UploadFile) -> bytes:
     conteudo = await file.read()
     if len(conteudo) > MAX_UPLOAD_BYTES:
@@ -304,12 +310,16 @@ async def _ler_upload(file: UploadFile) -> bytes:
 
 @app.post("/api/import/preview")
 async def import_preview(
-    file: UploadFile = File(...), user_id: int = Form(...), account_id: int = Form(...)
+    file: UploadFile = File(...),
+    user_id: int = Form(...),
+    account_id: int | None = Form(None),
+    card_id: int | None = Form(None),
 ):
-    """Lê e classifica o arquivo SEM gravar nada."""
+    """Lê e classifica o arquivo SEM gravar nada. O destino é uma Conta OU um Cartão."""
+    _exigir_um_destino(account_id, card_id)
     conteudo = await _ler_upload(file)
     try:
-        return {"data": ImportService.analisar(user_id, file.filename or "", conteudo, account_id)}
+        return {"data": ImportService.analisar(user_id, file.filename or "", conteudo, account_id, card_id)}
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ArquivoInvalido as e:
@@ -320,7 +330,8 @@ async def import_preview(
 async def import_commit(
     file: UploadFile = File(...),
     user_id: int = Form(...),
-    account_id: int = Form(...),
+    account_id: int | None = Form(None),
+    card_id: int | None = Form(None),
     decisoes: str = Form(""),
 ):
     """
@@ -332,6 +343,7 @@ async def import_commit(
     o que o usuário decidiu sobre as linhas suspeitas na prévia. É o único dado
     do cliente aceito, e é validado contra o arquivo.
     """
+    _exigir_um_destino(account_id, card_id)
     conteudo = await _ler_upload(file)
     try:
         escolhidas = json.loads(decisoes) if decisoes.strip() else {}
@@ -340,7 +352,7 @@ async def import_commit(
     except ValueError:
         raise HTTPException(status_code=400, detail="As decisões chegaram em formato inválido.")
     try:
-        return {"data": ImportService.importar(user_id, file.filename or "", conteudo, account_id, escolhidas)}
+        return {"data": ImportService.importar(user_id, file.filename or "", conteudo, account_id, escolhidas, card_id)}
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ArquivoInvalido as e:
