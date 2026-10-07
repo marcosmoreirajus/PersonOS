@@ -16,6 +16,18 @@ export function corpoDoDestino(destino: Destino, contaId: string, cartaoId: stri
   return destino === 'cartao' ? { card_id: Number(cartaoId) } : { account_id: Number(contaId) }
 }
 
+export type Repeticao = 'avista' | 'installment' | 'recurring'
+
+/** Repetições que o destino aceita (issue #30): o Cartão não tem recorrência, só à vista e parcelado. */
+export function repeticoesDoDestino(destino: Destino): Repeticao[] {
+  return destino === 'cartao' ? ['avista', 'installment'] : ['avista', 'installment', 'recurring']
+}
+
+/** A repetição que vale depois de trocar o destino: a que o destino não aceita volta a à vista. */
+export function repeticaoNoDestino(destino: Destino, atual: Repeticao): Repeticao {
+  return repeticoesDoDestino(destino).includes(atual) ? atual : 'avista'
+}
+
 /** Cartão com que o formulário abre: o único do usuário (escolher entre um só é cerimônia), senão nenhum. */
 export function cartaoInicial(cartoes: { id: number }[]): number | null {
   return cartoes.length === 1 ? cartoes[0].id : null

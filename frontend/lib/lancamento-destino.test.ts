@@ -1,7 +1,18 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { cartaoInicial, corpoDoDestino, erroDoDestino } from './lancamento-destino.ts'
+import { cartaoInicial, corpoDoDestino, erroDoDestino, repeticaoNoDestino, repeticoesDoDestino } from './lancamento-destino.ts'
+
+test('o cartão libera à vista e parcelado, mas não recorrente; a conta libera os três', () => {
+  assert.deepEqual(repeticoesDoDestino('cartao'), ['avista', 'installment'])
+  assert.deepEqual(repeticoesDoDestino('conta'), ['avista', 'installment', 'recurring'])
+})
+
+test('trocar para o cartão tira a recorrência e mantém o parcelado', () => {
+  assert.equal(repeticaoNoDestino('cartao', 'recurring'), 'avista')
+  assert.equal(repeticaoNoDestino('cartao', 'installment'), 'installment')
+  assert.equal(repeticaoNoDestino('conta', 'recurring'), 'recurring')
+})
 
 test('destino Conta pede a conta; Cartão pede o cartão', () => {
   assert.equal(erroDoDestino('conta', '', '4'), 'Escolha a conta do lançamento.')

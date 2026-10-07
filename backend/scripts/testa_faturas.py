@@ -123,8 +123,8 @@ def api():
     r = cli.post("/api/transactions", json={**base, "card_id": cartao, "type": "income"})
     checa("compra no cartão só como despesa", r.status_code == 400, r.text[:100])
     r = cli.post("/api/transactions", json={**base, "card_id": cartao, "settled_at": None,
-                 "series": {"kind": "installment", "frequency": "monthly", "total_count": 3}})
-    checa("parcelado no cartão fica para outro ticket (400)", r.status_code == 400, r.text[:100])
+                 "series": {"kind": "recurring", "frequency": "monthly"}})
+    checa("recorrência no cartão fica de fora (400); o parcelado é do #30", r.status_code == 400, r.text[:100])
     r = cli.post("/api/transactions", json={**base, "card_id": cartao, "settled_at": None, "due_date": "2026-09-20", "amount": 40.0})
     checa("compra sem settled_at vale na data dela (efetivada)", r.status_code == 200 and r.json()["data"]["settled_at"] == "2026-09-20", r.text[:100])
     r = cli.post("/api/transactions", json={**base, "account_id": conta})

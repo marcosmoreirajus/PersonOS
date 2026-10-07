@@ -484,3 +484,22 @@ O pagamento é **a própria saída da conta**: `is_internal_transfer = true` e `
 | `POST` | `/api/invoice-payments/{id}/reject` | só para linha sugerida: volta como despesa comum, confirmada |
 
 `GET /api/review/user/{id}` ganha `pagamentos_fatura` (cada item com `opcoes` e `padrao`) e o `total` inclui a seção. A fatura (`/api/cards/{id}/invoices`) ganha `paid`, `remaining` (nunca negativo) e os estados `partially_paid` e `paid`; o detalhe traz `payments`. A importação devolve `aguardando_pagamento` e a prévia a situação `pagamento_fatura`.
+
+## Parcelas no cartão (issue #30)
+
+O **parcelado no cartão** é uma série `installment` com o Cartão como destino. Lógica nova em `backend/app/services/parcelas_cartao.py`; o resto é o mecanismo de séries de sempre. Aceite: `backend/scripts/testa_parcelas_cartao.py`.
+
+**Contrato.**
+- `POST /api/transactions` com `card_id` + `series: {kind: "installment", total_count: N}` aceita. A divisão é a existente (trunca, sobra na primeira: 100 em 7x = 14,32 + 6x 14,28). `recurring` no cartão continua 400 ("recorrência ainda não está disponível"): assinatura tem janela indefinida e outras perguntas (quando efetiva, em qual fatura), fora do escopo.
+- **Onde mora o `card_id`:** a série ganhou `card_id` (nulo nas de conta; `account_id` fica nulo nas de cartão) e `series_engine.gerar` o copia para cada ocorrência, que nasce com `card_id` e sem conta. Uma só fonte (a série), e o PATCH não altera o `card_id`.
+- A parcela nasce **prevista** (`settled_at = null`), como toda ocorrência de série; o `settled_at = due_date` automático só vale para compra à vista.
+
+**Fatura.** O ciclo de cada parcela vem da data dela (`due_date`), igual a qualquer compra: 12x a partir de 10/10 com fechamento dia 25 gera 12 faturas consecutivas, uma parcela em cada. A parcela prevista **entra no total do ciclo** (é o que o banco vai cobrar; o `_resumo` não mudou). O detalhe da fatura acrescenta, só nas parcelas, `installment: {index, count}` ("2/12") e `predicted` (ainda sem efetivação); a tela mostra "2/12" e "prevista".
+
+**Despesa do mês.** Segue a regra de previsto: não entra em relatório de realizado até ser efetivada; efetivada, é despesa na data da efetivação, que na prática é a da parcela. A efetivação vem da importação (abaixo) ou do "efetivar" manual.
+
+**Importação.** Nada mudou em `classificar`: a parcela prevista é candidata (`card_id` do mesmo cartão, confirmada, sem FITID), com valor igual e data dentro de 3 dias, e a descrição do extrato ("GELADEIRA PARC 02/12") contém a da parcela. A linha vira `suspeita`; ao fundir (`merge`), a parcela é efetivada na data do extrato, sem criar lançamento novo, e reimportar o arquivo não duplica. Parcela fora da janela de 3 dias do extrato não casa (vira lançamento novo, como qualquer linha sem par).
+
+**Tela.** O formulário libera "Parcelado" para destino Cartão (a "Recorrente" some; trocar para Cartão com Recorrente marcada volta a À vista). Lógica em `lib/lancamento-destino.ts` (`repeticoesDoDestino`, `repeticaoNoDestino`) e `lib/faturas.ts` (`rotuloDaParcela`).
+
+**Fora:** o Cartão na aba Parcelados de Relatórios (#35) e "parcela em fatura em aberto" (mesmo ticket).

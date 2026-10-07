@@ -21,7 +21,7 @@ from app.schemas import (
 )
 from app.services import DataService, BusinessService
 from app.services import import_service as ImportService
-from app.services import cartoes, faturas, pagamentos_fatura, relatorios, relatorios_parcelados, relatorios_tendencia, ultimas, vencimentos
+from app.services import cartoes, faturas, pagamentos_fatura, parcelas_cartao, relatorios, relatorios_parcelados, relatorios_tendencia, ultimas, vencimentos
 from app.services.import_service import ArquivoInvalido
 from app.services.store import store_ativo
 
@@ -113,10 +113,11 @@ async def create_transaction(payload: TransactionCreate):
                 raise ValueError("Cartão não encontrado. Escolha um dos seus cartões.")
             if payload.type != TransactionType.EXPENSE:
                 raise ValueError("No cartão só cabe compra (despesa).")
-            if payload.series is not None:
-                raise ValueError("Compra parcelada ou recorrente no cartão ainda não está disponível.")
-            # A compra é despesa na data dela: nasce efetivada nesse dia.
-            dados["settled_at"] = dados["settled_at"] or dados["due_date"]
+            parcelas_cartao.validar_serie(payload.series)
+            # A compra à vista é despesa na data dela: nasce efetivada nesse
+            # dia. A parcela nasce prevista (issue #30): efetiva pela importação.
+            if payload.series is None:
+                dados["settled_at"] = dados["settled_at"] or dados["due_date"]
         else:
             DataService.validar_conta_do_usuario(
                 payload.user_id, payload.account_id, obrigatoria=payload.source == TransactionSource.MANUAL

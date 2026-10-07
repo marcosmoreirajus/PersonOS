@@ -145,6 +145,7 @@ class DataService:
                 type=type,
                 category_id=category_id,
                 account_id=account_id,
+                card_id=card_id,
                 amount=valor_parcela,
                 frequency=series.get("frequency", "monthly"),
                 start_date=due_date,
@@ -650,6 +651,7 @@ class DataService:
         account_id: int | None = None,
         total_count: int | None = None,
         end_date: str | None = None,
+        card_id: int | None = None,
     ) -> Dict[str, Any]:
         """
         Cria a série. O total da dívida nunca é gravado — é a soma das
@@ -667,6 +669,9 @@ class DataService:
             "type": type,
             "category_id": category_id,
             "account_id": account_id,
+            # Parcelado no cartão (issue #30): a série aponta o Cartão e as
+            # parcelas herdam; sem conta.
+            "card_id": card_id,
             "amount": amount,
             "frequency": frequency,
             "anchor_day": int(start_date[8:10]),

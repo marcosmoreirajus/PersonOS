@@ -145,6 +145,7 @@ def gerar(
                 # de "atrasado" acontece sozinha — nenhum campo precisa dizer.
                 "settled_at": None,
                 "account_id": serie.get("account_id"),
+                "card_id": serie.get("card_id"),
                 "is_internal_transfer": False,
                 "needs_transfer_review": False,
                 "series_id": serie["id"],

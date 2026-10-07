@@ -1,7 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { rotuloDoCiclo, rotuloDoEstado } from './faturas.ts'
+import { rotuloDaParcela, rotuloDoCiclo, rotuloDoEstado } from './faturas.ts'
+
+test('a parcela vira "2/12"; compra à vista não tem rótulo', () => {
+  assert.equal(rotuloDaParcela({ installment: { index: 2, count: 12 } }), '2/12')
+  assert.equal(rotuloDaParcela({}), null)
+})
 
 test('o ciclo vira mês e ano por extenso', () => {
   assert.equal(rotuloDoCiclo('2026-10'), 'Outubro de 2026')
