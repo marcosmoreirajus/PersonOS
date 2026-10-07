@@ -39,3 +39,10 @@ class CardResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class InvoicePaymentConfirm(BaseModel):
+    """Qual fatura a saída da conta está pagando (pagamento da fatura, #29)."""
+
+    card_id: int
+    cycle: str

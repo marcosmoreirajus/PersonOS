@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, FileUp, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, CreditCard, FileUp, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 
 import { Carregando } from '@/components/ui/carregando'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +21,7 @@ import { hojeLocal, formatDateBR } from '@/lib/dates'
 import { categoriasConhecidas, dentroDoIntervalo, lerUrl, montarBusca, type TipoFiltro } from '@/lib/transacoes-url'
 import TransactionDialog, { type Category, type DialogSeed } from './_components/TransactionDialog'
 import DeleteDialog from './_components/DeleteDialog'
+import { PagamentoFaturaDialog } from './_components/PagamentoFaturaDialog'
 import OverdueAlert from './_components/OverdueAlert'
 import BulkActionsBar from './_components/BulkActionsBar'
 
@@ -98,6 +99,7 @@ function TransactionsContent() {
   // `seed` preenche o formulario: com id = edicao, sem id = duplicacao.
   const [seed, setSeed] = useState<DialogSeed | null>(null)
   const [excluindo, setExcluindo] = useState<Transaction | null>(null)
+  const [pagandoFatura, setPagandoFatura] = useState<Transaction | null>(null)
   // Ordenação controlada aqui (e não dentro da Table): com paginação, ordenar
   // só a página visível daria uma ordem errada entre páginas.
   const [ordem, setOrdem] = useState<SortState | null>({ key: 'due_date', direction: 'desc' })
@@ -330,6 +332,10 @@ function TransactionsContent() {
               actions={[
                 { key: 'edit', label: 'Editar', icon: Pencil, onSelect: () => abrirEdicao(t) },
                 { key: 'duplicate', label: 'Duplicar', icon: Copy, onSelect: () => abrirDuplicacao(t) },
+                // Saída efetivada da conta pode ser o pagamento de uma fatura (#29).
+                ...(t.type === 'expense' && t.account_id && !t.card_id && t.settled_at && !t.is_internal_transfer
+                  ? [{ key: 'invoice-payment', label: 'Marcar como pagamento de fatura', icon: CreditCard, onSelect: () => setPagandoFatura(t) }]
+                  : []),
                 {
                   key: 'delete',
                   label: t.series_id ? 'Excluir...' : 'Excluir',
@@ -670,6 +676,12 @@ function TransactionsContent() {
         transaction={excluindo}
         onOpenChange={(open) => !open && setExcluindo(null)}
         onDeleted={fetchData}
+      />
+
+      <PagamentoFaturaDialog
+        transaction={pagandoFatura}
+        onOpenChange={(open) => !open && setPagandoFatura(null)}
+        onSaved={fetchData}
       />
     </div>
   )

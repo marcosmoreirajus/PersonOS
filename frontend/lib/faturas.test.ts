@@ -14,7 +14,9 @@ test('ciclo malformado volta como veio', () => {
   assert.equal(rotuloDoCiclo('xx'), 'xx')
 })
 
-test('os dois estados têm rótulo', () => {
+test('os quatro estados têm rótulo', () => {
   assert.equal(rotuloDoEstado('open'), 'Aberta')
   assert.equal(rotuloDoEstado('closed'), 'Fechada')
+  assert.equal(rotuloDoEstado('partially_paid'), 'Parcialmente paga')
+  assert.equal(rotuloDoEstado('paid'), 'Paga')
 })

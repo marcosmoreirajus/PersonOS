@@ -53,6 +53,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.services import pagamentos_fatura
 from app.services.data_service import DataService, em_transacao
 
 # Distância máxima entre a data do extrato e a do lançamento existente.
@@ -539,8 +540,17 @@ def analisar(
     _identificar(linhas, destino.prefixo_hash)
     existentes = [t for t in DataService.load_json("transactions") if t["user_id"] == user_id]
     classificar(linhas, existentes, destino)
+    if not destino.eh_cartao:
+        # Saída que parece pagar uma fatura (#29) espera a decisão do usuário, fora de toda soma.
+        for l in linhas:
+            if (
+                l["situacao"] == "nova"
+                and l["type"] == "expense"
+                and pagamentos_fatura.eh_suspeito(user_id, l["data"], l["amount"], l["descricao"])
+            ):
+                l["situacao"] = "pagamento_fatura"
 
-    contagem = {"nova": 0, "ja_importada": 0, "suspeita": 0, "tratada_depois": 0}
+    contagem = {"nova": 0, "ja_importada": 0, "suspeita": 0, "tratada_depois": 0, "pagamento_fatura": 0}
     entradas = 0.0
     saidas = 0.0
     for l in linhas:
@@ -660,8 +670,17 @@ def importar(
     novas = 0
     conciliadas = 0
     em_espera = 0
+    em_pagamento = 0
     for l in analise["linhas"]:
         if l["situacao"] in ("ja_importada", "tratada_depois"):
+            continue
+
+        if l["situacao"] == "pagamento_fatura":
+            registro = _registro_importado(l, user_id, destino, proximo, agora, "awaiting_reconciliation")
+            registro["payment_suspect"] = True
+            transactions.append(registro)
+            proximo += 1
+            em_pagamento += 1
             continue
 
         if l["situacao"] == "nova":
@@ -707,6 +726,7 @@ def importar(
         "conciliadas": conciliadas,
         "ja_existiam": analise["contagem"]["ja_importada"],
         "aguardando_conciliacao": em_espera,
+        "aguardando_pagamento": em_pagamento,
         "tratadas_depois": analise["contagem"]["tratada_depois"],
         "invalidas": analise["invalidas"],
         # Todas as importadas entram sem categoria até a Fatia 6.
@@ -770,6 +790,8 @@ def conciliar(transaction_id: int, action: str, with_id: Optional[int] = None) -
         raise LookupError("Lançamento não encontrado.")
     if linha.get("ingest_state") != "awaiting_reconciliation":
         raise ValueError("Este lançamento não está aguardando conciliação.")
+    if linha.get("payment_suspect"):
+        raise ValueError("Este lançamento é um possível pagamento de fatura: decida em Pagamentos de fatura.")
 
     agora = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 

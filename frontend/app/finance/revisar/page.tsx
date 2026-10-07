@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { CategoryPicker, categoriasDoTipo, type PickerCategory } from '../_components/CategoryPicker'
 import { REVIEW_CHANGED_EVENT } from '../_components/FinanceTabs'
 import { CURRENT_USER_ID, api } from '@/lib/api'
+import { chaveDaFatura, lerChave, type OpcoesDePagamento } from '@/lib/pagamento-fatura'
+import { SeletorDeFatura } from '../_components/SeletorDeFatura'
 import { formatDateBR } from '@/lib/dates'
 
 type Lancamento = {
@@ -27,12 +29,14 @@ type Candidato = Pick<Lancamento, 'id' | 'description' | 'amount' | 'due_date' |
 
 type Fila = {
   a_conciliar: (Lancamento & { candidato: Candidato | null })[]
+  /** Saídas da conta que parecem pagar uma fatura (#29), com as faturas possíveis. */
+  pagamentos_fatura: (Lancamento & OpcoesDePagamento)[]
   sem_categoria: Lancamento[]
   total: number
 }
 
 /** Seções que um link pode pedir sozinhas — ex.: o balde de Relatórios. */
-type Secao = 'conciliar' | 'sem-categoria'
+type Secao = 'conciliar' | 'pagamentos' | 'sem-categoria'
 
 function Valor({ t }: { t: Pick<Lancamento, 'type' | 'amount'> }) {
   return (
@@ -54,11 +58,14 @@ function Valor({ t }: { t: Pick<Lancamento, 'type' | 'amount'> }) {
 function Revisar() {
   // Valor desconhecido na URL mostra a fila inteira, em vez de esconder tudo.
   const pedida = useSearchParams().get('secao')
-  const secao: Secao | null = pedida === 'conciliar' || pedida === 'sem-categoria' ? pedida : null
+  const secao: Secao | null =
+    pedida === 'conciliar' || pedida === 'pagamentos' || pedida === 'sem-categoria' ? pedida : null
   const [fila, setFila] = useState<Fila | null>(null)
   const [categories, setCategories] = useState<PickerCategory[]>([])
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState<number | null>(null)
+  // Fatura escolhida por linha; sem escolha vale a padrão que o backend sugeriu.
+  const [faturaEscolhida, setFaturaEscolhida] = useState<Record<number, string>>({})
 
   const carregar = useCallback(async () => {
     const [fila, cats] = await Promise.all([
@@ -95,6 +102,13 @@ function Revisar() {
 
   const conciliar = (id: number, action: 'merge' | 'not_duplicate') =>
     resolver(id, () => api(`/api/reconcile/${id}`, { method: 'POST', body: { action } }))
+
+  const confirmarPagamento = (id: number, chave: string) => {
+    const fatura = lerChave(chave)
+    if (fatura) resolver(id, () => api(`/api/invoice-payments/${id}`, { method: 'POST', body: fatura }))
+  }
+
+  const recusarPagamento = (id: number) => resolver(id, () => api(`/api/invoice-payments/${id}/reject`, { method: 'POST' }))
 
   const categorizar = (id: number, categoryId: string) =>
     resolver(id, () => api(`/api/transactions/${id}`, { method: 'PATCH', body: { category_id: Number(categoryId), scope: 'only_this' } }))
@@ -182,6 +196,73 @@ function Revisar() {
                       </TableCell>
                     </TableRow>
                   ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {mostrar('pagamentos') && (fila.pagamentos_fatura.length > 0 || secao === 'pagamentos') && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pagamentos de fatura</CardTitle>
+            <CardDescription>
+              Saídas da conta que parecem pagar a fatura de um cartão. Ficam fora do saldo e dos relatórios até você decidir: confirmar
+              abate a fatura (o valor pago é o da saída); recusar devolve a linha como despesa comum.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {fila.pagamentos_fatura.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum pagamento de fatura esperando decisão.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Da conta</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead>Fatura</TableHead>
+                    <TableHead>Decisão</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {fila.pagamentos_fatura.map((t) => {
+                    const escolha = faturaEscolhida[t.id] ?? (t.padrao ? chaveDaFatura(t.padrao) : null)
+                    return (
+                      <TableRow key={t.id}>
+                        <TableCell className="tabular-nums">{formatDateBR(t.settled_at ?? t.due_date)}</TableCell>
+                        <TableCell className="max-w-[16rem]">
+                          <span className="block truncate">{t.description}</span>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          <Valor t={t} />
+                        </TableCell>
+                        <TableCell>
+                          {t.opcoes.length === 0 ? (
+                            <span className="text-xs text-muted-foreground">Nenhuma fatura a pagar nesta data.</span>
+                          ) : (
+                            <SeletorDeFatura
+                              opcoes={t.opcoes}
+                              value={escolha}
+                              onChange={(v) => setFaturaEscolhida((e) => ({ ...e, [t.id]: v }))}
+                              rotulo={`Fatura paga por ${t.description}`}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-2">
+                            <Button size="sm" disabled={ocupado === t.id || !escolha} onClick={() => escolha && confirmarPagamento(t.id, escolha)}>
+                              É pagamento
+                            </Button>
+                            <Button size="sm" variant="outline" disabled={ocupado === t.id} onClick={() => recusarPagamento(t.id)}>
+                              Não é
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             )}

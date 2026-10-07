@@ -54,7 +54,20 @@ export function FaturasDoCartao({ cardId }: { cardId: number }) {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <MoneyValue value={f.total} className="text-sm font-medium text-foreground" />
+              <span className="flex flex-col items-end">
+                <MoneyValue value={f.total} className="text-sm font-medium text-foreground" />
+                {f.paid > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {f.remaining > 0 ? (
+                      <>
+                        falta <MoneyValue value={f.remaining} />
+                      </>
+                    ) : (
+                      'quitada'
+                    )}
+                  </span>
+                )}
+              </span>
               <Button variant="ghost" size="sm" aria-expanded={aberta === f.cycle} onClick={() => setAberta(aberta === f.cycle ? null : f.cycle)}>
                 {aberta === f.cycle ? 'Ocultar' : 'Detalhe'}
               </Button>
@@ -105,6 +118,27 @@ function DetalheDaFatura({ cardId, ciclo, categorias }: { cardId: number; ciclo:
         <span>Total da fatura</span>
         <MoneyValue value={detalhe.total} />
       </div>
+      {detalhe.payments.length > 0 && (
+        <div className="mt-2 flex flex-col gap-1.5 border-t border-border pt-2 text-sm">
+          <ul className="flex flex-col gap-1.5">
+            {detalhe.payments.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-3">
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-foreground">{p.description || 'Pagamento'}</span>
+                  <span className="text-xs text-muted-foreground">Pagamento · {formatDateBR(p.date)}</span>
+                </span>
+                <span className="shrink-0 text-foreground">
+                  −<MoneyValue value={p.amount} />
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex items-center justify-between font-medium text-foreground">
+            <span>Falta pagar</span>
+            <MoneyValue value={detalhe.remaining} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

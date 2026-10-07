@@ -736,9 +736,18 @@ class DataService:
         def recente_primeiro(t: Dict[str, Any]) -> tuple:
             return (t.get("settled_at") or t.get("due_date") or "", t["id"])
 
+        # Import tardio: pagamentos_fatura importa este módulo.
+        from app.services import pagamentos_fatura
+
         a_conciliar = []
+        pagamentos_fatura_pendentes = []
         for t in todas:
             if t.get("ingest_state") != "awaiting_reconciliation":
+                continue
+            if t.get("payment_suspect"):
+                pagamentos_fatura_pendentes.append(
+                    {**t, **pagamentos_fatura.opcoes(user_id, t.get("settled_at") or t["due_date"], t["amount"], t.get("description"))}
+                )
                 continue
             # O candidato pode ter sido excluído depois da importação: a linha
             # continua na fila, só sem o comparativo.
@@ -760,11 +769,13 @@ class DataService:
         ]
 
         a_conciliar.sort(key=recente_primeiro, reverse=True)
+        pagamentos_fatura_pendentes.sort(key=recente_primeiro, reverse=True)
         sem_categoria.sort(key=recente_primeiro, reverse=True)
         return {
             "a_conciliar": a_conciliar,
+            "pagamentos_fatura": pagamentos_fatura_pendentes,
             "sem_categoria": sem_categoria,
-            "total": len(a_conciliar) + len(sem_categoria),
+            "total": len(a_conciliar) + len(pagamentos_fatura_pendentes) + len(sem_categoria),
         }
 
     @staticmethod

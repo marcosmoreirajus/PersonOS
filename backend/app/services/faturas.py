@@ -3,8 +3,9 @@ Faturas (issue #26, Fatia 5): ciclo, total e estado de cada fatura de um Cartão
 
 Tudo aqui é derivado: a fatura NÃO é gravada. Ela "nasce" quando existe a
 primeira compra do ciclo; total e estado saem das compras (lançamentos com
-`card_id`) e da data de hoje. Pagamento, saldo anterior, encargos e estorno
-entram nos tickets seguintes (#29, #33, #31) e passam a compor o total.
+`card_id`) e da data de hoje. O pagamento (#29) é um lançamento da conta com
+`invoice_payment = {card_id, cycle}`: não compõe o total, abate o restante.
+Saldo anterior, encargos e estorno entram nos tickets #33 e #31.
 
 Ciclo: identificado pelo mês de FECHAMENTO, "AAAA-MM". Compra com data até o
 dia de fechamento, inclusive, entra no ciclo do próprio mês; depois dele, no
@@ -74,22 +75,41 @@ def _compras(cartao: Dict[str, Any]) -> List[Dict[str, Any]]:
     ]
 
 
-def _estado(fechamento: str, hoje: str) -> str:
-    # O dia do fechamento ainda aceita compra: a fatura só fecha no dia seguinte.
+def _estado(fechamento: str, hoje: str, centavos_pagos: int, centavos_restantes: int) -> str:
+    # Com pagamento, o estado é do pagamento; sem, é da data. O dia do
+    # fechamento ainda aceita compra: a fatura só fecha no dia seguinte.
+    if centavos_pagos > 0:
+        return "paid" if centavos_restantes <= 0 else "partially_paid"
     return "closed" if hoje > fechamento else "open"
 
 
-def _resumo(cartao: Dict[str, Any], ciclo: str, compras: List[Dict[str, Any]], hoje: str) -> Dict[str, Any]:
+def _pagamentos(cartao: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+    """Pagamentos do cartão por ciclo: saídas da conta marcadas com `invoice_payment`."""
+    grupos: Dict[str, List[Dict[str, Any]]] = {}
+    for t in DataService.get_transactions_by_user(cartao["user_id"]):
+        marca = t.get("invoice_payment")
+        if marca and marca.get("card_id") == cartao["id"]:
+            grupos.setdefault(marca["cycle"], []).append(t)
+    return grupos
+
+
+def _resumo(
+    cartao: Dict[str, Any], ciclo: str, compras: List[Dict[str, Any]], pagamentos: List[Dict[str, Any]], hoje: str
+) -> Dict[str, Any]:
     fechamento = data_de_fechamento(ciclo, cartao["closing_day"])
     # Soma em centavos inteiros: float acumulado erra o último centavo.
     centavos = sum(round(t["amount"] * 100) for t in compras)
+    pagos = sum(round(t["amount"] * 100) for t in pagamentos)
+    restante = max(centavos - pagos, 0)
     return {
         "card_id": cartao["id"],
         "cycle": ciclo,
         "closing_date": fechamento,
         "due_date": data_de_vencimento(ciclo, cartao["closing_day"], cartao["due_day"]),
         "total": centavos / 100,
-        "state": _estado(fechamento, hoje),
+        "paid": pagos / 100,
+        "remaining": restante / 100,
+        "state": _estado(fechamento, hoje, pagos, centavos - pagos),
         "purchases_count": len(compras),
     }
 
@@ -105,7 +125,8 @@ def listar(cartao: Dict[str, Any], hoje: str) -> List[Dict[str, Any]]:
     """Faturas do cartão, a mais recente primeiro. `hoje` é AAAA-MM-DD do cliente."""
     date.fromisoformat(hoje)  # ValueError se malformado
     grupos = _por_ciclo(cartao)
-    return [_resumo(cartao, c, grupos[c], hoje) for c in sorted(grupos, reverse=True)]
+    pagos = _pagamentos(cartao)
+    return [_resumo(cartao, c, grupos[c], pagos.get(c, []), hoje) for c in sorted(grupos, reverse=True)]
 
 
 def detalhe(cartao: Dict[str, Any], ciclo: str, hoje: str) -> Optional[Dict[str, Any]]:
@@ -116,8 +137,13 @@ def detalhe(cartao: Dict[str, Any], ciclo: str, hoje: str) -> Optional[Dict[str,
     if not compras:
         return None
     ordenadas = sorted(compras, key=lambda t: (t["due_date"], t["id"]), reverse=True)
+    pagamentos = _pagamentos(cartao).get(ciclo, [])
     return {
-        **_resumo(cartao, ciclo, compras, hoje),
+        **_resumo(cartao, ciclo, compras, pagamentos, hoje),
+        "payments": [
+            {"id": t["id"], "description": t.get("description"), "amount": t["amount"], "date": (t.get("settled_at") or t["due_date"])[:10]}
+            for t in sorted(pagamentos, key=lambda t: (t.get("settled_at") or "", t["id"]))
+        ],
         "purchases": [
             {
                 "id": t["id"],

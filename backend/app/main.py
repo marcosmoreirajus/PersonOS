@@ -10,6 +10,7 @@ from app.schemas import (
     BulkAction,
     CardCreate,
     CardUpdate,
+    InvoicePaymentConfirm,
     PostponePayload,
     PreferencesUpdate,
     ReconcilePayload,
@@ -20,7 +21,7 @@ from app.schemas import (
 )
 from app.services import DataService, BusinessService
 from app.services import import_service as ImportService
-from app.services import cartoes, faturas, relatorios, relatorios_parcelados, relatorios_tendencia, ultimas, vencimentos
+from app.services import cartoes, faturas, pagamentos_fatura, relatorios, relatorios_parcelados, relatorios_tendencia, ultimas, vencimentos
 from app.services.import_service import ArquivoInvalido
 from app.services.store import store_ativo
 
@@ -264,6 +265,39 @@ async def get_card_invoice(card_id: int, ciclo: str, hoje: str):
     if fatura is None:
         raise HTTPException(status_code=404, detail="Esse cartão não tem fatura nesse ciclo.")
     return {"data": fatura}
+
+
+# Pagamento da fatura pela conta corrente (issue #29): a saída da conta vira
+# transferência que abate a fatura. Confirmar serve à linha sugerida na
+# importação e à marcação manual de qualquer saída efetivada.
+@app.get("/api/invoice-payments/{transaction_id}/options")
+async def get_invoice_payment_options(transaction_id: int):
+    try:
+        return {"data": pagamentos_fatura.opcoes_do_lancamento(transaction_id)}
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/invoice-payments/{transaction_id}")
+async def confirm_invoice_payment(transaction_id: int, payload: InvoicePaymentConfirm):
+    try:
+        return {"data": pagamentos_fatura.confirmar(transaction_id, payload.card_id, payload.cycle)}
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/invoice-payments/{transaction_id}/reject")
+async def reject_invoice_payment(transaction_id: int):
+    try:
+        return {"data": pagamentos_fatura.recusar(transaction_id)}
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.patch("/api/cards/{card_id}")

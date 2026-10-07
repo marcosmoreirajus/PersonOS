@@ -3,7 +3,7 @@
  * A fatura é derivada no backend; aqui só se formata o que ele devolve.
  */
 
-export type EstadoFatura = 'open' | 'closed'
+export type EstadoFatura = 'open' | 'closed' | 'partially_paid' | 'paid'
 
 export type Fatura = {
   card_id: number
@@ -12,6 +12,10 @@ export type Fatura = {
   closing_date: string
   due_date: string
   total: number
+  /** Soma dos pagamentos vinculados (#29). */
+  paid: number
+  /** Total menos o pago, nunca negativo. */
+  remaining: number
   state: EstadoFatura
   purchases_count: number
 }
@@ -24,7 +28,9 @@ export type CompraDaFatura = {
   category_id: number | null
 }
 
-export type FaturaDetalhe = Fatura & { purchases: CompraDaFatura[] }
+export type PagamentoDaFatura = { id: number; description: string | null; amount: number; date: string }
+
+export type FaturaDetalhe = Fatura & { purchases: CompraDaFatura[]; payments: PagamentoDaFatura[] }
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 
@@ -36,6 +42,13 @@ export function rotuloDoCiclo(ciclo: string): string {
   return `${mes[0].toUpperCase()}${mes.slice(1)} de ${m[1]}`
 }
 
+const ESTADOS: Record<EstadoFatura, string> = {
+  open: 'Aberta',
+  closed: 'Fechada',
+  partially_paid: 'Parcialmente paga',
+  paid: 'Paga',
+}
+
 export function rotuloDoEstado(estado: EstadoFatura): string {
-  return estado === 'open' ? 'Aberta' : 'Fechada'
+  return ESTADOS[estado]
 }

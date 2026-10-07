@@ -17,7 +17,7 @@ import { formatDateBR } from '@/lib/dates'
 
 const PASSOS = ['Origem', 'Revisar', 'Confirmar']
 
-type Situacao = 'nova' | 'ja_importada' | 'suspeita' | 'tratada_depois'
+type Situacao = 'nova' | 'ja_importada' | 'suspeita' | 'tratada_depois' | 'pagamento_fatura'
 type Decisao = 'merge' | 'not_duplicate' | 'queue'
 
 type LinhaPrevia = {
@@ -47,6 +47,7 @@ type Resumo = {
   ja_existiam: number
   aguardando_conciliacao: number
   tratadas_depois?: number
+  aguardando_pagamento?: number
   sem_categoria: number
 }
 
@@ -64,6 +65,7 @@ const SITUACAO: Record<Situacao, { texto: string; ponto: string; linha?: string 
   ja_importada: { texto: 'Já importada', ponto: 'bg-muted-foreground/40', linha: 'text-muted-foreground' },
   suspeita: { texto: 'Possível duplicata', ponto: 'bg-destructive' },
   tratada_depois: { texto: 'Tratada depois', ponto: 'bg-muted-foreground/40', linha: 'text-muted-foreground' },
+  pagamento_fatura: { texto: 'Possível pagamento de fatura', ponto: 'bg-destructive' },
 }
 
 const DECISOES: { value: Decisao; label: string }[] = [
@@ -172,7 +174,7 @@ export default function ImportarPage() {
     setErro(null)
   }
 
-  const aGravar = previa ? previa.contagem.nova + previa.contagem.suspeita : 0
+  const aGravar = previa ? previa.contagem.nova + previa.contagem.suspeita + previa.contagem.pagamento_fatura : 0
   const destinoItens = [
     ...contas.map((c) => ({ value: chave({ tipo: 'conta', id: c.id }), label: c.name })),
     ...cartoes.map((c) => ({ value: chave({ tipo: 'cartao', id: c.id }), label: `${c.name} (cartão)` })),
@@ -281,6 +283,11 @@ export default function ImportarPage() {
             <span className={previa.contagem.suspeita ? 'text-foreground' : 'text-muted-foreground'}>
               <strong className="font-semibold">{previa.contagem.suspeita}</strong> possíveis duplicatas
             </span>
+            {previa.contagem.pagamento_fatura > 0 && (
+              <span>
+                <strong className="font-semibold">{previa.contagem.pagamento_fatura}</strong> possíveis pagamentos de fatura
+              </span>
+            )}
             {previa.contagem.tratada_depois > 0 && (
               <span className="text-muted-foreground">
                 <strong className="font-semibold text-foreground">{previa.contagem.tratada_depois}</strong> tratadas depois
@@ -422,6 +429,16 @@ export default function ImportarPage() {
             <p className="text-sm text-muted-foreground">
               {resumo.tratadas_depois} {resumo.tratadas_depois === 1 ? 'linha positiva não foi importada' : 'linhas positivas não foram importadas'}:
               estorno e pagamento da fatura são tratados depois.
+            </p>
+          )}
+          {!!resumo.aguardando_pagamento && (
+            <p className="text-sm text-muted-foreground">
+              {resumo.aguardando_pagamento} {resumo.aguardando_pagamento === 1 ? 'saída parece' : 'saídas parecem'} pagamento de fatura e
+              espera em{' '}
+              <Link href="/finance/revisar?secao=pagamentos" className="underline underline-offset-2">
+                A revisar
+              </Link>
+              , fora do saldo e dos relatórios até você decidir.
             </p>
           )}
           {resumo.aguardando_conciliacao > 0 && (
