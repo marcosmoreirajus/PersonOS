@@ -21,7 +21,7 @@ from app.schemas import (
 )
 from app.services import DataService, BusinessService
 from app.services import import_service as ImportService
-from app.services import cartoes, faturas, pagamentos_fatura, relatorios, relatorios_parcelados, relatorios_tendencia, ultimas, vencimentos
+from app.services import cartoes, faturas, pagamentos_fatura, parcelas_cartao, relatorios, relatorios_parcelados, relatorios_tendencia, ultimas, vencimentos
 from app.services.import_service import ArquivoInvalido
 from app.services.store import store_ativo
 
@@ -113,10 +113,13 @@ async def create_transaction(payload: TransactionCreate):
                 raise ValueError("Cartão não encontrado. Escolha um dos seus cartões.")
             if payload.type not in (TransactionType.EXPENSE, TransactionType.REFUND):
                 raise ValueError("No cartão só cabe compra (despesa) ou estorno.")
-            if payload.series is not None:
-                raise ValueError("Compra parcelada ou recorrente no cartão ainda não está disponível.")
-            # A compra é despesa na data dela: nasce efetivada nesse dia.
-            dados["settled_at"] = dados["settled_at"] or dados["due_date"]
+            if payload.type == TransactionType.REFUND and payload.series is not None:
+                raise ValueError("Estorno não é parcelado nem recorrente.")
+            parcelas_cartao.validar_serie(payload.series)
+            # A compra à vista é despesa na data dela: nasce efetivada nesse
+            # dia. A parcela nasce prevista (issue #30): efetiva pela importação.
+            if payload.series is None:
+                dados["settled_at"] = dados["settled_at"] or dados["due_date"]
         elif payload.type == TransactionType.REFUND:
             raise ValueError("Estorno é do cartão: escolha o cartão da compra devolvida.")
         else:

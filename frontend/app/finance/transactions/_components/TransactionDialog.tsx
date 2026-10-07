@@ -17,7 +17,14 @@ import { lerValor, valorParaCampo } from '@/lib/valor'
 import { cn } from '@/lib/utils'
 import { hojeLocal } from '@/lib/dates'
 import { contaInicial, guardarUltimaConta, lerUltimaConta } from '@/lib/conta-lancamento'
-import { cartaoInicial, corpoDoDestino, erroDoDestino, type Destino } from '@/lib/lancamento-destino'
+import {
+  cartaoInicial,
+  corpoDoDestino,
+  erroDoDestino,
+  repeticaoNoDestino,
+  repeticoesDoDestino,
+  type Destino,
+} from '@/lib/lancamento-destino'
 import { CategoryPicker, categoriasDoTipo } from '../../_components/CategoryPicker'
 import { NovaContaDialog, type Conta } from '../../importar/_components/NovaContaDialog'
 
@@ -355,11 +362,11 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
             reserveErrorLine
           />
 
-          {!editando && destino === 'conta' && (
+          {!editando && (
             <Field>
               <FieldLabel>Repetição</FieldLabel>
               <div className="flex gap-1 rounded-xl bg-muted p-1">
-                {REPETICOES.map((r) => (
+                {REPETICOES.filter((r) => repeticoesDoDestino(destino).includes(r.value)).map((r) => (
                   <button
                     key={r.value}
                     type="button"
@@ -455,9 +462,9 @@ export function TransactionDialog({ open, onOpenChange, categories, userId, onSa
                     onClick={() => {
                       setDestino(d)
                       if (d === 'cartao') {
-                        // Cartão só recebe compra: despesa, à vista.
+                        // Cartão só recebe compra: despesa, à vista ou parcelada.
                         setType('expense')
-                        setRepeticao('avista')
+                        setRepeticao(repeticaoNoDestino('cartao', repeticao))
                         const cat = categories.find((c) => String(c.id) === categoryId)
                         if (cat && cat.type === 'income') setCategoryId('')
                       }

@@ -28,6 +28,15 @@ export type CompraDaFatura = {
   type: 'expense' | 'refund'
   date: string
   category_id: number | null
+  /** Só nas parcelas (issue #30): qual é e de quantas. */
+  installment?: { index: number; count: number }
+  /** Parcela ainda sem efetivação: a fatura a mostra, mas o dinheiro não se moveu. */
+  predicted?: boolean
+}
+
+/** Rótulo da parcela na fatura ("2/12"), ou `null` para a compra à vista (issue #30). */
+export function rotuloDaParcela(compra: Pick<CompraDaFatura, 'installment'>): string | null {
+  return compra.installment ? `${compra.installment.index}/${compra.installment.count}` : null
 }
 
 export type PagamentoDaFatura = { id: number; description: string | null; amount: number; date: string }

@@ -17,7 +17,7 @@ import calendar
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from app.services import despesa_liquida
+from app.services import despesa_liquida, parcelas_cartao
 from app.services.data_service import DataService
 
 
@@ -140,6 +140,7 @@ def detalhe(cartao: Dict[str, Any], ciclo: str, hoje: str) -> Optional[Dict[str,
         return None
     ordenadas = sorted(compras, key=lambda t: (t["due_date"], t["id"]), reverse=True)
     pagamentos = _pagamentos(cartao).get(ciclo, [])
+    parcelas = parcelas_cartao.rotulos(compras)  # "2/12" e prevista (issue #30)
     return {
         **_resumo(cartao, ciclo, compras, pagamentos, hoje),
         "payments": [
@@ -155,6 +156,7 @@ def detalhe(cartao: Dict[str, Any], ciclo: str, hoje: str) -> Optional[Dict[str,
                 "type": t["type"],
                 "date": t["due_date"][:10],
                 "category_id": t.get("category_id"),
+                **parcelas.get(t["id"], {}),
             }
             for t in ordenadas
         ],
