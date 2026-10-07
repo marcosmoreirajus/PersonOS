@@ -49,6 +49,7 @@ import hashlib
 import io
 import re
 import unicodedata
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -73,6 +74,96 @@ FORMATOS_ACEITOS = ("ofx", "qfx", "csv", "txt", "xlsx")
 
 class ArquivoInvalido(ValueError):
     """Arquivo que não dá pra importar — a mensagem é mostrada ao usuário."""
+
+
+@dataclass(frozen=True, eq=False)
+class Destino:
+    """
+    Para onde o extrato vai: uma Conta OU um Cartão (issue #27).
+
+    Concentra tudo o que muda entre os dois, para o resto da importação não
+    perguntar "é cartão?" em cada passo: o prefixo do hash, a coleção onde
+    mora o identificador do banco, quais lançamentos existentes podem ser
+    duplicata, o texto do aviso e o formato do resumo na resposta.
+    """
+
+    eh_cartao: bool
+    registro: Dict[str, Any]
+
+    @classmethod
+    def resolver(cls, user_id: int, account_id: Optional[int], card_id: Optional[int]) -> "Destino":
+        """Exatamente um dos dois ids precisa vir, e o registro precisa ser do usuário."""
+        if (account_id is None) == (card_id is None):
+            raise ArquivoInvalido("Escolha o destino da importação: uma conta ou um cartão.")
+        eh_cartao = card_id is not None
+        alvo_id = card_id if eh_cartao else account_id
+        registro = next(
+            (
+                r
+                for r in DataService.load_json("cards" if eh_cartao else "accounts")
+                if r["id"] == alvo_id and r["user_id"] == user_id
+            ),
+            None,
+        )
+        if registro is None:
+            raise LookupError("Cartão não encontrado." if eh_cartao else "Conta não encontrada.")
+        return cls(eh_cartao, registro)
+
+    @property
+    def id(self) -> int:
+        return self.registro["id"]
+
+    @property
+    def tipo(self) -> str:
+        """Também é a chave do resumo na resposta da API: `conta` ou `cartao`."""
+        return "cartao" if self.eh_cartao else "conta"
+
+    @property
+    def colecao(self) -> str:
+        return "cards" if self.eh_cartao else "accounts"
+
+    @property
+    def account_id(self) -> Optional[int]:
+        return None if self.eh_cartao else self.id
+
+    @property
+    def card_id(self) -> Optional[int]:
+        return self.id if self.eh_cartao else None
+
+    @property
+    def prefixo_hash(self) -> str:
+        """Separa o hash de conta do de cartão: o mesmo texto nos dois são lançamentos distintos."""
+        return ("card%d" if self.eh_cartao else "acc%d") % self.id
+
+    def resumo(self) -> Dict[str, Any]:
+        resumo = {"id": self.id, "name": self.registro["name"]}
+        if not self.eh_cartao:
+            resumo["kind"] = self.registro["kind"]
+        return resumo
+
+    def pode_ser_duplicata(self, t: Dict[str, Any]) -> bool:
+        """
+        Lançamento existente que pode ser a mesma compra de uma linha do extrato.
+
+        No Cartão, a compra manual do MESMO cartão. Na Conta, a da mesma conta
+        — ou de nenhuma: o lançamento digitado à mão ainda não pergunta a conta,
+        e um candidato de OUTRA conta não pode ser fundido com esta linha.
+        Compra de cartão nunca serve para a Conta: não tem conta.
+        """
+        if self.eh_cartao:
+            return t.get("card_id") == self.id
+        return not t.get("card_id") and t.get("account_id") in (None, self.id)
+
+    def aviso_de_arquivo_trocado(self, acctid: Optional[str]) -> Optional[str]:
+        """O identificador do banco no arquivo difere do já guardado: provável arquivo de outro destino."""
+        guardado = self.registro.get("file_ref")
+        if not acctid or not guardado or acctid == guardado:
+            return None
+        outro, certo = ("outro cartão", "o cartão certo") if self.eh_cartao else ("outra conta", "a conta certa")
+        return (
+            "Este arquivo parece ser de %s (identificador %s; \"%s\" já recebeu arquivos do %s). "
+            "Confira se escolheu %s." % (outro, acctid, self.registro["name"], guardado, certo)
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -350,12 +441,7 @@ def _dias_entre(a: str, b: str) -> int:
     return abs((da - db).days)
 
 
-def classificar(
-    linhas: List[Dict[str, Any]],
-    existentes: List[Dict[str, Any]],
-    account_id: Optional[int],
-    card_id: Optional[int] = None,
-) -> None:
+def classificar(linhas: List[Dict[str, Any]], existentes: List[Dict[str, Any]], destino: Destino) -> None:
     """
     Marca cada linha como `nova`, `ja_importada` ou `suspeita` (com candidato).
     No destino Cartão, a linha positiva fica `tratada_depois`: não é compra e
@@ -375,29 +461,20 @@ def classificar(
     hash_todos = {t["import_hash"] for t in existentes if t.get("import_hash")}
 
     # Só registro sem FITID pode ser duplicata de uma linha do banco: quem tem
-    # FITID já foi identificado pelo próprio banco. E só da mesma conta — ou de
-    # nenhuma: o lançamento digitado à mão ainda não pergunta a conta, e um
-    # candidato de OUTRA conta não pode ser fundido com esta linha.
-    # No Cartão, o candidato é a compra manual do MESMO cartão; na Conta, nenhuma
-    # compra de cartão serve (ela não tem conta, mas não é lançamento de conta).
-    def pertence_ao_destino(t: Dict[str, Any]) -> bool:
-        if card_id is not None:
-            return t.get("card_id") == card_id
-        return not t.get("card_id") and t.get("account_id") in (None, account_id)
-
+    # FITID já foi identificado pelo próprio banco. E só do mesmo destino.
     candidatos = [
         t
         for t in existentes
         if not t.get("external_id")
         and t.get("ingest_state", "confirmed") == "confirmed"
-        and pertence_ao_destino(t)
+        and destino.pode_ser_duplicata(t)
     ]
     # Candidato já reivindicado por uma linha que está esperando não é oferecido
     # a outra: o mesmo lançamento não pode ser duplicado por duas linhas.
     usados = {t["reconcile_candidate_id"] for t in existentes if t.get("reconcile_candidate_id")}
 
     for l in linhas:
-        if card_id is not None and l["type"] == "income":
+        if destino.eh_cartao and l["type"] == "income":
             l["situacao"] = "tratada_depois"
             continue
         if l["external_id"]:
@@ -446,35 +523,6 @@ def classificar(
 # --------------------------------------------------------------------------- #
 
 
-def _conta_do_usuario(user_id: int, account_id: int) -> Dict[str, Any]:
-    conta = next(
-        (a for a in DataService.load_json("accounts") if a["id"] == account_id and a["user_id"] == user_id),
-        None,
-    )
-    if conta is None:
-        raise LookupError("Conta não encontrada.")
-    return conta
-
-
-def _cartao_do_usuario(user_id: int, card_id: int) -> Dict[str, Any]:
-    cartao = next(
-        (c for c in DataService.load_json("cards") if c["id"] == card_id and c["user_id"] == user_id),
-        None,
-    )
-    if cartao is None:
-        raise LookupError("Cartão não encontrado.")
-    return cartao
-
-
-def _destino(user_id: int, account_id: Optional[int], card_id: Optional[int]) -> Tuple[str, Dict[str, Any]]:
-    """('conta' | 'cartao', registro). Exatamente um dos dois precisa vir."""
-    if (account_id is None) == (card_id is None):
-        raise ArquivoInvalido("Escolha o destino da importação: uma conta ou um cartão.")
-    if card_id is not None:
-        return "cartao", _cartao_do_usuario(user_id, card_id)
-    return "conta", _conta_do_usuario(user_id, account_id)
-
-
 def analisar(
     user_id: int,
     nome: str,
@@ -483,21 +531,14 @@ def analisar(
     card_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Lê e classifica sem gravar nada — é o que a prévia mostra."""
-    tipo, destino = _destino(user_id, account_id, card_id)
+    destino = Destino.resolver(user_id, account_id, card_id)
     formato, linhas, invalidas, acctid = ler_arquivo(nome, conteudo)
     if not linhas and not invalidas:
         raise ArquivoInvalido("Não encontrei nenhuma transação neste arquivo.")
 
-    # O prefixo separa o hash de conta do de cartão: o mesmo texto num e noutro
-    # destino são lançamentos distintos.
-    _identificar(linhas, ("card%d" if tipo == "cartao" else "acc%d") % destino["id"])
+    _identificar(linhas, destino.prefixo_hash)
     existentes = [t for t in DataService.load_json("transactions") if t["user_id"] == user_id]
-    classificar(
-        linhas,
-        existentes,
-        destino["id"] if tipo == "conta" else None,
-        destino["id"] if tipo == "cartao" else None,
-    )
+    classificar(linhas, existentes, destino)
 
     contagem = {"nova": 0, "ja_importada": 0, "suspeita": 0, "tratada_depois": 0}
     entradas = 0.0
@@ -509,18 +550,11 @@ def analisar(
         else:
             saidas += l["amount"]
 
-    aviso = None
-    if acctid and destino.get("file_ref") and acctid != destino["file_ref"]:
-        outro, certo = ("outro cartão", "o cartão certo") if tipo == "cartao" else ("outra conta", "a conta certa")
-        aviso = (
-            "Este arquivo parece ser de %s (identificador %s; \"%s\" já recebeu arquivos do %s). "
-            "Confira se escolheu %s." % (outro, acctid, destino["name"], destino["file_ref"], certo)
-        )
-
-    resposta: Dict[str, Any] = {
+    return {
         "formato": formato,
-        "destino": tipo,
-        "aviso_conta": aviso,
+        "destino": destino.tipo,
+        destino.tipo: destino.resumo(),
+        "aviso_conta": destino.aviso_de_arquivo_trocado(acctid),
         "arquivo_acctid": acctid,
         "total": len(linhas),
         "contagem": contagem,
@@ -531,11 +565,6 @@ def analisar(
         "invalidas": invalidas,
         "linhas": linhas,
     }
-    if tipo == "cartao":
-        resposta["cartao"] = {"id": destino["id"], "name": destino["name"]}
-    else:
-        resposta["conta"] = {"id": destino["id"], "name": destino["name"], "kind": destino["kind"]}
-    return resposta
 
 
 ACOES_DECISAO = ("merge", "not_duplicate", "queue")
@@ -544,11 +573,10 @@ ACOES_DECISAO = ("merge", "not_duplicate", "queue")
 def _registro_importado(
     l: Dict[str, Any],
     user_id: int,
-    account_id: Optional[int],
+    destino: Destino,
     novo_id: int,
     agora: str,
     estado: str,
-    card_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     return {
         "id": novo_id,
@@ -561,8 +589,8 @@ def _registro_importado(
         "category_id": None,
         "due_date": l["data"],
         "settled_at": l["data"],
-        "account_id": account_id,
-        "card_id": card_id,
+        "account_id": destino.account_id,
+        "card_id": destino.card_id,
         "is_internal_transfer": False,
         "needs_transfer_review": False,
         "series_id": None,
@@ -621,6 +649,7 @@ def importar(
     cliente: o que se grava não pode depender de um payload adulterável. A
     decisão é o único dado do cliente aceito, e é validada contra o arquivo.
     """
+    destino = Destino.resolver(user_id, account_id, card_id)
     analise = analisar(user_id, nome, conteudo, account_id, card_id)
     escolhidas = _validar_decisoes(analise, decisoes)
 
@@ -636,7 +665,7 @@ def importar(
             continue
 
         if l["situacao"] == "nova":
-            transactions.append(_registro_importado(l, user_id, account_id, proximo, agora, "confirmed", card_id))
+            transactions.append(_registro_importado(l, user_id, destino, proximo, agora, "confirmed"))
             proximo += 1
             novas += 1
             continue
@@ -644,16 +673,16 @@ def importar(
         acao = escolhidas.get(l["import_hash"], "queue")
         if acao == "merge":
             alvo = next(t for t in transactions if t["id"] == l["candidato_id"])
-            registro = _registro_importado(l, user_id, account_id, 0, agora, "confirmed", card_id)
+            registro = _registro_importado(l, user_id, destino, 0, agora, "confirmed")
             _aplicar_fusao(alvo, registro, agora)
             conciliadas += 1
         elif acao == "not_duplicate":
-            transactions.append(_registro_importado(l, user_id, account_id, proximo, agora, "confirmed", card_id))
+            transactions.append(_registro_importado(l, user_id, destino, proximo, agora, "confirmed"))
             proximo += 1
             novas += 1
         else:
             transactions.append(
-                _registro_importado(l, user_id, account_id, proximo, agora, "awaiting_reconciliation", card_id)
+                _registro_importado(l, user_id, destino, proximo, agora, "awaiting_reconciliation")
             )
             proximo += 1
             em_espera += 1
@@ -663,18 +692,16 @@ def importar(
     # Primeira importação da conta/cartão: guarda o identificador do banco para
     # poder avisar se um arquivo de outro chegar aqui depois.
     if analise["arquivo_acctid"]:
-        colecao, alvo_id = ("cards", card_id) if card_id is not None else ("accounts", account_id)
-        registros = DataService.load_json(colecao)
-        destino = next(r for r in registros if r["id"] == alvo_id)
-        if not destino.get("file_ref"):
-            destino["file_ref"] = analise["arquivo_acctid"]
-            DataService.save_json(colecao, registros)
+        registros = DataService.load_json(destino.colecao)
+        gravado = next(r for r in registros if r["id"] == destino.id)
+        if not gravado.get("file_ref"):
+            gravado["file_ref"] = analise["arquivo_acctid"]
+            DataService.save_json(destino.colecao, registros)
 
-    chave_destino = analise["destino"]  # "conta" ou "cartao": a resposta traz o destino sob esse nome
     return {
         "formato": analise["formato"],
-        "destino": chave_destino,
-        chave_destino: analise[chave_destino],
+        "destino": destino.tipo,
+        destino.tipo: destino.resumo(),
         "total": analise["total"],
         "importadas": novas,
         "conciliadas": conciliadas,
